@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const dateTo = request.nextUrl.searchParams.get('date_to')
     const done = request.nextUrl.searchParams.get('done')
 
-    let query = supabase.from('schedules').select('*, driver:drivers(*), vehicle:vehicles(*)')
+    let query = supabase.from('schedules').select('*, vehicle:vehicles(*)')
 
     if (dateFrom) query = query.gte('load_date', dateFrom)
     if (dateTo) query = query.lte('load_date', dateTo)

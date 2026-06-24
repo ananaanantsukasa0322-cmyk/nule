@@ -8,7 +8,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const { id } = await params
     const body = await request.json()
     body.updated_at = new Date().toISOString()
-    const { data, error } = await supabase.from('schedules').update(body).eq('id', id).select('*, driver:drivers(*), vehicle:vehicles(*)').single()
+    const { data, error } = await supabase.from('schedules').update(body).eq('id', id).select('*, vehicle:vehicles(*)').single()
     if (error) throw error
     return Response.json(data)
   } catch (e) {
