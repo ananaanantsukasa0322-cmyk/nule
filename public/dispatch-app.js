@@ -15,7 +15,7 @@ function setupAutocomplete(inputId, datalistId, getOptsOverride) {
   const drop = document.createElement('ul');
   drop.style.cssText = [
     'position:fixed','z-index:99999',
-    'background:#fff','border:1px solid #e0e0e0','border-radius:8px',
+    'background:#1a1a1a','border:1px solid #444','border-radius:8px',
     'box-shadow:0 6px 20px rgba(0,0,0,.15)','margin:0','padding:4px 0',
     'max-height:220px','overflow-y:auto','list-style:none','display:none'
   ].join(';');
@@ -999,7 +999,7 @@ function addAitsuRow() {
   const n = _aitsuRowCount;
   const div = document.createElement('div');
   div.id = `at-row-${n}`;
-  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e8ecf0';
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;padding:10px;background:#1a1a1a;border-radius:8px;border:1px solid #e8ecf0';
   div.innerHTML = `
     <input class="form-input" placeholder="積み込み場所" list="dl-load-places" autocomplete="off"
            id="at-load-${n}" oninput="filterUnloadByLoadPlace(this.value)" style="font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;outline:none">
@@ -1153,7 +1153,7 @@ function openSpotModal() {
 
   const listHtml = hidden.map(d => `
     <button onclick="addSpotVisible('${d.id}','${date}')"
-      style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:14px;font-weight:600;">
+      style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:8px;background:#1a1a1a;cursor:pointer;font-size:14px;font-weight:600;">
       👤 ${d.name}
     </button>`).join('');
 
@@ -1161,7 +1161,7 @@ function openSpotModal() {
   modal.id = 'spot-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
   modal.innerHTML = `
-    <div style="background:#fff;border-radius:12px;padding:24px;min-width:280px;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+    <div style="background:#1a1a1a;border-radius:12px;padding:24px;min-width:280px;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
       <div style="font-weight:700;font-size:15px;margin-bottom:4px">📍 スポット追加</div>
       <div style="font-size:12px;color:var(--text-sub);margin-bottom:16px">${date} のみ表示するドライバーを選択</div>
       ${listHtml}
@@ -1608,7 +1608,7 @@ function renderDashboard() {
           const place = s.unload_place || '?';
           const weight = s.weight ? `${Number(s.weight).toLocaleString('ja-JP')}kg` : '';
           const cargo = s.cargo_note || '';
-          return `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;cursor:pointer"
+          return `<div style="background:#1a1a1a8e1;border:1px solid #ffc107;border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;cursor:pointer"
             onclick="switchPage('haisha');document.getElementById('haisha-date').value='${dateStr}';renderHaisha()"
             title="${place} ${weight}">
             <span style="font-weight:700;color:#856404">⚠️ 未割当</span>
@@ -2019,7 +2019,7 @@ function renderEditDetail() {
 
   const rows = editingPlan.rows.map((row, ri) => {
     const badge = row.type === 'yousha'
-      ? '<span style="font-size:10px;background:#fff3cd;color:#856404;border-radius:4px;padding:1px 5px;margin-left:4px">傭車</span>' : '';
+      ? '<span style="font-size:10px;background:#1a1a1a3cd;color:#856404;border-radius:4px;padding:1px 5px;margin-left:4px">傭車</span>' : '';
 
     // 積置き分セル（ドロップ可）
     const preCards = (row.preloaded || []).map((d, di) =>
@@ -2069,7 +2069,7 @@ function renderEditDetail() {
   document.getElementById('plan-detail-content').innerHTML = `
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="background:#f5f7fa">
+        <thead><tr style="background:#1a1a1a">
           <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">運転手</th>
           <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">車番</th>
           <th style="padding:10px;text-align:right;font-size:11px;color:var(--text-sub)">積載量(kg)</th>
@@ -2495,7 +2495,7 @@ function renderHaisha() {
           ).join('')
         : `<span style="font-weight:700">${y.vehicle_number}</span>`;
 
-      return `<tr style="background:#fffbf0">
+      return `<tr style="background:#1a1a1abf0">
         <td style="font-weight:700;white-space:nowrap;padding:10px 12px;font-size:13px">
           ${y.display_name}<br><span style="font-size:11px;font-weight:400;color:var(--text-sub)">傭車</span>
         </td>
@@ -2523,7 +2523,7 @@ function renderHaisha() {
            ondragleave="hDragLeave(event)"
            ondrop="hDropEmpty(event,'${uid}')"></td>`
     ).join('');
-    return `<tr style="background:#fafbfc">
+    return `<tr style="background:#1a1a1a">
       <td style="padding:6px 8px;min-width:80px">
         <input class="haisha-inp" type="text" placeholder="ドライバー名"
                value="${t.name || ''}"
@@ -2615,7 +2615,7 @@ function openAitsumiDetail(ids) {
   const rows = list.map(s => {
     const unloadPlace = places.find(p => p.name === s.unload_place);
     const caution = unloadPlace?.caution
-      ? `<div style="font-size:11px;color:#b45309;background:#fff8e1;border-radius:4px;padding:2px 6px;margin-top:2px">⚠️ ${unloadPlace.caution}</div>`
+      ? `<div style="font-size:11px;color:#b45309;background:#1a1a1a8e1;border-radius:4px;padding:2px 6px;margin-top:2px">⚠️ ${unloadPlace.caution}</div>`
       : '';
     const cargoNoteStr = s.cargo_note ? `<div style="font-size:11px;color:#0891b2;font-weight:600;margin-top:2px">📦 ${s.cargo_note}</div>` : '';
     const noteStr = s.note ? `<div style="font-size:11px;color:#888;margin-top:2px">📝 ${s.note}</div>` : '';
@@ -2758,7 +2758,7 @@ function openCardDetail(id) {
        </div>` : '';
 
   const cautionBox = (label, text) => text
-    ? `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px">
+    ? `<div style="background:#1a1a1a8e1;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px">
         <div style="font-weight:700;color:#b45309;margin-bottom:4px">⚠️ ${label}の注意事項</div>
         <div style="color:#78350f;white-space:pre-wrap">${text}</div>
        </div>` : '';

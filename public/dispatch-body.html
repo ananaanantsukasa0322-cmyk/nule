@@ -176,7 +176,7 @@
   <!-- 配車履歴モーダル -->
   <div id="plan-history-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:400;align-items:flex-start;justify-content:center;padding-top:60px"
        onclick="if(event.target===this)closePlanHistory()">
-    <div style="background:#fff;border-radius:14px;padding:28px;width:700px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+    <div style="background:#1a1a1a;border-radius:14px;padding:28px;width:700px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <strong style="font-size:17px">📂 配車予定表 履歴</strong>
         <button onclick="closePlanHistory()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">×</button>
@@ -188,7 +188,7 @@
   <!-- 分割モーダル -->
   <div id="split-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:600;align-items:center;justify-content:center"
        onclick="if(event.target===this)closeSplit()">
-    <div style="background:#fff;border-radius:14px;padding:28px;width:520px;max-width:96vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+    <div style="background:#1a1a1a;border-radius:14px;padding:28px;width:520px;max-width:96vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
         <strong style="font-size:16px">✂️ 配達分割</strong>
         <button onclick="closeSplit()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">×</button>
@@ -222,7 +222,7 @@
   <!-- 配車履歴 詳細モーダル -->
   <div id="plan-detail-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;align-items:flex-start;justify-content:center;padding-top:40px"
        onclick="if(event.target===this)closePlanDetail()">
-    <div style="background:#fff;border-radius:14px;padding:28px;width:1100px;max-width:97vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25)">
+    <div style="background:#1a1a1a;border-radius:14px;padding:28px;width:1100px;max-width:97vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
         <strong id="plan-detail-title" style="font-size:17px"></strong>
         <button onclick="closePlanDetail()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">×</button>
@@ -234,7 +234,7 @@
   <!-- 荷物詳細ポップアップ -->
   <div id="card-detail-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:600;align-items:center;justify-content:center"
        onclick="if(event.target===this)closeCardDetail()">
-    <div id="card-detail-box" style="background:#fff;border-radius:14px;padding:28px 32px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.25);position:relative">
+    <div id="card-detail-box" style="background:#1a1a1a;border-radius:14px;padding:28px 32px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.25);position:relative">
       <button onclick="closeCardDetail()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#aaa">×</button>
       <div id="card-detail-content"></div>
     </div>
@@ -243,7 +243,7 @@
   <!-- ドライバーピッカー（配車予定表用） -->
   <div id="dpicker-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:300;align-items:center;justify-content:center"
        onclick="if(event.target===this)closeDriverPicker()">
-    <div style="background:#fff;border-radius:12px;padding:20px 24px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.18)">
+    <div style="background:#1a1a1a;border-radius:12px;padding:20px 24px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.18)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <strong style="font-size:15px">ドライバーを選択</strong>
         <button onclick="closeDriverPicker()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999">×</button>
@@ -261,7 +261,7 @@
   <!-- 車両ピッカー（配車予定表用） -->
   <div id="vpicker-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:300;align-items:center;justify-content:center"
        onclick="if(event.target===this)closeVehiclePicker()">
-    <div style="background:#fff;border-radius:12px;padding:20px 24px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.18)">
+    <div style="background:#1a1a1a;border-radius:12px;padding:20px 24px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.18)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <strong style="font-size:15px">車両を選択</strong>
         <button onclick="closeVehiclePicker()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999">×</button>
@@ -444,7 +444,7 @@
       <div style="display:flex;align-items:center;gap:8px">
         <button id="aitsu-toggle-btn" type="button"
           onclick="toggleAitsumi()"
-          style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1.5px solid #d0d5e0;background:#fff;color:#666;cursor:pointer">
+          style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1.5px solid #d0d5e0;background:#1a1a1a;color:#666;cursor:pointer">
           🔀 相積み
         </button>
         <button class="modal-close" onclick="closeModal('schedule')">×</button>
