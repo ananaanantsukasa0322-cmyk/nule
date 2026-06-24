@@ -21,16 +21,21 @@ function DailyReportsContent() {
     ocr_text: "",
     status: "pending" as string,
     notes: "",
+    report_weight: "",
   });
+  const [schedules, setSchedules] = useState<{id:string;load_date:string;weight:number;driver_id:string;unload_place:string}[]>([]);
+  const [weightWarning, setWeightWarning] = useState("");
   const [file, setFile] = useState<File | null>(null);
 
   const loadData = useCallback(async () => {
-    const [r, d] = await Promise.all([
+    const [r, d, s] = await Promise.all([
       fetch("/api/daily-reports").then((r) => r.json()),
       fetch("/api/masters/drivers").then((r) => r.json()),
+      fetch("/api/schedules").then((r) => r.json()).catch(() => []),
     ]);
     setReports(r.reports || []);
     setDrivers(d.drivers || []);
+    setSchedules(Array.isArray(s) ? s : []);
     setLoading(false);
   }, []);
 
@@ -61,8 +66,23 @@ function DailyReportsContent() {
       ocr_text: report.ocr_text || "",
       status: report.status,
       notes: report.notes || "",
+      report_weight: "",
     });
+    setWeightWarning("");
     setShowEdit(true);
+  }
+
+  function checkWeightDiscrepancy(reportWeight: string, report: DailyReport) {
+    setEditForm(f => ({ ...f, report_weight: reportWeight }));
+    const rw = Number(reportWeight);
+    if (!rw || !report.driver_id || !report.report_date) { setWeightWarning(""); return; }
+    const matched = schedules.filter(s => s.driver_id === report.driver_id && s.load_date === report.report_date);
+    const dispatchTotal = matched.reduce((sum, s) => sum + (Number(s.weight) || 0), 0);
+    if (dispatchTotal > 0 && Math.abs(rw - dispatchTotal) > 100) {
+      setWeightWarning(`⚠️ 配車係入力: ${dispatchTotal.toLocaleString()}kg / 日報入力: ${rw.toLocaleString()}kg（差: ${Math.abs(rw - dispatchTotal).toLocaleString()}kg）`);
+    } else {
+      setWeightWarning("");
+    }
   }
 
   async function handleUpdate(e: React.FormEvent) {
@@ -246,6 +266,21 @@ function DailyReportsContent() {
               <option value="confirmed">確定</option>
             </select>
           </div>
+          <div>
+            <label className="block text-xs text-muted mb-1">日報重量 (kg)</label>
+            <input
+              type="number"
+              value={editForm.report_weight}
+              onChange={(e) => editingReport && checkWeightDiscrepancy(e.target.value, editingReport)}
+              className="w-full"
+              placeholder="日報の重量を入力"
+            />
+          </div>
+          {weightWarning && (
+            <div className="bg-warning/10 border border-warning/30 rounded p-3">
+              <p className="text-warning text-xs font-medium">{weightWarning}</p>
+            </div>
+          )}
           <div>
             <label className="block text-xs text-muted mb-1">備考</label>
             <textarea

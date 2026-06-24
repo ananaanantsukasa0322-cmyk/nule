@@ -102,10 +102,57 @@ function getUnloadOptsForLoad(loadInputId) {
 }
 
 function initPlaceAutocompletes() {
-  setupAutocomplete('s-load-place',  'dl-load-places',  getAllLoadOpts);
-  setupAutocomplete('s-unload-place','dl-unload-places', getUnloadOptsForLoad('s-load-place'));
-  setupAutocomplete('b-load-place',  'dl-load-places',  getAllLoadOpts);
-  setupAutocomplete('b-unload-place','dl-unload-places', getUnloadOptsForLoad('b-load-place'));
+  setupAutocomplete('s-client-name', null, getAllClientOpts);
+  setupAutocomplete('s-load-place',  'dl-load-places',  () => getLoadOptsForClient('s-client-name'));
+  setupAutocomplete('s-unload-place','dl-unload-places', () => getUnloadOptsForClientAndLoad('s-client-name','s-load-place'));
+  setupAutocomplete('b-client-name', null, getAllClientOpts);
+  setupAutocomplete('b-load-place',  'dl-load-places',  () => getLoadOptsForClient('b-client-name'));
+  setupAutocomplete('b-unload-place','dl-unload-places', () => getUnloadOptsForClientAndLoad('b-client-name','b-load-place'));
+}
+
+// 荷主の全件リスト
+function getAllClientOpts() {
+  const all = new Set();
+  (schedules || []).forEach(s => { if (s.client_name && s.client_name.trim()) all.add(s.client_name.trim()); });
+  return Array.from(all).sort();
+}
+
+// 荷主に紐づく積み地（荷主未選択時は全件）
+function getLoadOptsForClient(clientInputId) {
+  const cn = (document.getElementById(clientInputId)?.value || '').trim();
+  if (!cn) return getAllLoadOpts();
+  const linked = new Set(
+    (schedules || []).filter(s => s.client_name === cn && s.load_place && s.load_place.trim()).map(s => s.load_place.trim())
+  );
+  return Array.from(linked).sort();
+}
+
+// 荷主＋積み地に紐づく下ろし先
+function getUnloadOptsForClientAndLoad(clientInputId, loadInputId) {
+  const cn = (document.getElementById(clientInputId)?.value || '').trim();
+  const lp = (document.getElementById(loadInputId)?.value || '').trim();
+  if (!cn && !lp) return getAllUnloadOpts();
+  let filtered = schedules || [];
+  if (cn) filtered = filtered.filter(s => s.client_name === cn);
+  if (lp) filtered = filtered.filter(s => s.load_place === lp);
+  const linked = new Set(filtered.filter(s => s.unload_place && s.unload_place.trim()).map(s => s.unload_place.trim()));
+  return Array.from(linked).sort();
+}
+
+// 荷主選択時のコールバック
+function onClientInput() {
+  const cn = document.getElementById('s-client-name').value.trim();
+  if (cn) {
+    document.getElementById('s-load-place').value = '';
+    document.getElementById('s-unload-place').value = '';
+  }
+}
+function onClientInputBulk() {
+  const cn = document.getElementById('b-client-name').value.trim();
+  if (cn) {
+    document.getElementById('b-load-place').value = '';
+    document.getElementById('b-unload-place').value = '';
+  }
 }
 
 // ── 場所の記憶・datalist更新 ──────────────────────────────
@@ -477,7 +524,7 @@ function openModal(type) {
   if (type === 'schedule') {
     document.getElementById('s-modal-title').textContent = '配車を追加';
     ['s-load-date','s-unload-date'].forEach(i => document.getElementById(i).value = today);
-    ['s-load-place','s-unload-place','s-note'].forEach(i => document.getElementById(i).value = '');
+    ['s-client-name','s-load-place','s-unload-place','s-note'].forEach(i => document.getElementById(i).value = '');
     document.getElementById('s-weight').value = '';
     document.getElementById('avail-wrap').style.display = 'none';
     document.getElementById('suggest-box').classList.remove('show');
@@ -769,6 +816,7 @@ function renderSchedules() {
 
     return `<tr class="${isDone ? 'done-row' : ''} ${rowBg}">
       <td style="min-width:90px">${statusBadge}${doneBtn}</td>
+      <td style="font-size:12px;color:var(--text-sub)">${s.client_name || ''}</td>
       <td>${s.load_date}${unassignedBadge}</td>
       <td><strong>${s.load_place}</strong></td>
       <td>${s.unload_date}</td>
@@ -969,6 +1017,7 @@ function editSched(id) {
   // まず全フィールドをリセット（前回の入力が残らないように）
   resetSCargoSection();
   document.getElementById('s-modal-title').textContent = '配車を編集';
+  document.getElementById('s-client-name').value = s.client_name || '';
   document.getElementById('s-load-date').value = s.load_date;
   document.getElementById('s-load-place').value = s.load_place || '';
   document.getElementById('s-unload-date').value = s.unload_date;
@@ -1072,6 +1121,7 @@ async function saveSchedule() {
   // 通常モード
   const { note: cargoNote, items: cargoItems } = buildSCargoResult();
   const data = {
+    client_name:  document.getElementById('s-client-name').value.trim(),
     load_date:    document.getElementById('s-load-date').value,
     load_place:   document.getElementById('s-load-place').value.trim(),
     unload_date:  document.getElementById('s-unload-date').value,

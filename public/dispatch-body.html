@@ -70,7 +70,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>状態</th><th>積み込み日</th><th>積み込み場所</th><th>下ろし日</th><th>下ろし場所</th><th>重量</th><th>車両</th><th>ドライバー</th><th>メモ</th><th></th></tr></thead>
+          <thead><tr><th>状態</th><th>荷主</th><th>積み込み日</th><th>積み込み場所</th><th>下ろし日</th><th>下ろし場所</th><th>重量</th><th>車両</th><th>ドライバー</th><th>メモ</th><th></th></tr></thead>
           <tbody id="sched-tbody"><tr class="empty-row"><td colspan="10">データがありません</td></tr></tbody>
         </table>
       </div>
@@ -86,7 +86,7 @@
         <div class="card" style="margin-top:0">
           <div class="table-wrap">
             <table>
-              <thead><tr><th>状態</th><th>積み込み日</th><th>積み込み場所</th><th>下ろし日</th><th>下ろし場所</th><th>重量</th><th>車両</th><th>ドライバー</th><th>メモ</th><th></th></tr></thead>
+              <thead><tr><th>状態</th><th>荷主</th><th>積み込み日</th><th>積み込み場所</th><th>下ろし日</th><th>下ろし場所</th><th>重量</th><th>車両</th><th>ドライバー</th><th>メモ</th><th></th></tr></thead>
               <tbody id="completed-tbody"><tr class="empty-row"><td colspan="10">データがありません</td></tr></tbody>
             </table>
           </div>
@@ -465,6 +465,10 @@
     <!-- 通常モード -->
     <div id="s-normal-mode">
     <div class="form-grid">
+      <div class="form-group form-full"><label>荷主</label>
+        <input id="s-client-name" placeholder="荷主名" autocomplete="off"
+               oninput="onClientInput()">
+      </div>
       <div class="form-group"><label>積み込み日</label><input id="s-load-date" type="date"></div>
       <div class="form-group"><label>積み込み場所</label>
         <input id="s-load-place" placeholder="〇〇倉庫" list="dl-load-places" autocomplete="off"
@@ -577,6 +581,10 @@
       <button class="modal-close" onclick="closeModal('bulk')">×</button>
     </div>
     <div class="form-grid">
+      <div class="form-group form-full"><label>荷主</label>
+        <input id="b-client-name" placeholder="荷主名" autocomplete="off"
+               oninput="onClientInputBulk()">
+      </div>
       <div class="form-group"><label>積み込み日</label><input id="b-load-date" type="date"></div>
       <div class="form-group"><label>積み込み場所</label><input id="b-load-place" placeholder="〇〇倉庫" list="dl-load-places" autocomplete="off" oninput="filterUnloadByLoadPlace(this.value)"></div>
       <div class="form-group"><label>下ろし日</label><input id="b-unload-date" type="date"></div>
