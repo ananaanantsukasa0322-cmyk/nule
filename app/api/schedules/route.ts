@@ -51,9 +51,10 @@ export async function PUT(request: NextRequest) {
   try {
     await requireAuth()
     const body = await request.json()
-    const { id, ...rest } = body
+    const { id, vehicle, driver, created_at, ...rest } = body
+    void vehicle; void driver; void created_at
     rest.updated_at = new Date().toISOString()
-    const { data, error } = await supabase.from('schedules').update(rest).eq('id', id).select('*, driver:drivers(*), vehicle:vehicles(*)').single()
+    const { data, error } = await supabase.from('schedules').update(rest).eq('id', id).select('*').single()
     if (error) throw error
     return Response.json(data)
   } catch (e) {

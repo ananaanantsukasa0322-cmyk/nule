@@ -7,8 +7,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     await requireAuth()
     const { id } = await params
     const body = await request.json()
-    body.updated_at = new Date().toISOString()
-    const { data, error } = await supabase.from('schedules').update(body).eq('id', id).select('*, vehicle:vehicles(*)').single()
+    const { vehicle, driver, id: _id, created_at, ...updateData } = body
+    void vehicle; void driver; void _id; void created_at
+    updateData.updated_at = new Date().toISOString()
+    const { data, error } = await supabase.from('schedules').update(updateData).eq('id', id).select('*').single()
     if (error) throw error
     return Response.json(data)
   } catch (e) {
