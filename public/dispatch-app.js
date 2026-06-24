@@ -139,21 +139,9 @@ function getUnloadOptsForClientAndLoad(clientInputId, loadInputId) {
   return Array.from(linked).sort();
 }
 
-// 荷主選択時のコールバック
-function onClientInput() {
-  const cn = document.getElementById('s-client-name').value.trim();
-  if (cn) {
-    document.getElementById('s-load-place').value = '';
-    document.getElementById('s-unload-place').value = '';
-  }
-}
-function onClientInputBulk() {
-  const cn = document.getElementById('b-client-name').value.trim();
-  if (cn) {
-    document.getElementById('b-load-place').value = '';
-    document.getElementById('b-unload-place').value = '';
-  }
-}
+// 荷主選択時のコールバック（積み地・下ろし先はそのまま保持）
+function onClientInput() {}
+function onClientInputBulk() {}
 
 // ── 場所の記憶・datalist更新 ──────────────────────────────
 function updatePlaceDatalist() {
