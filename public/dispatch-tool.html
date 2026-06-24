@@ -1,0 +1,4412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>NULE - 配車管理</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --nav-bg: #1e2433;
+      --accent: #4f7ef8;
+      --accent-hover: #3a67e0;
+      --success: #27ae60;
+      --danger: #e74c3c;
+      --warning: #e67e22;
+      --body-bg: #f2f4f8;
+      --card-bg: #ffffff;
+      --text: #1a1d27;
+      --text-sub: #6b7280;
+      --border: #e5e8ef;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: -apple-system, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--body-bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ===== トップナビ ===== */
+    .topnav {
+      background: var(--nav-bg);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      padding: 0 12px;
+      height: 52px;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      overflow-x: auto;
+    }
+    .topnav::-webkit-scrollbar { display: none; }
+
+    .topnav-logo {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-right: 16px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .topnav-logo .icon { font-size: 18px; }
+    .topnav-logo .name { font-size: 13px; font-weight: 700; color: #fff; letter-spacing: 0.3px; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 0 10px;
+      height: 52px;
+      cursor: pointer;
+      color: #8fa0b8;
+      font-size: 12.5px;
+      font-weight: 500;
+      transition: background 0.15s, color 0.15s;
+      border: none;
+      background: none;
+      white-space: nowrap;
+      border-bottom: 3px solid transparent;
+      flex-shrink: 0;
+    }
+    .nav-item:hover { color: #c8d4e8; background: rgba(255,255,255,0.05); }
+    .nav-item.active { color: #fff; border-bottom-color: var(--accent); }
+    .nav-item .nav-icon { font-size: 14px; }
+
+    /* ===== メインエリア ===== */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .page-header {
+      margin-bottom: 24px;
+    }
+    .page-header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .page-header p {
+      font-size: 13px;
+      color: var(--text-sub);
+      margin-top: 4px;
+    }
+
+    /* ===== カード ===== */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* ===== 統計 ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    .stat-label { font-size: 12px; color: var(--text-sub); font-weight: 500; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--text); }
+    .stat-sub { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+    .stat-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 4px;
+    }
+
+    /* ===== テーブル ===== */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    thead tr { border-bottom: 1px solid var(--border); }
+    th {
+      text-align: left;
+      padding: 9px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-sub);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    td {
+      padding: 13px 14px;
+      border-bottom: 1px solid #f2f4f8;
+      vertical-align: middle;
+      color: var(--text);
+    }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: #f9fafc; }
+    .col-actions { display: flex; gap: 6px; }
+    .empty-row td { text-align: center; color: var(--text-sub); padding: 48px; font-size: 13px; }
+
+    /* ===== バッジ ===== */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge-blue   { background: #eff4ff; color: #2563eb; }
+    .badge-gray   { background: #f3f4f6; color: #6b7280; }
+    .badge-green  { background: #ecfdf5; color: #059669; }
+    .badge-red    { background: #fef2f2; color: #dc2626; }
+    .badge-orange { background: #fff7ed; color: #ea580c; }
+
+    /* ===== ボタン ===== */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #1e9450; }
+    .btn-danger  { background: var(--danger); color: #fff; }
+    .btn-danger:hover  { background: #c0392b; }
+    .btn-ghost {
+      background: none;
+      color: var(--text-sub);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: #f2f4f8; color: var(--text); }
+    .btn-sm { padding: 5px 11px; font-size: 12px; }
+    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* ===== フォーム ===== */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-full { grid-column: 1 / -1; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 12px; font-weight: 600; color: var(--text-sub); }
+    .form-group input,
+    .form-group select {
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 12px;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      background: #fff;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79,126,248,0.12);
+    }
+    .form-sep { grid-column: 1 / -1; border: none; border-top: 1px solid var(--border); margin: 4px 0; }
+
+    /* ===== モーダル ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(10,15,30,0.5);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(2px);
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #fff;
+      border-radius: 14px;
+      padding: 28px;
+      width: 560px;
+      max-width: 95vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+    }
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 22px;
+    }
+    .modal-head h3 { font-size: 17px; font-weight: 700; }
+    .modal-close {
+      background: none; border: none; cursor: pointer;
+      font-size: 20px; color: var(--text-sub); line-height: 1;
+      padding: 2px 6px; border-radius: 5px;
+    }
+    .modal-close:hover { background: var(--border); }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ===== 荷物リスト ===== */
+    .cargo-section { grid-column: 1 / -1; }
+    .cargo-type-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+    .cargo-type-row label { font-size: 12px; font-weight: 600; color: var(--text-sub); white-space: nowrap; }
+    .cargo-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+    .cargo-item {
+      display: flex; align-items: center; gap: 8px;
+      background: #f8faff; border: 1px solid #dce7fd;
+      border-radius: 7px; padding: 8px 10px;
+    }
+    .cargo-item .cargo-num { font-size: 12px; color: var(--text-sub); min-width: 28px; }
+    .cargo-item input {
+      border: 1px solid var(--border); border-radius: 5px;
+      padding: 6px 8px; font-size: 13px; outline: none;
+      transition: border-color 0.15s;
+    }
+    .cargo-item input:focus { border-color: var(--accent); }
+    .cargo-item .inp-name { flex: 2; }
+    .cargo-item .inp-weight { width: 90px; text-align: right; }
+    .cargo-item .cargo-del { background: none; border: none; color: #cbd5e1; cursor: pointer; font-size: 16px; padding: 0 2px; line-height: 1; }
+    .cargo-item .cargo-del:hover { color: var(--danger); }
+    .cargo-total { display: flex; justify-content: flex-end; align-items: center; gap: 8px; font-size: 13px; color: var(--text-sub); padding-right: 4px; }
+    .cargo-total strong { font-size: 16px; color: var(--accent); }
+    .btn-add-cargo { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; padding: 6px 12px; }
+
+    /* ===== パターン提案 ===== */
+    .suggest-box {
+      display: none;
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 13px;
+      grid-column: 1 / -1;
+    }
+    .suggest-box.show { display: block; }
+    .suggest-box .suggest-title {
+      font-size: 11px; font-weight: 700; color: #92400e;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
+    }
+    .suggest-list { display: flex; flex-direction: column; gap: 6px; }
+    .suggest-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 10px; border-radius: 6px;
+      background: #fff; border: 1px solid #fde68a; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .suggest-item:hover { background: #fef3c7; }
+    .suggest-item .s-info { font-size: 13px; font-weight: 600; }
+    .suggest-item .s-count { font-size: 11px; color: #92400e; background: #fde68a; padding: 2px 7px; border-radius: 10px; }
+
+    /* ===== 空き候補 ===== */
+    .avail-section { margin-top: 8px; }
+    .avail-section h4 { font-size: 12px; font-weight: 700; color: var(--text-sub); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .candidate-list { display: flex; flex-direction: column; gap: 6px; }
+    .candidate-item {
+      display: flex; align-items: center;
+      padding: 10px 12px; border-radius: 8px;
+      border: 1px solid var(--border); background: #fafbfc;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .candidate-item:hover { border-color: var(--accent); background: #eff4ff; }
+    .candidate-item.selected { border-color: var(--accent); background: #eff4ff; }
+    .candidate-item input[type=radio],
+    .candidate-item input[type=checkbox] { width: 15px; height: 15px; margin-right: 10px; cursor: pointer; accent-color: var(--accent); }
+    .c-name { font-size: 13.5px; font-weight: 600; }
+    .c-sub  { font-size: 12px; color: var(--text-sub); margin-top: 1px; }
+    .no-candidate { font-size: 13px; color: var(--text-sub); padding: 12px; text-align: center; background: #fafbfc; border-radius: 8px; border: 1px dashed var(--border); }
+
+    /* ===== 割り振りプレビュー ===== */
+    .alloc-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .alloc-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px; border-radius: 8px;
+      background: #f7f9ff; border: 1px solid #dce7fd;
+    }
+    .alloc-name { flex: 1; font-size: 13.5px; font-weight: 600; }
+    .alloc-bar-wrap { flex: 2; background: #dce8fb; border-radius: 6px; height: 7px; overflow: hidden; }
+    .alloc-bar { background: var(--accent); height: 7px; border-radius: 6px; transition: width 0.35s; }
+    .alloc-weight { font-size: 13px; font-weight: 700; color: var(--accent); min-width: 48px; text-align: right; }
+    .alloc-warn { color: var(--danger) !important; }
+
+    .section-label {
+      font-size: 11px; font-weight: 700; color: var(--text-sub);
+      text-transform: uppercase; letter-spacing: 0.6px;
+    }
+
+    /* ===== 注意事項 ===== */
+    .caution-box {
+      display: none; grid-column: 1 / -1;
+      background: #fff8f0; border: 1px solid #fed7aa;
+      border-radius: 8px; padding: 10px 14px;
+    }
+    .caution-box.show { display: flex; align-items: flex-start; gap: 10px; }
+    .caution-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .caution-content { flex: 1; }
+    .caution-label { font-size: 11px; font-weight: 700; color: #c2410c; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .caution-text { font-size: 13px; color: #7c2d12; white-space: pre-wrap; }
+    .caution-edit { font-size: 12px; color: #c2410c; background: none; border: none; cursor: pointer; text-decoration: underline; margin-top: 4px; padding: 0; }
+    /* テーブルの注意アイコン */
+    .caution-badge { display:inline-flex; align-items:center; gap:3px; background:#fff8f0; border:1px solid #fed7aa; border-radius:5px; padding:2px 7px; font-size:11px; color:#c2410c; font-weight:600; cursor:pointer; margin-left:6px; }
+
+    /* ===== 完了トグル ===== */
+    .done-toggle {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+      border: none; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    }
+    .done-toggle.undone { background: #f1f5f9; color: #94a3b8; }
+    .done-toggle.undone:hover { background: #e2e8f0; color: #64748b; }
+    .done-toggle.done { background: #dcfce7; color: #16a34a; }
+    .done-toggle.done:hover { background: #bbf7d0; }
+    tr.done-row td { opacity: 0.5; text-decoration: none; }
+    tr.done-row td strong { font-weight: 500; }
+
+    /* ===== 完了済みセクション ===== */
+    .completed-section { margin-top: 24px; }
+    .completed-header {
+      display: flex; align-items: center; gap: 10px;
+      cursor: pointer; padding: 12px 0; user-select: none;
+    }
+    .completed-header h3 { font-size: 14px; font-weight: 600; color: var(--text-sub); }
+    .completed-header .toggle-icon { color: var(--text-sub); font-size: 12px; transition: transform 0.2s; }
+    .completed-header.open .toggle-icon { transform: rotate(90deg); }
+
+    /* ===== インライン割り当てセル ===== */
+    .assign-cell { min-width: 140px; }
+    .assign-select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 13px;
+      color: var(--text);
+      background: #fff;
+      cursor: pointer;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .assign-select:focus { border-color: var(--accent); }
+    .assign-select.unassigned {
+      color: #aab0be;
+      background: #fafbfc;
+      border-style: dashed;
+    }
+    .badge-unassigned { background: #fff3cd; color: #856404; }
+
+    /* ===== 配車予定表 ===== */
+    .haisha-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .haisha-table th {
+      padding:10px 12px; font-size:11px; font-weight:700; color:var(--text-sub);
+      letter-spacing:0.5px; border-bottom:2px solid var(--border);
+      white-space:nowrap; background:#f9fafc; text-align:left;
+    }
+    .haisha-table td {
+      padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:top;
+    }
+    .haisha-table tbody tr:last-child td { border-bottom:none; }
+    .haisha-table tbody tr:hover td { background:#fafcff; }
+    .haisha-driver-name { font-weight:700; font-size:13px; white-space:nowrap; min-width:70px; }
+    .haisha-vnum { font-size:11px; color:var(--text-sub); white-space:nowrap; min-width:80px; }
+    .haisha-payload { font-weight:600; white-space:nowrap; text-align:right; }
+
+    /* 配達カード */
+    .haisha-card {
+      display:inline-flex; align-items:center; gap:6px;
+      background:#eff4ff; border:1.5px solid #c7d9fd; border-radius:7px;
+      padding:5px 10px; cursor:grab; user-select:none;
+      transition:box-shadow 0.15s, opacity 0.15s, background 0.2s, border-color 0.2s;
+      margin:2px 0; min-width:80px;
+    }
+    .haisha-card:hover { box-shadow:0 2px 8px rgba(79,126,248,0.25); }
+    .haisha-card.dragging { opacity:0.35; cursor:grabbing; }
+    .haisha-card.preloaded { background:#fff3cd; border-color:#ffc107; }
+    /* ステータス別色 */
+    .haisha-card.st-loaded   { background:#dcf5e4; border-color:#4caf82; }
+    .haisha-card.st-delivered{ background:#e0e0e0; border-color:#9e9e9e; opacity:0.72; }
+    /* スケジュール一覧の行背景 */
+    tr.sched-row-loaded   { background:#f0faf4; }
+    tr.sched-row-delivered{ background:#f5f5f5; opacity:0.8; }
+    .haisha-card .c-place { font-weight:600; font-size:13px; }
+    .haisha-card .c-weight { font-size:11px; color:var(--text-sub); margin-left:2px; }
+    .haisha-card .c-status {
+      font-size:10px; font-weight:700; letter-spacing:0.2px;
+      padding:1px 5px; border-radius:4px; white-space:nowrap;
+      cursor:pointer; user-select:none; flex-shrink:0;
+    }
+    .c-status.st-none     { background:#dce9ff; color:#3b62c9; }
+    .c-status.st-loaded   { background:#b7ecd0; color:#1a7a4c; }
+    .c-status.st-delivered{ background:#d0d0d0; color:#555; }
+
+    /* ドロップセル */
+    .haisha-drop-cell {
+      min-width:110px; min-height:36px; border-radius:6px;
+      transition:background 0.12s, border 0.12s;
+      padding:4px 6px;
+    }
+    .haisha-drop-cell.drag-over {
+      background:#e8f0fe !important;
+      outline:2px dashed var(--accent);
+    }
+
+    /* 未割当プール */
+    .haisha-pool {
+      display:flex; flex-wrap:wrap; gap:8px;
+      min-height:48px; padding:10px; border-radius:8px;
+      border:2px dashed var(--border);
+    }
+    .haisha-pool.drag-over { border-color:var(--accent); background:#e8f0fe; }
+    .haisha-pool-empty { font-size:13px; color:var(--text-sub); padding:4px; }
+
+    /* 車両セレクト */
+    .haisha-vsel {
+      width:100%; border:1px solid var(--border); border-radius:6px;
+      padding:5px 8px; font-size:12px; color:var(--text);
+      background:#fff; cursor:pointer; outline:none;
+      transition:border-color 0.15s;
+    }
+    .haisha-vsel:focus { border-color:var(--accent); }
+    .haisha-vsel option[value=""] { color:#aaa; }
+
+    /* ✂️ 分割モーダル */
+    .split-pool {
+      min-height:44px; display:flex; flex-wrap:wrap; gap:6px;
+      padding:10px; border:2px dashed var(--border); border-radius:8px;
+      background:#fafbfc;
+    }
+    .split-pool.split-drag-over { border-color:var(--accent); background:#eff4ff; }
+    .split-group-box {
+      border:1.5px solid var(--border); border-radius:8px;
+      padding:10px; margin-bottom:10px; background:#fff;
+    }
+    .split-group-header {
+      display:flex; align-items:center; gap:8px; margin-bottom:8px;
+    }
+    .split-group-label { font-size:12px; font-weight:700; color:var(--accent); }
+    .split-group-total { font-size:12px; color:var(--text-sub); }
+    .split-group-drop {
+      min-height:36px; display:flex; flex-wrap:wrap; gap:6px;
+      padding:8px; border:2px dashed #dce7fd; border-radius:6px;
+      background:#f8fbff;
+    }
+    .split-group-drop.split-drag-over { border-color:var(--accent); background:#eff4ff; }
+    .split-chip {
+      display:inline-flex; align-items:center; gap:5px;
+      background:#eff4ff; border:1.5px solid #c7d9fd; border-radius:6px;
+      padding:4px 10px; cursor:grab; user-select:none; font-size:13px;
+    }
+    .split-chip:hover { box-shadow:0 2px 6px rgba(79,126,248,0.2); }
+    .split-chip.dragging { opacity:0.35; }
+    .split-chip .chip-name { font-weight:600; }
+    .split-chip .chip-weight { color:var(--text-sub); font-size:11px; }
+    .split-chip .chip-del { background:none;border:none;color:#aaa;cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px; }
+    .split-chip .chip-del:hover { color:var(--danger); }
+
+    /* スロット番号ラベル */
+    .slot-label {
+      display:block; font-size:10px; font-weight:700; color:#c0c8d8;
+      letter-spacing:0.3px; margin-bottom:2px; user-select:none;
+    }
+    .haisha-drop-cell.drag-over .slot-label { color:var(--accent); }
+
+    /* インライン入力（空き行用） */
+    .haisha-inp {
+      border:none; border-bottom:1.5px dashed #d0d5e0;
+      outline:none; background:transparent;
+      font-size:13px; font-family:inherit;
+      width:100%; padding:2px 4px; color:var(--text);
+    }
+    .haisha-inp:focus { border-bottom-color:var(--accent); background:#f5f8ff; border-radius:3px 3px 0 0; }
+    .haisha-inp::placeholder { color:#bbb; font-size:12px; }
+
+    /* 履歴編集カード・入力フィールド */
+    .hd-inp {
+      border:none; border-bottom:1.5px dashed #d0d5e0;
+      outline:none; background:transparent;
+      font-size:13px; font-family:inherit;
+      width:100%; padding:2px 4px; color:var(--text);
+    }
+    .hd-inp:focus { border-bottom-color:var(--accent); background:#f5f8ff; border-radius:3px 3px 0 0; }
+    .hd-card {
+      display:flex; align-items:center; gap:4px;
+      background:#fff; border:1.5px solid #d0d5e0; border-radius:8px;
+      padding:4px 8px; margin-bottom:4px; cursor:grab; font-size:12px;
+    }
+    .hd-card:hover { border-color:var(--accent); box-shadow:0 1px 4px rgba(79,126,248,0.2); }
+    .hd-card.dragging { opacity:0.35; cursor:grabbing; }
+    .hd-card-inp {
+      border:none; outline:none; background:transparent;
+      font-size:12px; font-family:inherit; color:var(--text);
+      flex:1; min-width:0;
+    }
+    .hd-card-inp:focus { background:#f5f8ff; border-radius:3px; }
+
+    /* 配車予定表コントロール */
+    .haisha-controls {
+      display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+    }
+    .haisha-controls .form-group { margin:0; }
+    /* NULE Dark Theme */
+    :root { --nav-bg:#0f0f0f!important;--body-bg:#0a0a0a!important;--card-bg:#111!important;--text:#f5f5f5!important;--text-sub:#888!important;--border:#333!important;--success:#22c55e!important;--danger:#ef4444!important;--warning:#f59e0b!important; }
+    body{background:#0a0a0a!important;color:#f5f5f5!important}.topnav{background:#0f0f0f!important}
+    .card,.stat-card{background:#111!important;border-color:#333!important}.modal{background:#1a1a1a!important;color:#f5f5f5!important}
+    .form-group input,.form-group select,.form-group textarea{background:#1a1a1a!important;color:#f5f5f5!important;border-color:#444!important}
+    table td{border-bottom-color:#333!important}tbody tr:hover td{background:#1a1a1a!important}
+    .haisha-table th{background:#111!important}.haisha-table tbody tr:hover td{background:#1a1a1a!important}
+    .badge-blue{background:rgba(79,126,248,.15)!important;color:#6d9fff!important}.badge-green{background:rgba(34,197,94,.15)!important;color:#4ade80!important}
+    .badge-red{background:rgba(239,68,68,.15)!important;color:#f87171!important}.badge-orange{background:rgba(245,158,11,.15)!important;color:#fbbf24!important}
+    .badge-gray{background:rgba(136,136,136,.15)!important;color:#aaa!important}
+    .btn-ghost{border-color:#444!important}.btn-ghost:hover{background:#2a2a2a!important}
+    .haisha-pool{border-color:#444!important}.haisha-drop-cell.drag-over{background:rgba(79,126,248,.1)!important}
+    .empty-row td{color:#888!important}.modal-overlay{background:rgba(0,0,0,.6)!important}
+    .haisha-card{background:rgba(79,126,248,.12)!important;border-color:rgba(79,126,248,.3)!important}
+    .haisha-card.preloaded{background:rgba(245,158,11,.12)!important;border-color:rgba(245,158,11,.4)!important}
+    .haisha-card.st-loaded{background:rgba(34,197,94,.12)!important;border-color:rgba(34,197,94,.4)!important}
+    .haisha-card.st-delivered{background:rgba(136,136,136,.12)!important;border-color:rgba(136,136,136,.3)!important}
+    .candidate-item{background:#1a1a1a!important;border-color:#444!important}
+    .split-pool,.split-group-drop{background:#1a1a1a!important;border-color:#444!important}
+    .haisha-inp{color:#f5f5f5!important;border-bottom-color:#555!important}.haisha-inp:focus{background:#222!important}
+    .suggest-box{background:rgba(245,158,11,.08)!important;border-color:rgba(245,158,11,.3)!important}
+    .caution-box{background:rgba(245,158,11,.08)!important;border-color:rgba(245,158,11,.25)!important}
+    .no-candidate{background:#1a1a1a!important;border-color:#444!important}
+  </style>
+</head>
+<body>
+
+<!-- ===== トップナビ ===== -->
+<nav class="topnav">
+  <div class="topnav-logo">
+    <span class="icon">🚛</span>
+    <span class="name">配車管理</span>
+  </div>
+  <button class="nav-item active" onclick="switchPage('dashboard')">
+    <span class="nav-icon">📊</span> ダッシュボード
+  </button>
+  <button class="nav-item" onclick="switchPage('schedules')">
+    <span class="nav-icon">📅</span> 配車スケジュール
+  </button>
+  <button class="nav-item" onclick="switchPage('vehicles')">
+    <span class="nav-icon">🚛</span> 車両管理
+  </button>
+  <button class="nav-item" onclick="switchPage('drivers')">
+    <span class="nav-icon">👤</span> ドライバー管理
+  </button>
+  <button class="nav-item" onclick="switchPage('places')">
+    <span class="nav-icon">📍</span> 場所・注意事項
+  </button>
+  <button class="nav-item" onclick="switchPage('haisha')">
+    <span class="nav-icon">📋</span> 配車予定表
+  </button>
+</nav>
+
+<!-- ===== メインコンテンツ ===== -->
+<main class="main" style="width:100%">
+
+  <!-- ダッシュボード -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <h1>週間カレンダー</h1>
+        <p>配達予定の一週間ビュー</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="dashWeekOffset--;renderDashboard()">◀ 前週</button>
+        <button class="btn btn-ghost btn-sm" onclick="dashWeekOffset=0;renderDashboard()">今週</button>
+        <button class="btn btn-ghost btn-sm" onclick="dashWeekOffset++;renderDashboard()">次週 ▶</button>
+      </div>
+    </div>
+    <div id="dash-week-label" style="text-align:center;font-size:13px;color:var(--text-sub);margin-bottom:12px"></div>
+    <div id="dash-calendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px"></div>
+  </div>
+
+  <!-- 配車スケジュール -->
+  <div id="page-schedules" class="page">
+    <div class="page-header">
+      <h1>配車スケジュール</h1>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">スケジュール一覧</span>
+        <div class="btn-group">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('schedule')">＋ 1件追加</button>
+          <button class="btn btn-primary btn-sm" onclick="openModal('bulk')">📦 まとめて配車</button>
+        </div>
+      </div>
+      <!-- 日付フィルター -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:#f8fafc;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:var(--text-sub)">📅 日付で絞り込み</span>
+        <input type="date" id="filter-date"
+          oninput="renderSchedules()"
+          style="border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:13px;outline:none">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('filter-date').value='';renderSchedules()">クリア</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('filter-date').value=new Date().toISOString().slice(0,10);renderSchedules()">今日</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>状態</th><th>積み込み日</th><th>積み込み場所</th><th>下ろし日</th><th>下ろし場所</th><th>重量</th><th>車両</th><th>ドライバー</th><th>メモ</th><th></th></tr></thead>
+          <tbody id="sched-tbody"><tr class="empty-row"><td colspan="10">データがありません</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 完了済みセクション -->
+    <div class="completed-section">
+      <div class="completed-header" onclick="toggleCompleted(this)">
+        <span class="toggle-icon">▶</span>
+        <h3>✅ 完了済み <span id="completed-count" style="font-weight:400;font-size:13px"></span></h3>
+      </div>
+      <div id="completed-body" style="display:none">
+        <div class="card" style="margin-top:0">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>状態</th><th>積み込み日</th><th>積み込み場所</th><th>下ろし日</th><th>下ろし場所</th><th>重量</th><th>車両</th><th>ドライバー</th><th>メモ</th><th></th></tr></thead>
+              <tbody id="completed-tbody"><tr class="empty-row"><td colspan="10">データがありません</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 車両管理 -->
+  <div id="page-vehicles" class="page">
+    <div class="page-header">
+      <h1>車両管理</h1>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">車両一覧</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('vehicle')">＋ 車両を追加</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>種別</th><th>ナンバー（ヘッド）</th><th>台車ナンバー</th><th>最大積載量</th><th>メモ</th><th></th></tr></thead>
+          <tbody id="vehicle-tbody"><tr class="empty-row"><td colspan="6">データがありません</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ドライバー管理 -->
+  <div id="page-drivers" class="page">
+    <div class="page-header">
+      <h1>ドライバー管理</h1>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">ドライバー一覧</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('driver')">＋ ドライバーを追加</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>氏名</th><th>連絡先</th><th>稼働状況</th><th>配車表示</th><th>メモ</th><th></th></tr></thead>
+          <tbody id="driver-tbody"><tr class="empty-row"><td colspan="7">データがありません</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 場所・注意事項管理 -->
+  <div id="page-places" class="page">
+    <div class="page-header">
+      <h1>場所・注意事項</h1>
+    </div>
+    <!-- 積み地一覧 -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <span class="card-title">積み地一覧</span>
+        <button class="btn btn-primary btn-sm" onclick="openAddLoadPlace()">＋ 積み地を追加</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>場所名</th><th></th></tr></thead>
+          <tbody id="load-places-tbody"><tr class="empty-row"><td colspan="2">登録された積み地がありません</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">下ろし先一覧</span>
+        <button class="btn btn-primary btn-sm" onclick="openNewPlaceModal()">＋ 場所を追加</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>場所名</th><th>注意事項</th><th></th></tr></thead>
+          <tbody id="places-tbody"><tr class="empty-row"><td colspan="3">データがありません</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- スケジュールに登録されている場所（まだ注意事項なし）-->
+    <div class="card" style="margin-top:16px">
+      <div class="card-header">
+        <span class="card-title">スケジュール登録済みの場所（注意事項なし）</span>
+        <span style="font-size:12px;color:var(--text-sub)">クリックで注意事項を追加できます</span>
+      </div>
+      <div id="places-from-schedules" style="display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px"></div>
+    </div>
+  </div>
+
+  <!-- 配車履歴モーダル -->
+  <div id="plan-history-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:400;align-items:flex-start;justify-content:center;padding-top:60px"
+       onclick="if(event.target===this)closePlanHistory()">
+    <div style="background:#fff;border-radius:14px;padding:28px;width:700px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <strong style="font-size:17px">📂 配車予定表 履歴</strong>
+        <button onclick="closePlanHistory()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">×</button>
+      </div>
+      <div id="plan-history-list"></div>
+    </div>
+  </div>
+
+  <!-- 分割モーダル -->
+  <div id="split-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:600;align-items:center;justify-content:center"
+       onclick="if(event.target===this)closeSplit()">
+    <div style="background:#fff;border-radius:14px;padding:28px;width:520px;max-width:96vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong style="font-size:16px">✂️ 配達分割</strong>
+        <button onclick="closeSplit()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">×</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:18px">荷物をグループ分けして、それぞれ別の配達スケジュールに分割します</p>
+
+      <!-- 元スケジュール情報 -->
+      <div id="split-origin-info" style="background:#f5f7fa;border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:13px"></div>
+
+      <!-- 荷物リスト（ドラッグ可能） -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">荷物一覧（ドラッグでグループ移動）</div>
+        <div id="split-items-pool" class="split-pool"
+             ondragover="event.preventDefault();this.classList.add('split-drag-over')"
+             ondragleave="this.classList.remove('split-drag-over')"
+             ondrop="splitDropToPool(event)"></div>
+      </div>
+
+      <!-- グループ（配達①②③…） -->
+      <div style="font-size:11px;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">配達グループ</div>
+      <div id="split-groups"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addSplitGroup()" style="margin-top:8px">＋ グループを追加</button>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:18px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost" onclick="closeSplit()">キャンセル</button>
+        <button class="btn btn-primary" onclick="confirmSplit()">✅ この分割で登録</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 配車履歴 詳細モーダル -->
+  <div id="plan-detail-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;align-items:flex-start;justify-content:center;padding-top:40px"
+       onclick="if(event.target===this)closePlanDetail()">
+    <div style="background:#fff;border-radius:14px;padding:28px;width:1100px;max-width:97vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <strong id="plan-detail-title" style="font-size:17px"></strong>
+        <button onclick="closePlanDetail()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">×</button>
+      </div>
+      <div id="plan-detail-content"></div>
+    </div>
+  </div>
+
+  <!-- 荷物詳細ポップアップ -->
+  <div id="card-detail-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:600;align-items:center;justify-content:center"
+       onclick="if(event.target===this)closeCardDetail()">
+    <div id="card-detail-box" style="background:#fff;border-radius:14px;padding:28px 32px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.25);position:relative">
+      <button onclick="closeCardDetail()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#aaa">×</button>
+      <div id="card-detail-content"></div>
+    </div>
+  </div>
+
+  <!-- ドライバーピッカー（配車予定表用） -->
+  <div id="dpicker-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:300;align-items:center;justify-content:center"
+       onclick="if(event.target===this)closeDriverPicker()">
+    <div style="background:#fff;border-radius:12px;padding:20px 24px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.18)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <strong style="font-size:15px">ドライバーを選択</strong>
+        <button onclick="closeDriverPicker()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999">×</button>
+      </div>
+      <select id="dpicker-select" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:14px;outline:none">
+        <option value="">— 未選択 —</option>
+      </select>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="btn btn-ghost" onclick="closeDriverPicker()">キャンセル</button>
+        <button class="btn btn-primary" onclick="applyDriverPicker()">決定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 車両ピッカー（配車予定表用） -->
+  <div id="vpicker-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:300;align-items:center;justify-content:center"
+       onclick="if(event.target===this)closeVehiclePicker()">
+    <div style="background:#fff;border-radius:12px;padding:20px 24px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.18)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <strong style="font-size:15px">車両を選択</strong>
+        <button onclick="closeVehiclePicker()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999">×</button>
+      </div>
+      <select id="vpicker-select" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:14px;outline:none">
+        <option value="">— 未選択 —</option>
+      </select>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="btn btn-ghost" onclick="closeVehiclePicker()">キャンセル</button>
+        <button class="btn btn-primary" onclick="applyVehiclePicker()">決定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 配車予定表 ===== -->
+  <div id="page-haisha" class="page">
+    <div class="page-header">
+      <h1>📋 配車予定表</h1>
+      <p>日付を選んで自動振り分け・ドラッグ&amp;ドロップで調整</p>
+    </div>
+
+    <!-- コントロール -->
+    <div class="card" style="padding:16px 24px;margin-bottom:16px">
+      <div class="haisha-controls">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sub);white-space:nowrap">対象日</label>
+          <input type="date" id="haisha-date" style="border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;outline:none;" onchange="renderHaisha()">
+        </div>
+        <button class="btn btn-primary" onclick="autoAssignHaisha()">⚡ 自動振り分け</button>
+        <button class="btn btn-ghost" onclick="openSpotModal()" title="非表示ドライバーをこの日だけ一時表示">👤 スポット追加</button>
+        <button class="btn btn-success" onclick="saveDispatchPlan()">💾 この日の配車を保存</button>
+        <button class="btn btn-ghost" onclick="openPlanHistory()">📂 履歴</button>
+      </div>
+    </div>
+
+    <!-- 未割当プール -->
+    <div id="haisha-unassigned-wrap" class="card" style="display:none;margin-bottom:16px">
+      <div class="card-header" style="margin-bottom:12px">
+        <span class="card-title">⚠️ 未割当の仕事</span>
+        <span style="font-size:12px;color:var(--text-sub)">ドライバー行にドロップして割り当て</span>
+      </div>
+      <div id="haisha-pool"
+           class="haisha-pool"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="dropToPool(event)">
+        <span class="haisha-pool-empty">なし</span>
+      </div>
+    </div>
+
+    <!-- 配車テーブル -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table class="haisha-table">
+          <thead>
+            <tr>
+              <th>運転手</th>
+              <th>車番</th>
+              <th style="text-align:right">積載量</th>
+              <th>積置き分</th>
+              <th>配達①</th>
+              <th>配達②</th>
+              <th>配達③</th>
+              <th>配達④</th>
+              <th>配達⑤</th>
+              <th>備考</th>
+            </tr>
+          </thead>
+          <tbody id="haisha-tbody">
+            <tr class="empty-row"><td colspan="9">日付を選択してください</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ===== 注意事項編集モーダル ===== -->
+<div class="modal-overlay" id="modal-place">
+  <div class="modal" style="width:480px">
+    <div class="modal-head">
+      <h3>⚠️ 注意事項の編集</h3>
+      <button class="modal-close" onclick="closeModal('place')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>場所名</label>
+        <input id="place-name" readonly style="background:#f8fafc;color:#888">
+      </div>
+      <div class="form-group form-full">
+        <label>注意事項</label>
+        <textarea id="place-caution" rows="5"
+          style="border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:14px;outline:none;resize:vertical;font-family:inherit;transition:border-color 0.15s"
+          placeholder="例：8時以降入場不可、要事前連絡など"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('place')">キャンセル</button>
+      <button class="btn btn-primary" onclick="savePlace()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 車両モーダル ===== -->
+<div class="modal-overlay" id="modal-vehicle">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="v-modal-title">車両を追加</h3>
+      <button class="modal-close" onclick="closeModal('vehicle')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>種別</label>
+        <select id="v-kind" onchange="onVehicleKindChange()">
+          <option value="トラック">トラック</option>
+          <option value="トレーラー">トレーラー</option>
+        </select>
+      </div>
+      <div class="form-group form-full" id="v-number-group">
+        <label>ナンバープレート</label>
+        <input id="v-number" placeholder="品川 100 あ 1234">
+      </div>
+      <div class="form-group" id="v-head-group" style="display:none">
+        <label>ヘッドナンバー</label>
+        <input id="v-head" placeholder="品川 100 あ 1234">
+      </div>
+      <div class="form-group" id="v-trailer-group" style="display:none">
+        <label>台車ナンバー</label>
+        <input id="v-trailer" placeholder="品川 800 あ 1234">
+      </div>
+      <div class="form-group">
+        <label>最大積載量（kg）</label>
+        <input id="v-payload" type="number" step="1" min="0" placeholder="10000">
+      </div>
+      <div class="form-group">
+        <label>メモ</label>
+        <input id="v-note" placeholder="任意のメモ">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('vehicle')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveVehicle()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ドライバーモーダル ===== -->
+<div class="modal-overlay" id="modal-driver">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="d-modal-title">ドライバーを追加</h3>
+      <button class="modal-close" onclick="closeModal('driver')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>氏名</label><input id="d-name" placeholder="山田 太郎"></div>
+      <div class="form-group"><label>連絡先</label><input id="d-phone" placeholder="090-0000-0000"></div>
+      <div class="form-group">
+        <label>稼働状況</label>
+        <select id="d-status">
+          <option value="稼働中">稼働中</option>
+          <option value="休暇中">休暇中</option>
+          <option value="退職">退職</option>
+        </select>
+      </div>
+      <div class="form-group form-full"><label>メモ</label><input id="d-note" placeholder="任意のメモ"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('driver')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveDriver()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== スケジュール（1件）モーダル ===== -->
+<div class="modal-overlay" id="modal-schedule">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="s-modal-title">配車を追加</h3>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="aitsu-toggle-btn" type="button"
+          onclick="toggleAitsumi()"
+          style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1.5px solid #d0d5e0;background:#fff;color:#666;cursor:pointer">
+          🔀 相積み
+        </button>
+        <button class="modal-close" onclick="closeModal('schedule')">×</button>
+      </div>
+    </div>
+    <datalist id="dl-load-places"></datalist>
+    <datalist id="dl-unload-places"></datalist>
+    <datalist id="dl-cargo-types">
+      <option value="コイル">
+      <option value="亜鉛コイル">
+      <option value="矢板">
+      <option value="特丸">
+      <option value="SC">
+      <option value="H鋼">
+      <option value="タルク">
+    </datalist>
+
+    <!-- 通常モード -->
+    <div id="s-normal-mode">
+    <div class="form-grid">
+      <div class="form-group"><label>積み込み日</label><input id="s-load-date" type="date"></div>
+      <div class="form-group"><label>積み込み場所</label>
+        <input id="s-load-place" placeholder="〇〇倉庫" list="dl-load-places" autocomplete="off"
+               oninput="onRouteInput(); filterUnloadByLoadPlace(this.value)">
+      </div>
+      <div class="form-group"><label>下ろし日</label><input id="s-unload-date" type="date"></div>
+      <div class="form-group"><label>下ろし場所</label>
+        <input id="s-unload-place" placeholder="〇〇工場" list="dl-unload-places" autocomplete="off"
+               oninput="onRouteInput(); onUnloadPlaceInput()">
+      </div>
+
+      <!-- 注意事項ボックス -->
+      <div class="caution-box" id="s-caution-box">
+        <div class="caution-icon">⚠️</div>
+        <div class="caution-content">
+          <div class="caution-label">注意事項</div>
+          <div class="caution-text" id="s-caution-text"></div>
+          <button class="caution-edit" onclick="openPlaceEdit()">編集する</button>
+        </div>
+      </div>
+
+      <!-- 荷物の種類 -->
+      <div class="cargo-section">
+        <div class="cargo-type-row">
+          <label>荷物の種類</label>
+          <input id="s-cargo-type" type="text" list="dl-cargo-types" placeholder="コイル・自由入力も可"
+            oninput="onSCargoTypeChange()"
+            style="border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;outline:none;flex:1">
+        </div>
+        <div id="s-coil-section" style="display:none">
+          <div class="cargo-list" id="s-coil-list"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <button type="button" class="btn btn-ghost btn-sm btn-add-cargo" onclick="addSCoil()">＋ コイルを追加</button>
+            <div class="cargo-total">合計：<strong id="s-coil-total">0</strong> t</div>
+          </div>
+        </div>
+        <div id="s-other-cargo-section" style="display:none">
+          <div class="cargo-list" id="s-other-cargo-list"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <button type="button" class="btn btn-ghost btn-sm btn-add-cargo" onclick="addSOtherCargo()">＋ 荷物を追加</button>
+            <div class="cargo-total">合計：<strong id="s-other-cargo-total">0</strong> t</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group"><label>重量（kg）<span style="font-size:11px;color:var(--accent);margin-left:4px">↑荷物を入力すると自動入力</span></label><input id="s-weight" type="number" step="1" min="0" placeholder="8000"></div>
+      <div class="form-group"><label>メモ</label><input id="s-note" placeholder="任意のメモ"></div>
+
+      <!-- パターン提案ボックス -->
+      <div class="suggest-box" id="suggest-box">
+        <div class="suggest-title">💡 過去の配車実績から提案</div>
+        <div class="suggest-list" id="suggest-list"></div>
+      </div>
+
+      <hr class="form-sep">
+
+      <div class="form-group form-full" style="flex-direction:row; align-items:center; justify-content:space-between;">
+        <span class="section-label">空き確認</span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="checkAvail()">🔍 空き確認</button>
+      </div>
+
+      <div id="avail-wrap" class="form-full" style="display:none">
+        <div class="avail-section">
+          <h4>空き車両</h4>
+          <div class="candidate-list" id="avail-v-list"></div>
+        </div>
+        <div class="avail-section" style="margin-top:12px">
+          <h4>空きドライバー</h4>
+          <div class="candidate-list" id="avail-d-list"></div>
+        </div>
+      </div>
+
+      <hr class="form-sep">
+
+      <div class="form-group"><label>車両（任意）</label><select id="s-vehicle"><option value="">-- 選択 --</option></select></div>
+      <div class="form-group"><label>ドライバー（任意）</label><select id="s-driver"><option value="">-- 選択 --</option></select></div>
+    </div>
+    </div><!-- /s-normal-mode -->
+
+    <!-- 相積みモード -->
+    <div id="s-aitsu-mode" style="display:none">
+      <div class="form-grid">
+        <div class="form-group"><label>積み込み日（共通）</label><input id="at-load-date" type="date"></div>
+        <div class="form-group"><label>下ろし日（共通）</label><input id="at-unload-date" type="date"></div>
+        <div class="form-group"><label>車両（任意）</label><select id="at-vehicle"><option value="">-- 選択 --</option></select></div>
+        <div class="form-group"><label>ドライバー（任意）</label><select id="at-driver"><option value="">-- 選択 --</option></select></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--text-sub);margin:16px 0 8px;text-transform:uppercase;letter-spacing:0.5px">
+        積み込み・下ろし場所
+      </div>
+      <div id="at-rows"></div>
+      <button type="button" onclick="addAitsuRow()"
+        style="width:100%;margin-top:8px;padding:8px;border:1.5px dashed #d0d5e0;border-radius:8px;background:#fafbfc;color:#888;font-size:13px;cursor:pointer">
+        ＋ 行を追加
+      </button>
+    </div><!-- /s-aitsu-mode -->
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('schedule')">キャンセル</button>
+      <button class="btn btn-primary" id="s-save-btn" onclick="saveSchedule()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== まとめて配車モーダル ===== -->
+<div class="modal-overlay" id="modal-bulk">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>📦 まとめて配車</h3>
+      <button class="modal-close" onclick="closeModal('bulk')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>積み込み日</label><input id="b-load-date" type="date"></div>
+      <div class="form-group"><label>積み込み場所</label><input id="b-load-place" placeholder="〇〇倉庫" list="dl-load-places" autocomplete="off" oninput="filterUnloadByLoadPlace(this.value)"></div>
+      <div class="form-group"><label>下ろし日</label><input id="b-unload-date" type="date"></div>
+      <div class="form-group"><label>下ろし場所</label><input id="b-unload-place" placeholder="〇〇工場" list="dl-unload-places" autocomplete="off"></div>
+      <!-- 荷物リスト -->
+      <div class="cargo-section">
+        <div class="cargo-type-row">
+          <label>荷物の種類</label>
+          <input id="b-cargo-type" type="text" list="dl-cargo-types" placeholder="コイル・自由入力も可"
+            oninput="onCargoTypeChange()"
+            style="border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;outline:none;flex:1">
+        </div>
+
+        <!-- コイル入力リスト -->
+        <div id="coil-section" style="display:none">
+          <div class="cargo-list" id="coil-list"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <button type="button" class="btn btn-ghost btn-sm btn-add-cargo" onclick="addCoil()">＋ コイルを追加</button>
+            <div class="cargo-total">合計：<strong id="coil-total">0</strong> t</div>
+          </div>
+        </div>
+
+        <!-- その他 -->
+        <div id="other-cargo-section" style="display:none">
+          <div class="cargo-list" id="other-cargo-list"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <button type="button" class="btn btn-ghost btn-sm btn-add-cargo" onclick="addOtherCargo()">＋ 荷物を追加</button>
+            <div class="cargo-total">合計：<strong id="other-cargo-total">0</strong> t</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>合計重量（kg）<span style="font-size:11px;color:var(--accent);margin-left:4px">↑荷物を入力すると自動入力</span></label>
+        <input id="b-total" type="number" step="1" min="0" placeholder="30000" oninput="updateBulkPreview()">
+      </div>
+      <div class="form-group"><label>メモ</label><input id="b-note" placeholder="任意のメモ"></div>
+
+      <hr class="form-sep">
+
+      <div class="form-group form-full" style="flex-direction:row; align-items:center; justify-content:space-between;">
+        <span class="section-label">空き車両を選んで割り振る</span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="checkBulkAvail()">🔍 空き確認</button>
+      </div>
+
+      <div id="bulk-v-wrap" class="form-full" style="display:none">
+        <div class="candidate-list" id="bulk-v-list"></div>
+      </div>
+
+      <div id="bulk-preview-wrap" class="form-full" style="display:none">
+        <div class="section-label" style="margin-bottom:8px">割り振り結果</div>
+        <div class="alloc-list" id="bulk-preview"></div>
+        <p id="bulk-warn" style="font-size:12px; color:var(--danger); margin-top:8px;"></p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('bulk')">キャンセル</button>
+      <button class="btn btn-ghost" onclick="saveBulk(true)">📋 荷物だけ登録</button>
+      <button class="btn btn-success" onclick="saveBulk(false)">✅ 車両も割り当てて登録</button>
+    </div>
+  </div>
+</div>
+
+<script>
+let vehicles = [], drivers = [], schedules = [], places = [], youshas = [], loadPlaces = [];
+let dayOffData = {}; // { "2026-06-17": ["1","3"], ... }
+let spotVisibleData = {}; // { "2026-06-18": ["5"], ... } — 非表示ドライバーの当日スポット表示
+let editId = { vehicle: null, driver: null, schedule: null };
+let bulkSelected = new Set();
+let bulkAlloc = [];
+
+// ── カスタムオートコンプリート ────────────────────────────
+function setupAutocomplete(inputId, datalistId, getOptsOverride) {
+  const inputEl = document.getElementById(inputId);
+  if (!inputEl || inputEl.dataset.acInit) return;
+  inputEl.dataset.acInit = '1';
+  inputEl.removeAttribute('list');
+
+  const drop = document.createElement('ul');
+  drop.style.cssText = [
+    'position:fixed','z-index:99999',
+    'background:#fff','border:1px solid #e0e0e0','border-radius:8px',
+    'box-shadow:0 6px 20px rgba(0,0,0,.15)','margin:0','padding:4px 0',
+    'max-height:220px','overflow-y:auto','list-style:none','display:none'
+  ].join(';');
+  document.body.appendChild(drop);
+
+  let skipRender = false; // 選択直後の再描画を防ぐフラグ
+
+  function reposition() {
+    const r = inputEl.getBoundingClientRect();
+    drop.style.top   = (r.bottom + 2) + 'px';
+    drop.style.left  = r.left + 'px';
+    drop.style.width = r.width + 'px';
+  }
+
+  function getOpts() {
+    return getOptsOverride ? getOptsOverride() : [];
+  }
+
+  function render(q) {
+    if (skipRender) { skipRender = false; return; }
+    const opts = getOpts();
+    const filtered = q ? opts.filter(v => v.toLowerCase().includes(q.toLowerCase())) : opts;
+    if (!filtered.length) { drop.style.display = 'none'; return; }
+    drop.innerHTML = filtered.map((v, i) => {
+      const sep = i > 0 && filtered[i-1]._group !== v._group && v._group === 'other'
+        ? '<li style="height:1px;background:#e8ecf0;margin:4px 0;pointer-events:none"></li>' : '';
+      const label = typeof v === 'object' ? v.val : v;
+      return `${sep}<li style="padding:9px 14px;cursor:pointer;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+               data-val="${label.replace(/"/g,'&quot;')}">${label}</li>`;
+    }).join('');
+    drop.querySelectorAll('li[data-val]').forEach(li => {
+      li.addEventListener('mouseenter', () => li.style.background = '#eff4ff');
+      li.addEventListener('mouseleave', () => li.style.background = '');
+    });
+    reposition();
+    drop.style.display = 'block';
+  }
+
+  inputEl.addEventListener('focus', () => render(''));
+  inputEl.addEventListener('input', () => render(inputEl.value));
+  inputEl.addEventListener('blur',  () => setTimeout(() => { drop.style.display = 'none'; }, 160));
+  window.addEventListener('scroll', () => { if (drop.style.display !== 'none') reposition(); }, true);
+
+  drop.addEventListener('mousedown', e => {
+    const li = e.target.closest('li[data-val]');
+    if (!li) return;
+    e.preventDefault();
+    skipRender = true; // 選択後に再描画しない
+    inputEl.value = li.dataset.val;
+    drop.style.display = 'none';
+    inputEl.dispatchEvent(new Event('input', { bubbles: true })); // filterUnloadByLoadPlace等を発火
+  });
+}
+
+// 積み地の全件リスト（重複排除・ソート）
+function getAllLoadOpts() {
+  const all = new Set();
+  (loadPlaces || []).forEach(p => { if (p.name && p.name.trim()) all.add(p.name.trim()); });
+  (schedules || []).forEach(s => { if (s.load_place && s.load_place.trim()) all.add(s.load_place.trim()); });
+  return Array.from(all).sort();
+}
+
+// 下ろし先の全件リスト（重複排除・ソート）
+function getAllUnloadOpts() {
+  const all = new Set();
+  (places || []).forEach(p => { if (p.name && p.name.trim()) all.add(p.name.trim()); });
+  (schedules || []).forEach(s => { if (s.unload_place && s.unload_place.trim()) all.add(s.unload_place.trim()); });
+  return Array.from(all).sort();
+}
+
+// 積み地に紐づく下ろし先のみ返す（積み地未選択時は全件）
+function getUnloadOptsForLoad(loadInputId) {
+  return () => {
+    const lp = (document.getElementById(loadInputId)?.value || '').trim();
+    if (!lp) return getAllUnloadOpts();
+    // その積み地で過去に使った下ろし先だけ
+    const linked = new Set(
+      (schedules || [])
+        .filter(s => s.load_place === lp && s.unload_place && s.unload_place.trim())
+        .map(s => s.unload_place.trim())
+    );
+    return Array.from(linked).sort();
+  };
+}
+
+function initPlaceAutocompletes() {
+  setupAutocomplete('s-load-place',  'dl-load-places',  getAllLoadOpts);
+  setupAutocomplete('s-unload-place','dl-unload-places', getUnloadOptsForLoad('s-load-place'));
+  setupAutocomplete('b-load-place',  'dl-load-places',  getAllLoadOpts);
+  setupAutocomplete('b-unload-place','dl-unload-places', getUnloadOptsForLoad('b-load-place'));
+}
+
+// ── 場所の記憶・datalist更新 ──────────────────────────────
+function updatePlaceDatalist() {
+  // 積み地：load_places.json に登録されたもの（なければスケジュール実績）
+  const savedLoadNames = new Set(loadPlaces.map(p => p.name));
+  const loadNames = [...savedLoadNames, ...schedules.map(s => s.load_place).filter(p => p && p.trim() && !savedLoadNames.has(p))];
+  const dlLoad = document.getElementById('dl-load-places');
+  if (dlLoad) dlLoad.innerHTML = [...new Set(loadNames)].sort().map(p => `<option value="${p}">`).join('');
+
+  // 荷下ろし先：places.json に登録されたもの（なければスケジュール実績）
+  const savedUnloadNames = new Set(places.map(p => p.name));
+  const unloadNames = [...savedUnloadNames, ...schedules.map(s => s.unload_place).filter(p => p && p.trim() && !savedUnloadNames.has(p))];
+  const dlUnload = document.getElementById('dl-unload-places');
+  if (dlUnload) dlUnload.innerHTML = [...new Set(unloadNames)].sort().map(p => `<option value="${p}">`).join('');
+}
+
+// ── 積み地選択 → 荷下ろし先を絞り込み ─────────────────────────
+function filterUnloadByLoadPlace(loadPlace) {
+  const dl = document.getElementById('dl-unload-places');
+  if (!dl) return;
+  const lp = (loadPlace || '').trim();
+  if (!lp) {
+    // 空欄 → 全荷下ろし先を復元
+    const savedNames = new Set(places.map(p => p.name));
+    const all = [...savedNames, ...schedules.map(s => s.unload_place).filter(p => p && p.trim() && !savedNames.has(p))];
+    dl.innerHTML = [...new Set(all)].sort().map(p => `<option value="${p}">`).join('');
+    return;
+  }
+  // この積み地で過去に使われた荷下ろし先だけ
+  const related = [...new Set(
+    schedules
+      .filter(s => s.load_place === lp && s.unload_place && s.unload_place.trim())
+      .map(s => s.unload_place.trim())
+  )].sort();
+  dl.innerHTML = related.map(p => `<option value="${p}">`).join('');
+}
+
+// ── 下ろし先注意事項 ──────────────────────────────────────
+function onUnloadPlaceInput() {
+  const name = document.getElementById('s-unload-place').value.trim();
+  const box  = document.getElementById('s-caution-box');
+  const txt  = document.getElementById('s-caution-text');
+  const p = places.find(p => p.name === name);
+  if (p && p.caution) {
+    txt.textContent = p.caution;
+    box.classList.add('show');
+  } else {
+    box.classList.remove('show');
+  }
+}
+
+function openPlaceEdit() {
+  const name = document.getElementById('s-unload-place').value.trim();
+  document.getElementById('place-name').setAttribute('readonly', true);
+  document.getElementById('place-name').value    = name;
+  const p = places.find(p => p.name === name);
+  document.getElementById('place-caution').value = p ? (p.caution || '') : '';
+  openModal('place');
+}
+
+function showPlaceCaution(name) {
+  const p = places.find(p => p.name === name);
+  if (!p || !p.caution) return;
+  alert(`【${name}】注意事項\n\n${p.caution}`);
+}
+
+async function savePlace() {
+  const name    = document.getElementById('place-name').value.trim();
+  const caution = document.getElementById('place-caution').value.trim();
+  if (!name) return;
+  await fetch('/api/places', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ name, caution })
+  });
+  // ローカルも更新
+  const idx = places.findIndex(p => p.name === name);
+  if (idx >= 0) places[idx].caution = caution;
+  else places.push({ name, caution });
+  // 注意事項ボックス更新
+  onUnloadPlaceInput();
+  closeModal('place');
+  renderSchedules();
+  renderPlaces();
+}
+
+// ── ルートパターン提案 ────────────────────────────────────
+function onRouteInput() {
+  const lp = document.getElementById('s-load-place').value.trim();
+  const up = document.getElementById('s-unload-place').value.trim();
+  const box  = document.getElementById('suggest-box');
+  const list = document.getElementById('suggest-list');
+
+  if (!lp || !up) { box.classList.remove('show'); return; }
+
+  // 同じルートの過去スケジュールを集計
+  const matched = schedules.filter(s =>
+    s.load_place === lp && s.unload_place === up &&
+    (s.driver_id || s.vehicle_id)
+  );
+  if (!matched.length) { box.classList.remove('show'); return; }
+
+  // ドライバー×車両の組み合わせをカウント
+  const countMap = {};
+  matched.forEach(s => {
+    const dk = s.driver_id  || '';
+    const vk = s.vehicle_id || '';
+    const key = `${dk}|${vk}`;
+    countMap[key] = (countMap[key] || 0) + 1;
+  });
+
+  // 多い順に最大3件
+  const suggestions = Object.entries(countMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([key, cnt]) => {
+      const [dk, vk] = key.split('|');
+      return { dk, vk, cnt };
+    });
+
+  list.innerHTML = suggestions.map(({ dk, vk, cnt }) => {
+    const dn = dk ? dLabel(dk) : '（未設定）';
+    const vn = vk ? vLabel(vk) : '（未設定）';
+    return `<div class="suggest-item" onclick="applySuggestion('${dk}','${vk}')">
+      <div class="s-info">👤 ${dn}　🚛 ${vn}</div>
+      <div class="s-count">${cnt}回</div>
+    </div>`;
+  }).join('');
+
+  box.classList.add('show');
+}
+
+function applySuggestion(dk, vk) {
+  if (vk) document.getElementById('s-vehicle').value = vk;
+  if (dk) document.getElementById('s-driver').value  = dk;
+  document.getElementById('suggest-box').classList.remove('show');
+}
+
+// ── ページ切り替え ─────────────────────────────────────────
+function switchPage(name) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  const idx = ['dashboard','schedules','vehicles','drivers','places','haisha'].indexOf(name);
+  document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  loadAll();
+  if (name === 'haisha') renderHaisha();
+}
+
+// ── データ ────────────────────────────────────────────────
+async function loadAll() {
+  [vehicles, drivers, schedules, places, youshas, loadPlaces, dayOffData, spotVisibleData] = await Promise.all([
+    fetch('/api/vehicles').then(r => r.json()),
+    fetch('/api/drivers').then(r => r.json()),
+    fetch('/api/schedules').then(r => r.json()),
+    fetch('/api/places').then(r => r.json()),
+    fetch('/api/youshas').then(r => r.json()),
+    fetch('/api/load_places').then(r => r.json()),
+    fetch('/api/day_off').then(r => r.json()),
+    fetch('/api/spot_visible').then(r => r.json()),
+  ]);
+  // default_vehicle_id 未設定のドライバーは過去スケジュール実績から自動セット
+  await autoSetDefaultVehicles();
+  renderAll();
+  // カスタムオートコンプリートを初期化（datalistが更新されてから呼ぶ）
+  initPlaceAutocompletes();
+}
+
+async function autoSetDefaultVehicles() {
+  // 直近スケジュールからドライバー→車両の対応を導出
+  const recentMap = {};
+  [...schedules].sort((a,b) => (b.load_date||'') < (a.load_date||'') ? -1 : 1).forEach(s => {
+    const did = String(s.driver_id || '');
+    const vid = String(s.vehicle_id || '');
+    if (did && vid && !recentMap[did]) recentMap[did] = vid;
+  });
+  // default_vehicle_id が未設定のドライバーにセット
+  for (const d of drivers) {
+    if (!d.default_vehicle_id && recentMap[String(d.id)]) {
+      const updated = { ...d, default_vehicle_id: Number(recentMap[String(d.id)]) };
+      const res = await fetch(`/api/drivers/${d.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        const idx = drivers.findIndex(x => x.id === d.id);
+        if (idx !== -1) drivers[idx] = saved;
+      }
+    }
+  }
+}
+
+function renderAll() {
+  renderVehicles(); renderDrivers(); renderSchedules(); renderDashboard(); renderPlaces(); renderLoadPlaces();
+  updatePlaceDatalist();
+}
+
+// ── 積み地 ───────────────────────────────────────────────────
+function renderLoadPlaces() {
+  const tb = document.getElementById('load-places-tbody');
+  if (!tb) return;
+  tb.innerHTML = loadPlaces.length
+    ? loadPlaces.map(p => `
+      <tr>
+        <td><strong>${p.name}</strong></td>
+        <td><div class="col-actions">
+          <button class="btn btn-danger btn-sm" onclick="delLoadPlace(${p.id})">削除</button>
+        </div></td>
+      </tr>`).join('')
+    : '<tr class="empty-row"><td colspan="2">登録された積み地がありません</td></tr>';
+}
+
+function openAddLoadPlace() {
+  const name = prompt('積み地の名前を入力してください');
+  if (!name || !name.trim()) return;
+  addLoadPlace(name.trim());
+}
+
+async function addLoadPlace(name) {
+  await fetch('/api/load_places', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ name }),
+  });
+  await loadAll();
+}
+
+async function delLoadPlace(id) {
+  if (!confirm('この積み地を削除しますか？')) return;
+  await fetch(`/api/load_places/${id}`, { method: 'DELETE' });
+  await loadAll();
+}
+
+// ── 場所・注意事項 ─────────────────────────────────────────
+function renderPlaces() {
+  const tb = document.getElementById('places-tbody');
+  if (!tb) return;
+  tb.innerHTML = places.length
+    ? places.map(p => `
+      <tr>
+        <td><strong>${p.name}</strong></td>
+        <td style="white-space:pre-wrap;max-width:400px;font-size:13px">${p.caution ? `<span style="color:#c2410c">⚠️ ${p.caution}</span>` : '<span style="color:#aaa">なし</span>'}</td>
+        <td><div class="col-actions">
+          <button class="btn btn-ghost btn-sm" onclick="openPlaceEditById(${p.id})">編集</button>
+          <button class="btn btn-danger btn-sm" onclick="delPlace(${p.id})">削除</button>
+        </div></td>
+      </tr>`).join('')
+    : '<tr class="empty-row"><td colspan="3">登録された場所がありません</td></tr>';
+
+  // スケジュール登録済みでまだ注意事項なしの場所
+  const registeredNames = new Set(places.map(p => p.name));
+  const schedPlaces = [...new Set([
+    ...schedules.map(s => s.unload_place),
+  ].filter(p => p && p.trim() && !registeredNames.has(p)))].sort();
+
+  const box = document.getElementById('places-from-schedules');
+  if (box) {
+    box.innerHTML = schedPlaces.length
+      ? schedPlaces.map(name =>
+          `<button class="btn btn-ghost btn-sm" onclick="openNewPlaceModalWithName('${name.replace(/'/g,"\\'")}')">📍 ${name}</button>`
+        ).join('')
+      : '<span style="color:var(--text-sub);font-size:13px">すべての場所に注意事項が登録されています</span>';
+  }
+}
+
+function openNewPlaceModal() {
+  document.getElementById('place-name').removeAttribute('readonly');
+  document.getElementById('place-name').value = '';
+  document.getElementById('place-caution').value = '';
+  openModal('place');
+}
+
+function openNewPlaceModalWithName(name) {
+  document.getElementById('place-name').removeAttribute('readonly');
+  document.getElementById('place-name').value = name;
+  document.getElementById('place-caution').value = '';
+  openModal('place');
+}
+
+function openPlaceEditById(id) {
+  const p = places.find(p => p.id === id);
+  if (!p) return;
+  document.getElementById('place-name').setAttribute('readonly', true);
+  document.getElementById('place-name').value    = p.name;
+  document.getElementById('place-caution').value = p.caution || '';
+  openModal('place');
+}
+
+async function delPlace(id) {
+  if (!confirm('この場所情報を削除しますか？')) return;
+  await fetch(`/api/places/${id}`, { method: 'DELETE' });
+  await loadAll();
+}
+
+// ── ヘルパー ──────────────────────────────────────────────
+function vLabel(id) {
+  const v = vehicles.find(v => v.id == id);
+  if (!v) return '-';
+  return v.kind === 'トレーラー' ? `[T] ${v.head_number}` : v.number;
+}
+function dLabel(id) {
+  if (!id || id === '') return '-';
+  const sid = String(id);
+  if (sid.startsWith('y_')) {
+    const yid = parseInt(sid.slice(2));
+    const y = youshas.find(y => y.id === yid);
+    return y ? (y.display_name || y.name || sid) : sid;
+  }
+  const d = drivers.find(d => d.id == id);
+  return d ? d.name : '-';
+}
+function payloadKg(v) { return parseFloat(v.payload) || 0; }
+
+function busyVehicleIds(loadDate, unloadDate) {
+  return new Set(schedules.filter(s => s.load_date <= unloadDate && s.unload_date >= loadDate && s.vehicle_id).map(s => String(s.vehicle_id)));
+}
+function busyDriverIds(loadDate, unloadDate) {
+  return new Set(schedules.filter(s => s.load_date <= unloadDate && s.unload_date >= loadDate && s.driver_id).map(s => String(s.driver_id)));
+}
+function availVehicles(ld, ud) { const b = busyVehicleIds(ld, ud); return vehicles.filter(v => !b.has(String(v.id))); }
+function availDrivers(ld, ud)  { const b = busyDriverIds(ld, ud);  return drivers.filter(d => d.status === '稼働中' && !b.has(String(d.id))); }
+
+function badge(text, cls) { return `<span class="badge ${cls}">${text}</span>`; }
+function statusBadge(s) {
+  return badge(s, { '稼働中': 'badge-green', '休暇中': 'badge-orange', '退職': 'badge-red' }[s] || 'badge-gray');
+}
+
+// ── 車両種別切り替え ──────────────────────────────────────
+function onVehicleKindChange() {
+  const t = document.getElementById('v-kind').value === 'トレーラー';
+  document.getElementById('v-number-group').style.display  = t ? 'none' : '';
+  document.getElementById('v-head-group').style.display    = t ? '' : 'none';
+  document.getElementById('v-trailer-group').style.display = t ? '' : 'none';
+}
+
+// ── モーダル ──────────────────────────────────────────────
+function openModal(type) {
+  editId[type] = null;
+  const today = new Date().toISOString().split('T')[0];
+  if (type === 'vehicle') {
+    document.getElementById('v-modal-title').textContent = '車両を追加';
+    document.getElementById('v-kind').value = 'トラック';
+    ['v-number','v-head','v-trailer','v-note'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('v-payload').value = '';
+    onVehicleKindChange();
+  }
+  if (type === 'driver') {
+    document.getElementById('d-modal-title').textContent = 'ドライバーを追加';
+    ['d-name','d-phone','d-note'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('d-status').value = '稼働中';
+  }
+  if (type === 'schedule') {
+    document.getElementById('s-modal-title').textContent = '配車を追加';
+    ['s-load-date','s-unload-date'].forEach(i => document.getElementById(i).value = today);
+    ['s-load-place','s-unload-place','s-note'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('s-weight').value = '';
+    document.getElementById('avail-wrap').style.display = 'none';
+    document.getElementById('suggest-box').classList.remove('show');
+    // 注意事項ボックスをリセット
+    document.getElementById('s-caution-box').classList.remove('show');
+    document.getElementById('s-caution-text').textContent = '';
+    resetSCargoSection();
+    fillSchedSelects();
+  }
+  if (type === 'bulk') {
+    ['b-load-date','b-unload-date'].forEach(i => document.getElementById(i).value = today);
+    ['b-load-place','b-unload-place','b-note'].forEach(i => document.getElementById(i).value = '');
+    document.getElementById('b-total').value = '';
+    document.getElementById('bulk-v-wrap').style.display = 'none';
+    document.getElementById('bulk-preview-wrap').style.display = 'none';
+    bulkSelected = new Set(); bulkAlloc = [];
+    resetCargoSection();
+  }
+  document.getElementById('modal-' + type).classList.add('open');
+}
+
+function closeModal(type) {
+  document.getElementById('modal-' + type).classList.remove('open');
+  // 相積みモードをリセット
+  if (type === 'schedule' && _aitsuMode) {
+    _aitsuMode = false;
+    document.getElementById('s-normal-mode').style.display = '';
+    document.getElementById('s-aitsu-mode').style.display  = 'none';
+    document.getElementById('at-rows').innerHTML = '';
+    _aitsuRowCount = 0;
+    const btn = document.getElementById('aitsu-toggle-btn');
+    if (btn) { btn.style.background='#fff'; btn.style.borderColor='#d0d5e0'; btn.style.color='#666'; }
+    document.getElementById('s-modal-title').textContent = '配車を追加';
+  }
+}
+
+// ── 車両 ──────────────────────────────────────────────────
+function renderVehicles() {
+  const tb = document.getElementById('vehicle-tbody');
+  if (!vehicles.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="6">データがありません</td></tr>'; return; }
+  tb.innerHTML = vehicles.map(v => {
+    const k = v.kind === 'トレーラー' ? badge('トレーラー','badge-blue') : badge('トラック','badge-gray');
+    const num = v.kind === 'トレーラー' ? `<strong>${v.head_number}</strong>` : `<strong>${v.number}</strong>`;
+    return `<tr>
+      <td>${k}</td><td>${num}</td>
+      <td>${v.kind === 'トレーラー' ? v.trailer_number : '-'}</td>
+      <td>${v.payload ? v.payload + 'kg' : '-'}</td>
+      <td>${v.note || '-'}</td>
+      <td><div class="col-actions">
+        <button class="btn btn-ghost btn-sm" onclick="editVehicle(${v.id})">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="delVehicle(${v.id})">削除</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function editVehicle(id) {
+  const v = vehicles.find(v => v.id === id);
+  editId.vehicle = id;
+  document.getElementById('v-modal-title').textContent = '車両を編集';
+  document.getElementById('v-kind').value = v.kind || 'トラック';
+  document.getElementById('v-number').value = v.number || '';
+  document.getElementById('v-head').value = v.head_number || '';
+  document.getElementById('v-trailer').value = v.trailer_number || '';
+  document.getElementById('v-payload').value = v.payload || '';
+  document.getElementById('v-note').value = v.note || '';
+  onVehicleKindChange();
+  document.getElementById('modal-vehicle').classList.add('open');
+}
+
+async function saveVehicle() {
+  const kind = document.getElementById('v-kind').value;
+  const trailer = kind === 'トレーラー';
+  const data = {
+    kind,
+    number: trailer ? '' : document.getElementById('v-number').value.trim(),
+    head_number: trailer ? document.getElementById('v-head').value.trim() : '',
+    trailer_number: trailer ? document.getElementById('v-trailer').value.trim() : '',
+    payload: document.getElementById('v-payload').value,
+    note: document.getElementById('v-note').value.trim(),
+  };
+  if (trailer && !data.head_number) { alert('ヘッドナンバーは必須です'); return; }
+  if (!trailer && !data.number) { alert('ナンバープレートは必須です'); return; }
+  const id = editId.vehicle;
+  await fetch(id ? `/api/vehicles/${id}` : '/api/vehicles', {
+    method: id ? 'PUT' : 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+  closeModal('vehicle'); await loadAll();
+}
+
+async function delVehicle(id) {
+  if (!confirm('削除しますか？')) return;
+  await fetch(`/api/vehicles/${id}`, { method: 'DELETE' });
+  await loadAll();
+}
+
+// ── ドライバー ────────────────────────────────────────────
+function renderDrivers() {
+  const tb = document.getElementById('driver-tbody');
+  if (!drivers.length) { tb.innerHTML = '<tr class="empty-row"><td colspan="7">データがありません</td></tr>'; return; }
+  tb.innerHTML = drivers.map(d => {
+    const on = d.haisha_visible !== false; // デフォルトtrue
+    return `<tr>
+      <td><strong>${d.name}</strong></td>
+      <td>${d.phone || '-'}</td>
+      <td>${statusBadge(d.status)}</td>
+      <td style="text-align:center">
+        <button onclick="toggleHaishaVisible(${d.id})"
+          style="border:none;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;cursor:pointer;
+            background:${on ? '#4caf82' : '#e0e0e0'};color:${on ? '#fff' : '#888'}">
+          ${on ? '表示' : '非表示'}
+        </button>
+      </td>
+      <td>${d.note || '-'}</td>
+      <td><div class="col-actions">
+        <button class="btn btn-ghost btn-sm" onclick="editDriver(${d.id})">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="delDriver(${d.id})">削除</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+async function toggleHaishaVisible(id) {
+  const d = drivers.find(x => x.id === id);
+  if (!d) return;
+  const updated = { ...d, haisha_visible: d.haisha_visible === false ? true : false };
+  await fetch(`/api/drivers/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updated),
+  });
+  await loadAll();
+}
+
+function editDriver(id) {
+  const d = drivers.find(d => d.id === id);
+  editId.driver = id;
+  document.getElementById('d-modal-title').textContent = 'ドライバーを編集';
+  document.getElementById('d-name').value = d.name;
+  document.getElementById('d-phone').value = d.phone || '';
+  document.getElementById('d-status').value = d.status;
+  document.getElementById('d-note').value = d.note || '';
+  document.getElementById('modal-driver').classList.add('open');
+}
+
+async function saveDriver() {
+  const data = {
+    name: document.getElementById('d-name').value.trim(),
+    phone: document.getElementById('d-phone').value.trim(),
+    status: document.getElementById('d-status').value,
+    note: document.getElementById('d-note').value.trim(),
+  };
+  if (!data.name) { alert('氏名は必須です'); return; }
+  const id = editId.driver;
+  await fetch(id ? `/api/drivers/${id}` : '/api/drivers', {
+    method: id ? 'PUT' : 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+  closeModal('driver'); await loadAll();
+}
+
+async function delDriver(id) {
+  if (!confirm('削除しますか？')) return;
+  await fetch(`/api/drivers/${id}`, { method: 'DELETE' });
+  await loadAll();
+}
+
+// ── スケジュール ──────────────────────────────────────────
+function fillSchedSelects(vid, did) {
+  const vOpts = '<option value="">-- 選択 --</option>' +
+    vehicles.map(v => {
+      const l = v.kind === 'トレーラー' ? `[T] ${v.head_number} / ${v.trailer_number}` : v.number;
+      return `<option value="${v.id}" ${v.id==vid?'selected':''}>${l}${v.payload?' ('+v.payload+'kg)':''}</option>`;
+    }).join('');
+  const dOpts = '<option value="">-- 選択 --</option>' +
+    drivers.map(d => `<option value="${d.id}" ${d.id==did?'selected':''}>${d.name}</option>`).join('') +
+    (youshas.length ? '<option disabled>── 傭車 ──</option>' : '') +
+    youshas.map(y => {
+      const yid = `y_${y.id}`;
+      return `<option value="${yid}" ${yid==did?'selected':''}>${y.display_name || y.name}（傭車）</option>`;
+    }).join('');
+  document.getElementById('s-vehicle').innerHTML = vOpts;
+  document.getElementById('s-driver').innerHTML  = dOpts;
+  // 相積みモード用にも同期
+  document.getElementById('at-vehicle').innerHTML = vOpts;
+  document.getElementById('at-driver').innerHTML  = dOpts;
+}
+
+function checkAvail() {
+  const ld = document.getElementById('s-load-date').value;
+  const ud = document.getElementById('s-unload-date').value;
+  if (!ld || !ud) { alert('先に日付を入力してください'); return; }
+
+  const av = availVehicles(ld, ud);
+  const ad = availDrivers(ld, ud);
+
+  document.getElementById('avail-v-list').innerHTML = av.length
+    ? av.map(v => {
+        const l = v.kind === 'トレーラー' ? `[T] ${v.head_number} / ${v.trailer_number}` : v.number;
+        return `<div class="candidate-item">
+          <label style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer">
+            <input type="radio" name="av" value="${v.id}" onchange="document.getElementById('s-vehicle').value='${v.id}'">
+            <div><div class="c-name">${l}</div><div class="c-sub">${v.kind}　最大 ${v.payload||'?'}kg</div></div>
+          </label>
+        </div>`;
+      }).join('')
+    : '<div class="no-candidate">空き車両がありません</div>';
+
+  document.getElementById('avail-d-list').innerHTML = ad.length
+    ? ad.map(d => `<div class="candidate-item">
+        <label style="display:flex;align-items:center;gap:10px;flex:1;cursor:pointer">
+          <input type="radio" name="ad" value="${d.id}" onchange="document.getElementById('s-driver').value='${d.id}'">
+          <div><div class="c-name">${d.name}</div><div class="c-sub">${d.phone||''}</div></div>
+        </label>
+      </div>`).join('')
+    : '<div class="no-candidate">空きドライバーがありません</div>';
+
+  document.getElementById('avail-wrap').style.display = 'block';
+}
+
+function renderSchedules() {
+  const filterDate = (document.getElementById('filter-date') || {}).value || '';
+  const sorted = [...schedules]
+    .filter(s => !filterDate || s.load_date === filterDate || s.unload_date === filterDate)
+    .sort((a,b) => {
+      const da = a.unload_date || a.load_date || '';
+      const db = b.unload_date || b.load_date || '';
+      if (da !== db) return da < db ? -1 : 1;
+      return (a.load_date || '') < (b.load_date || '') ? -1 : 1;
+    });
+  const active    = sorted.filter(s => !s.done);
+  const completed = sorted.filter(s =>  s.done);
+
+  const vOpts = '<option value="">-- 未割当 --</option>' +
+    vehicles.map(v => {
+      const l = v.kind === 'トレーラー' ? `[T] ${v.head_number}` : v.number;
+      return `<option value="${v.id}">${l}</option>`;
+    }).join('');
+  const dOpts = '<option value="">-- 未割当 --</option>' +
+    drivers.filter(d => d.status === '稼働中').map(d =>
+      `<option value="${d.id}">${d.name}</option>`
+    ).join('') +
+    (youshas.length ? '<option disabled>── 傭車 ──</option>' : '') +
+    youshas.map(y => `<option value="y_${y.id}">${y.display_name || y.name}（傭車）</option>`).join('');
+
+  const buildRow = (s) => {
+    const hasDriver  = s.driver_id  && s.driver_id  !== '';
+    const isYousha   = hasDriver && String(s.driver_id).startsWith('y_');
+    const hasVehicle = isYousha || (s.vehicle_id && s.vehicle_id !== '');
+    const isDone = !!s.done;
+    const st = s.load_status || '';
+
+    // 傭車の場合は車番をyoushas.jsonから取得して表示（セレクト不要）
+    let vCell;
+    if (isYousha) {
+      const y = youshas.find(y => `y_${y.id}` === String(s.driver_id));
+      const vnum = y ? (y.vehicle_number || '—') : '—';
+      vCell = `<td class="assign-cell"><span style="font-size:13px;color:var(--text-sub)">${vnum}</span></td>`;
+    } else {
+      vCell = `<td class="assign-cell"><select class="assign-select${hasVehicle ? '' : ' unassigned'}" ${isDone ? 'disabled' : ''}
+        onchange="assignField(${s.id},'vehicle_id',this.value,this)">
+        ${vOpts.replace(`value="${s.vehicle_id}"`, `value="${s.vehicle_id}" selected`)}
+      </select></td>`;
+    }
+
+    const dSelect = `<select class="assign-select${hasDriver ? '' : ' unassigned'}" ${isDone ? 'disabled' : ''}
+      onchange="assignField(${s.id},'driver_id',this.value,this)">
+      ${dOpts.replace(`value="${s.driver_id}"`, `value="${s.driver_id}" selected`)}
+    </select>`;
+
+    const unassignedBadge = (!isDone && (!hasDriver || !hasVehicle))
+      ? `<span class="badge badge-unassigned" style="margin-left:4px;font-size:11px;">未割当</span>` : '';
+
+    const doneBtn = `<button class="done-toggle ${isDone ? 'done' : 'undone'}"
+      onclick="toggleDone(${s.id},${isDone})">
+      ${isDone ? '✅ 完了' : '○ 未完了'}
+    </button>`;
+
+    const stLabel = st === 'loaded' ? '積込完了' : st === 'delivered' ? '荷下ろし完了' : '未積み込み';
+    const stBadgeCls = st === 'loaded' ? 'st-loaded' : st === 'delivered' ? 'st-delivered' : 'st-none';
+    const statusBadge = `<button class="c-status ${stBadgeCls}" title="クリックでステータス変更"
+      onclick="toggleLoadStatus(${s.id})" style="border:none;cursor:pointer;font-size:11px;padding:3px 7px;border-radius:5px;display:block;width:100%;margin-bottom:4px">
+      ${stLabel}</button>`;
+
+    const rowBg = st === 'loaded' ? 'sched-row-loaded' : st === 'delivered' ? 'sched-row-delivered' : '';
+
+    return `<tr class="${isDone ? 'done-row' : ''} ${rowBg}">
+      <td style="min-width:90px">${statusBadge}${doneBtn}</td>
+      <td>${s.load_date}${unassignedBadge}</td>
+      <td><strong>${s.load_place}</strong></td>
+      <td>${s.unload_date}</td>
+      <td><strong>${s.unload_place}</strong>${(() => { const pl = places.find(p => p.name === s.unload_place); return pl && pl.caution ? `<span class="caution-badge" onclick="showPlaceCaution('${s.unload_place.replace(/'/g,"\\'")}')">⚠️ 注意</span>` : ''; })()}</td>
+      <td>${s.weight ? s.weight + 'kg' : '-'}</td>
+      ${vCell}
+      <td class="assign-cell">${dSelect}</td>
+      <td>
+        ${s.cargo_note ? `<span style="color:#0891b2;font-weight:600">${s.cargo_note}</span>` : ''}
+        ${s.cargo_note && s.note ? '<br>' : ''}
+        ${s.note || (!s.cargo_note ? '-' : '')}
+      </td>
+      <td><div class="col-actions">
+        <button class="btn btn-ghost btn-sm" onclick="editSched(${s.id})">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="delSched(${s.id})">削除</button>
+      </div></td>
+    </tr>`;
+  };
+
+  // 相積みグループ行（複数スケジュールを1行にまとめ）
+  const buildGroupRow = (grp) => {
+    const first = grp[0];
+    const isDone = grp.every(s => !!s.done);
+    const hasDriver = first.driver_id && first.driver_id !== '';
+    const isYousha = hasDriver && String(first.driver_id).startsWith('y_');
+    const hasVehicle = isYousha || (first.vehicle_id && first.vehicle_id !== '');
+    const st = first.load_status || '';
+    const totalWeight = grp.reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+
+    const stLabel = st === 'loaded' ? '積込完了' : st === 'delivered' ? '荷下ろし完了' : '未積み込み';
+    const stBadgeCls = st === 'loaded' ? 'st-loaded' : st === 'delivered' ? 'st-delivered' : 'st-none';
+    const statusBadge = `<button class="c-status ${stBadgeCls}" onclick="toggleGroupStatus('${first.ai_tsumi_group}')"
+      style="border:none;cursor:pointer;font-size:11px;padding:3px 7px;border-radius:5px;display:block;width:100%;margin-bottom:4px">${stLabel}</button>`;
+    const doneBtn = `<button class="done-toggle ${isDone ? 'done' : 'undone'}"
+      onclick="toggleGroupDone('${first.ai_tsumi_group}',${isDone})">${isDone ? '✅ 完了' : '○ 未完了'}</button>`;
+    const unassignedBadge = (!isDone && (!hasDriver || !hasVehicle))
+      ? `<span class="badge badge-unassigned" style="margin-left:4px;font-size:11px;">未割当</span>` : '';
+    const rowBg = st === 'loaded' ? 'sched-row-loaded' : st === 'delivered' ? 'sched-row-delivered' : '';
+
+    let vCell;
+    if (isYousha) {
+      const y = youshas.find(y => `y_${y.id}` === String(first.driver_id));
+      vCell = `<td class="assign-cell"><span style="font-size:13px;color:var(--text-sub)">${y ? (y.vehicle_number||'—') : '—'}</span></td>`;
+    } else {
+      vCell = `<td class="assign-cell"><select class="assign-select${hasVehicle ? '' : ' unassigned'}" ${isDone ? 'disabled' : ''}
+        onchange="assignGroupField('${first.ai_tsumi_group}','vehicle_id',this.value)">
+        ${vOpts.replace(`value="${first.vehicle_id}"`, `value="${first.vehicle_id}" selected`)}
+      </select></td>`;
+    }
+    const dSelect = `<select class="assign-select${hasDriver ? '' : ' unassigned'}" ${isDone ? 'disabled' : ''}
+      onchange="assignGroupField('${first.ai_tsumi_group}','driver_id',this.value)">
+      ${dOpts.replace(`value="${first.driver_id}"`, `value="${first.driver_id}" selected`)}
+    </select>`;
+
+    const routeList = grp.map(s =>
+      `<div style="display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;margin-bottom:2px">
+        <strong>${s.load_place}</strong> → <strong>${s.unload_place}</strong>${s.weight ? ` <span style="color:#999">${s.weight}kg</span>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="editSched(${s.id})" style="font-size:11px;padding:1px 6px;flex-shrink:0">編集</button>
+      </div>`
+    ).join('');
+
+    return `<tr class="${isDone ? 'done-row' : ''} ${rowBg}">
+      <td style="min-width:90px">${statusBadge}${doneBtn}</td>
+      <td>${first.load_date}${unassignedBadge}<br><span style="font-size:11px;background:#e0e7ff;color:#3730a3;border-radius:4px;padding:1px 6px">🔀 相積み×${grp.length}</span></td>
+      <td colspan="2">${routeList}</td>
+      <td style="text-align:right">${totalWeight ? Math.round(totalWeight).toLocaleString('ja-JP') + 'kg' : '-'}</td>
+      ${vCell}
+      <td class="assign-cell">${dSelect}</td>
+      <td>${first.note || '-'}</td>
+      <td><div class="col-actions">
+        <button class="btn btn-danger btn-sm" onclick="delGroup('${first.ai_tsumi_group}')">削除</button>
+      </div></td>
+    </tr>`;
+  };
+
+  // 相積みグループをまとめ、それ以外は個別行として構築
+  function buildRows(list) {
+    const rendered = new Set();
+    const html = [];
+    for (const s of list) {
+      if (rendered.has(s.id)) continue;
+      if (s.ai_tsumi_group) {
+        const grp = list.filter(x => x.ai_tsumi_group === s.ai_tsumi_group);
+        grp.forEach(x => rendered.add(x.id));
+        html.push(buildGroupRow(grp));
+      } else {
+        rendered.add(s.id);
+        html.push(buildRow(s));
+      }
+    }
+    return html.join('') || '<tr class="empty-row"><td colspan="10">データがありません</td></tr>';
+  }
+
+  const tb = document.getElementById('sched-tbody');
+  tb.innerHTML = buildRows(active);
+
+  const ctb = document.getElementById('completed-tbody');
+  ctb.innerHTML = buildRows(completed);
+
+  const cnt = document.getElementById('completed-count');
+  if (cnt) cnt.textContent = completed.length ? `（${completed.length}件）` : '';
+}
+
+// ── 相積みグループ操作 ──────────────────────────────────
+function getGroup(groupId) {
+  return schedules.filter(s => s.ai_tsumi_group === groupId);
+}
+async function assignGroupField(groupId, field, value) {
+  const grp = getGroup(groupId);
+  for (const s of grp) {
+    await fetch(`/api/schedules/${s.id}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ...s, [field]: value }),
+    });
+  }
+  await loadAll();
+}
+async function toggleGroupDone(groupId, currentDone) {
+  const grp = getGroup(groupId);
+  for (const s of grp) {
+    await fetch(`/api/schedules/${s.id}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ...s, done: !currentDone }),
+    });
+  }
+  await loadAll();
+}
+async function toggleGroupStatus(groupId) {
+  const grp = getGroup(groupId);
+  if (!grp.length) return;
+  const cycle = { '': 'loaded', 'loaded': 'delivered', 'delivered': '' };
+  const next = cycle[grp[0].load_status || ''];
+  for (const s of grp) {
+    await fetch(`/api/schedules/${s.id}`, {
+      method: 'PUT', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ ...s, load_status: next }),
+    });
+  }
+  await loadAll(); renderHaisha();
+}
+async function delGroup(groupId) {
+  if (!confirm('相積みグループをまとめて削除しますか？')) return;
+  const grp = getGroup(groupId);
+  for (const s of grp) {
+    await fetch(`/api/schedules/${s.id}`, { method: 'DELETE' });
+  }
+  await loadAll();
+}
+
+async function toggleDone(sid, currentDone) {
+  const s = schedules.find(s => s.id === sid);
+  if (!s) return;
+  s.done = !currentDone;
+  await fetch(`/api/schedules/${sid}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(s)
+  });
+  renderSchedules();
+  renderDashboard();
+}
+
+function toggleCompleted(header) {
+  const body = document.getElementById('completed-body');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  header.classList.toggle('open', !isOpen);
+}
+
+async function assignField(sid, field, value, selectEl) {
+  const s = schedules.find(s => s.id === sid);
+  if (!s) return;
+  const data = { ...s, [field]: value };
+  await fetch(`/api/schedules/${sid}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+  // スタイルだけ即時反映（再レンダリングなし）
+  selectEl.classList.toggle('unassigned', !value);
+  // ローカルデータも更新
+  s[field] = value;
+  // 未割当バッジを更新
+  const row = selectEl.closest('tr');
+  const hasDriver  = s.driver_id  && s.driver_id  !== '';
+  const hasVehicle = s.vehicle_id && s.vehicle_id !== '';
+  const badge = row.querySelector('.badge-unassigned');
+  if (hasDriver && hasVehicle) { if (badge) badge.remove(); }
+  else if (!badge) {
+    const td = row.querySelector('td');
+    td.insertAdjacentHTML('beforeend', `<span class="badge badge-unassigned" style="margin-left:4px;font-size:11px;">未割当</span>`);
+  }
+}
+
+function editSched(id) {
+  const s = schedules.find(s => s.id === id);
+  editId.schedule = id;
+  // まず全フィールドをリセット（前回の入力が残らないように）
+  resetSCargoSection();
+  document.getElementById('s-modal-title').textContent = '配車を編集';
+  document.getElementById('s-load-date').value = s.load_date;
+  document.getElementById('s-load-place').value = s.load_place || '';
+  document.getElementById('s-unload-date').value = s.unload_date;
+  document.getElementById('s-unload-place').value = s.unload_place || '';
+  document.getElementById('s-weight').value = s.weight || '';
+  document.getElementById('s-note').value = s.note || '';
+  document.getElementById('avail-wrap').style.display = 'none';
+  // cargo_note からカーゴタイプを復元（あれば）
+  if (s.cargo_note) {
+    document.getElementById('s-cargo-type').value = s.cargo_note.split(' ')[0] || '';
+    onSCargoTypeChange();
+  }
+  fillSchedSelects(s.vehicle_id, s.driver_id);
+  document.getElementById('modal-schedule').classList.add('open');
+}
+
+// ── 相積みモード ────────────────────────────────────────
+let _aitsuMode = false;
+let _aitsuRowCount = 0;
+
+function toggleAitsumi() {
+  _aitsuMode = !_aitsuMode;
+  document.getElementById('s-normal-mode').style.display = _aitsuMode ? 'none' : '';
+  document.getElementById('s-aitsu-mode').style.display  = _aitsuMode ? '' : 'none';
+  const btn = document.getElementById('aitsu-toggle-btn');
+  btn.style.background = _aitsuMode ? '#eff4ff' : '#fff';
+  btn.style.borderColor = _aitsuMode ? 'var(--accent)' : '#d0d5e0';
+  btn.style.color = _aitsuMode ? 'var(--accent)' : '#666';
+  document.getElementById('s-modal-title').textContent = _aitsuMode ? '相積み追加' : '配車を追加';
+  if (_aitsuMode && document.getElementById('at-rows').children.length === 0) {
+    addAitsuRow(); addAitsuRow(); // 最初から2行
+  }
+  // 日付を共通欄にコピー
+  if (_aitsuMode) {
+    document.getElementById('at-load-date').value   = document.getElementById('s-load-date').value;
+    document.getElementById('at-unload-date').value = document.getElementById('s-unload-date').value;
+  }
+}
+
+function addAitsuRow() {
+  _aitsuRowCount++;
+  const n = _aitsuRowCount;
+  const div = document.createElement('div');
+  div.id = `at-row-${n}`;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;padding:10px;background:#f8fafc;border-radius:8px;border:1px solid #e8ecf0';
+  div.innerHTML = `
+    <input class="form-input" placeholder="積み込み場所" list="dl-load-places" autocomplete="off"
+           id="at-load-${n}" oninput="filterUnloadByLoadPlace(this.value)" style="font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;outline:none">
+    <input class="form-input" placeholder="下ろし場所" list="dl-unload-places" autocomplete="off"
+           id="at-unload-${n}" style="font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;outline:none">
+    <input type="text" list="dl-cargo-types" placeholder="荷物の種類（任意）" autocomplete="off"
+           id="at-cargo-${n}" style="font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;outline:none">
+    <input type="number" step="1" placeholder="重量(kg)"
+           id="at-weight-${n}" style="width:80px;font-size:13px;padding:7px 8px;border:1px solid var(--border);border-radius:6px;outline:none">
+    <button onclick="document.getElementById('at-row-${n}').remove()"
+            style="background:none;border:none;color:#ccc;font-size:18px;cursor:pointer;padding:0 4px">×</button>`;
+  document.getElementById('at-rows').appendChild(div);
+}
+
+async function saveSchedule() {
+  // 相積みモードの場合
+  if (_aitsuMode) {
+    const loadDate   = document.getElementById('at-load-date').value;
+    const unloadDate = document.getElementById('at-unload-date').value;
+    const vehicleId  = document.getElementById('at-vehicle').value;
+    const driverId   = document.getElementById('at-driver').value;
+    if (!loadDate) { alert('積み込み日は必須です'); return; }
+
+    const rows = [...document.getElementById('at-rows').children];
+    const entries = rows.map(row => {
+      const n = row.id.replace('at-row-', '');
+      const cargoType = document.getElementById(`at-cargo-${n}`)?.value.trim() || '';
+      return {
+        load_place:   document.getElementById(`at-load-${n}`)?.value.trim(),
+        unload_place: document.getElementById(`at-unload-${n}`)?.value.trim(),
+        weight:       document.getElementById(`at-weight-${n}`)?.value,
+        cargo_type:   cargoType,
+      };
+    }).filter(e => e.load_place || e.unload_place);
+
+    if (!entries.length) { alert('積み込み・下ろし場所を1行以上入力してください'); return; }
+
+    const groupId = `aitsu_${Date.now()}`;
+    for (const e of entries) {
+      await fetch('/api/schedules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          load_date: loadDate, load_place: e.load_place,
+          unload_date: unloadDate || loadDate, unload_place: e.unload_place,
+          weight: e.weight, vehicle_id: vehicleId, driver_id: driverId,
+          note: '', cargo_note: e.cargo_type || '',
+          ai_tsumi: true, ai_tsumi_group: groupId,
+        }),
+      });
+    }
+    closeModal('schedule'); await loadAll();
+    return;
+  }
+
+  // 通常モード
+  const { note: cargoNote, items: cargoItems } = buildSCargoResult();
+  const data = {
+    load_date:    document.getElementById('s-load-date').value,
+    load_place:   document.getElementById('s-load-place').value.trim(),
+    unload_date:  document.getElementById('s-unload-date').value,
+    unload_place: document.getElementById('s-unload-place').value.trim(),
+    weight:       document.getElementById('s-weight').value,
+    vehicle_id:   document.getElementById('s-vehicle').value,
+    driver_id:    document.getElementById('s-driver').value,
+    note:         document.getElementById('s-note').value.trim(),
+    cargo_note:   cargoNote,
+  };
+  if (cargoItems) data.items = cargoItems;
+  if (!data.load_date || !data.load_place) { alert('積み込み日と積み込み場所は必須です'); return; }
+  const id = editId.schedule;
+  // 編集時：相積み情報・ステータス・分割情報など管理フィールドを保持
+  if (id) {
+    const existing = schedules.find(s => s.id === id);
+    if (existing) {
+      if (existing.ai_tsumi)       data.ai_tsumi       = existing.ai_tsumi;
+      if (existing.ai_tsumi_group) data.ai_tsumi_group = existing.ai_tsumi_group;
+      if (existing.load_status)    data.load_status    = existing.load_status;
+      if (existing.items)          data.items          = existing.items;
+      // cargo_note：フォームで未入力なら既存を保持
+      if (!cargoNote && existing.cargo_note) data.cargo_note = existing.cargo_note;
+    }
+  }
+  await fetch(id ? `/api/schedules/${id}` : '/api/schedules', {
+    method: id ? 'PUT' : 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(data)
+  });
+  closeModal('schedule'); await loadAll();
+}
+
+async function delSched(id) {
+  if (!confirm('削除しますか？')) return;
+  await fetch(`/api/schedules/${id}`, { method: 'DELETE' });
+  await loadAll();
+  renderSchedules();
+}
+
+async function delSchedFromHaisha(id) {
+  if (!confirm('削除しますか？')) return;
+  await fetch(`/api/schedules/${id}`, { method: 'DELETE' });
+  await loadAll();
+  renderHaisha();
+}
+
+async function toggleDayOff(driverId, date) {
+  const current = (dayOffData[date] || []).includes(driverId);
+  if (!current) {
+    // 休みにする → 当日に割り当て済みの仕事があれば警告
+    const hasWork = schedules.some(s =>
+      String(s.driver_id) === driverId && (s.load_date === date || s.unload_date === date)
+    );
+    if (hasWork) {
+      const ok = confirm('このドライバーには当日の配車が割り当て済みです。\n休みにしてもスケジュールは残ります。よろしいですか？');
+      if (!ok) return;
+    }
+    await fetch('/api/day_off', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, driver_id: driverId }),
+    });
+  } else {
+    await fetch('/api/day_off', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ date, driver_id: driverId }),
+    });
+  }
+  dayOffData = await fetch('/api/day_off').then(r => r.json());
+  renderHaisha();
+}
+
+// ── スポット表示 ────────────────────────────────────────
+function openSpotModal() {
+  const date = document.getElementById('haisha-date').value;
+  if (!date) { alert('対象日を選択してください。'); return; }
+
+  // 非表示ドライバーのうち、まだスポット追加されていないもの
+  const spotIds = spotVisibleData[date] || [];
+  const hidden = drivers.filter(d =>
+    d.haisha_visible === false && !spotIds.includes(String(d.id))
+  ).sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999));
+
+  if (!hidden.length) {
+    alert('追加できる非表示ドライバーはいません。');
+    return;
+  }
+
+  // 既存モーダルがあれば削除
+  document.getElementById('spot-modal')?.remove();
+
+  const listHtml = hidden.map(d => `
+    <button onclick="addSpotVisible('${d.id}','${date}')"
+      style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:14px;font-weight:600;">
+      👤 ${d.name}
+    </button>`).join('');
+
+  const modal = document.createElement('div');
+  modal.id = 'spot-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:24px;min-width:280px;max-width:360px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+      <div style="font-weight:700;font-size:15px;margin-bottom:4px">📍 スポット追加</div>
+      <div style="font-size:12px;color:var(--text-sub);margin-bottom:16px">${date} のみ表示するドライバーを選択</div>
+      ${listHtml}
+      <button onclick="document.getElementById('spot-modal').remove()"
+        style="margin-top:8px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#f9fafb;cursor:pointer;font-size:13px;">
+        キャンセル
+      </button>
+    </div>`;
+  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+async function addSpotVisible(driverId, date) {
+  await fetch('/api/spot_visible', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date, driver_id: driverId }),
+  });
+  document.getElementById('spot-modal')?.remove();
+  spotVisibleData = await fetch('/api/spot_visible').then(r => r.json());
+  renderHaisha();
+}
+
+async function removeSpotVisible(driverId, date) {
+  await fetch('/api/spot_visible', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date, driver_id: driverId }),
+  });
+  spotVisibleData = await fetch('/api/spot_visible').then(r => r.json());
+  renderHaisha();
+}
+
+// ── 荷物リスト（一件追加用） ─────────────────────────────
+let sCoilCount = 0;
+let sOtherCargoCount = 0;
+
+function onSCargoTypeChange() {
+  const type = document.getElementById('s-cargo-type').value.trim();
+  const isCoilType = ['コイル','亜鉛コイル'].includes(type);
+  document.getElementById('s-coil-section').style.display        = isCoilType ? 'block' : 'none';
+  document.getElementById('s-other-cargo-section').style.display = (!isCoilType && type) ? 'block' : 'none';
+  if (isCoilType && document.getElementById('s-coil-list').children.length === 0) addSCoil();
+  if (!isCoilType && type && document.getElementById('s-other-cargo-list').children.length === 0) addSOtherCargo();
+}
+
+function addSCoil() {
+  sCoilCount++;
+  const id = `s-coil-${sCoilCount}`;
+  const div = document.createElement('div');
+  div.className = 'cargo-item';
+  div.id = id;
+  div.innerHTML = `
+    <span class="cargo-num">#${sCoilCount}</span>
+    <input class="inp-weight" placeholder="重量(kg)" type="number" step="1" min="0" oninput="calcSCargoTotal()">
+    <button class="cargo-del" onclick="removeSCargo('${id}','coil')" title="削除">×</button>`;
+  document.getElementById('s-coil-list').appendChild(div);
+}
+
+function addSOtherCargo() {
+  sOtherCargoCount++;
+  const id = `s-othercargo-${sOtherCargoCount}`;
+  const div = document.createElement('div');
+  div.className = 'cargo-item';
+  div.id = id;
+  div.innerHTML = `
+    <span class="cargo-num">#${sOtherCargoCount}</span>
+    <input class="inp-weight" placeholder="重量(kg)" type="number" step="1" min="0" oninput="calcSCargoTotal()">
+    <button class="cargo-del" onclick="removeSCargo('${id}','other')" title="削除">×</button>`;
+  document.getElementById('s-other-cargo-list').appendChild(div);
+}
+
+function removeSCargo(id, type) {
+  document.getElementById(id)?.remove();
+  calcSCargoTotal();
+}
+
+function calcSCargoTotal() {
+  const type = document.getElementById('s-cargo-type').value;
+  const isCoilType = ['コイル','亜鉛コイル'].includes(type);
+  const listId  = isCoilType ? 's-coil-list' : 's-other-cargo-list';
+  const totalId = isCoilType ? 's-coil-total' : 's-other-cargo-total';
+  const items = document.querySelectorAll(`#${listId} .inp-weight`);
+  let sum = 0;
+  items.forEach(el => { sum += parseFloat(el.value) || 0; });
+  sum = Math.round(sum * 10) / 10;
+  document.getElementById(totalId).textContent = sum;
+  document.getElementById('s-weight').value = sum || '';
+}
+
+function resetSCargoSection() {
+  sCoilCount = 0; sOtherCargoCount = 0;
+  document.getElementById('s-cargo-type').value = '';
+  document.getElementById('s-coil-list').innerHTML = '';
+  document.getElementById('s-other-cargo-list').innerHTML = '';
+  document.getElementById('s-coil-section').style.display = 'none';
+  document.getElementById('s-other-cargo-section').style.display = 'none';
+  document.getElementById('s-coil-total').textContent = '0';
+  document.getElementById('s-other-cargo-total').textContent = '0';
+}
+
+// 荷物情報をnote用テキストとitemsオブジェクト配列に変換
+function buildSCargoResult() {
+  const type = document.getElementById('s-cargo-type').value.trim();
+  if (!type) return { note: '', items: null };
+  const label = type;
+  const isCoilType = ['コイル','亜鉛コイル'].includes(type);
+  const listId = isCoilType ? 's-coil-list' : 's-other-cargo-list';
+  const rows = document.querySelectorAll(`#${listId} .cargo-item`);
+  const items = [];
+  const lines = [];
+  rows.forEach((row, i) => {
+    const w = row.querySelector('.inp-weight').value;
+    items.push({ name: `${label}${i+1}`, weight: w || '' });
+    if (w) lines.push(`${label}${i+1}：${w}kg`);
+  });
+  return { note: lines.join(' / '), items: items.length ? items : null };
+}
+
+// ── 荷物リスト（まとめて配車用） ──────────────────────────
+let coilCount = 0;
+let otherCargoCount = 0;
+
+function onCargoTypeChange() {
+  const type = document.getElementById('b-cargo-type').value.trim();
+  const isCoilType = ['コイル','亜鉛コイル'].includes(type);
+  document.getElementById('coil-section').style.display        = isCoilType ? 'block' : 'none';
+  document.getElementById('other-cargo-section').style.display = (!isCoilType && type) ? 'block' : 'none';
+  if (isCoilType && document.getElementById('coil-list').children.length === 0) addCoil();
+  if (!isCoilType && type && document.getElementById('other-cargo-list').children.length === 0) addOtherCargo();
+}
+
+function addCoil() {
+  coilCount++;
+  const id = `coil-${coilCount}`;
+  const div = document.createElement('div');
+  div.className = 'cargo-item';
+  div.id = id;
+  div.innerHTML = `
+    <span class="cargo-num">#${coilCount}</span>
+    <input class="inp-weight" placeholder="重量(kg)" type="number" step="1" min="0" oninput="calcCargoTotal()">
+    <button class="cargo-del" onclick="removeCargo('${id}','coil')" title="削除">×</button>`;
+  document.getElementById('coil-list').appendChild(div);
+}
+
+function addOtherCargo() {
+  otherCargoCount++;
+  const id = `othercargo-${otherCargoCount}`;
+  const div = document.createElement('div');
+  div.className = 'cargo-item';
+  div.id = id;
+  div.innerHTML = `
+    <span class="cargo-num">#${otherCargoCount}</span>
+    <input class="inp-weight" placeholder="重量(kg)" type="number" step="1" min="0" oninput="calcCargoTotal()">
+    <button class="cargo-del" onclick="removeCargo('${id}','other')" title="削除">×</button>`;
+  document.getElementById('other-cargo-list').appendChild(div);
+}
+
+function removeCargo(id, type) {
+  document.getElementById(id)?.remove();
+  calcCargoTotal();
+}
+
+function calcCargoTotal() {
+  const type = document.getElementById('b-cargo-type').value;
+  const isCoilType = ['コイル','亜鉛コイル'].includes(type);
+  const listId  = isCoilType ? 'coil-list'  : 'other-cargo-list';
+  const totalId = isCoilType ? 'coil-total' : 'other-cargo-total';
+  const items = document.querySelectorAll(`#${listId} .inp-weight`);
+  let sum = 0;
+  items.forEach(el => { sum += parseFloat(el.value) || 0; });
+  sum = Math.round(sum * 10) / 10;
+  document.getElementById(totalId).textContent = sum;
+  // 合計重量フィールドに自動反映
+  document.getElementById('b-total').value = sum || '';
+  updateBulkPreview();
+}
+
+function resetCargoSection() {
+  coilCount = 0; otherCargoCount = 0;
+  document.getElementById('b-cargo-type').value = '';
+  document.getElementById('coil-list').innerHTML = '';
+  document.getElementById('other-cargo-list').innerHTML = '';
+  document.getElementById('coil-section').style.display = 'none';
+  document.getElementById('other-cargo-section').style.display = 'none';
+  document.getElementById('coil-total').textContent = '0';
+  document.getElementById('other-cargo-total').textContent = '0';
+}
+
+// 荷物の内容をメモ用テキストに変換
+function buildCargoNote() {
+  const { cargoNote, note } = buildBulkCargoResult();
+  return [cargoNote, note].filter(Boolean).join('　');
+}
+function buildBulkCargoResult() {
+  const type = document.getElementById('b-cargo-type').value.trim();
+  const noteBase = document.getElementById('b-note').value.trim();
+  if (!type) return { cargoNote: '', note: noteBase };
+  const isCoilType = ['コイル','亜鉛コイル'].includes(type);
+  const listId = isCoilType ? 'coil-list' : 'other-cargo-list';
+  const items = document.querySelectorAll(`#${listId} .cargo-item`);
+  const lines = [];
+  items.forEach((item, i) => {
+    const w = item.querySelector('.inp-weight').value;
+    if (w) lines.push(`${type}${i+1}：${w}kg`);
+  });
+  return { cargoNote: lines.join(' / '), note: noteBase };
+}
+
+// ── まとめて配車 ──────────────────────────────────────────
+function checkBulkAvail() {
+  const ld = document.getElementById('b-load-date').value;
+  const ud = document.getElementById('b-unload-date').value;
+  if (!ld || !ud) { alert('先に日付を入力してください'); return; }
+
+  // 相積み前提なので全車両を表示（既存積載量も表示）
+  const av = vehicles;
+  bulkSelected = new Set();
+
+  const ld2 = document.getElementById('b-load-date').value;
+  const ud2 = document.getElementById('b-unload-date').value;
+
+  document.getElementById('bulk-v-list').innerHTML = av.length
+    ? av.map(v => {
+        const l = v.kind === 'トレーラー' ? `[T] ${v.head_number} / ${v.trailer_number}` : v.number;
+        const existW = schedules
+          .filter(s => String(s.vehicle_id) === String(v.id) && s.load_date <= ud2 && s.unload_date >= ld2)
+          .reduce((acc, s) => acc + (parseFloat(s.weight) || 0), 0);
+        const existStr = existW > 0
+          ? `<span style="color:var(--accent);font-weight:600">${Math.round(existW*10)/10}t積み済み</span>`
+          : '空き';
+        return `<div class="candidate-item" id="bv-${v.id}">
+          <input type="checkbox" value="${v.id}" onchange="onBulkCheck(this,${v.id})">
+          <div>
+            <div class="c-name">${l}</div>
+            <div class="c-sub">${v.kind}　最大 ${v.payload||'?'}kg　${existStr}</div>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div class="no-candidate">車両が登録されていません</div>';
+
+  document.getElementById('bulk-v-wrap').style.display = 'block';
+  document.getElementById('bulk-preview-wrap').style.display = 'none';
+}
+
+function onBulkCheck(cb, vid) {
+  const el = document.getElementById(`bv-${vid}`);
+  if (cb.checked) { bulkSelected.add(vid); el.classList.add('selected'); }
+  else            { bulkSelected.delete(vid); el.classList.remove('selected'); }
+  updateBulkPreview();
+}
+
+function updateBulkPreview() {
+  const total = parseFloat(document.getElementById('b-total').value) || 0;
+  const sel   = vehicles.filter(v => bulkSelected.has(v.id));
+  if (!sel.length || !total) { document.getElementById('bulk-preview-wrap').style.display = 'none'; return; }
+
+  const ld = document.getElementById('b-load-date').value;
+  const ud = document.getElementById('b-unload-date').value;
+
+  // 各車両の既存積載量（同期間の割当済みスケジュールの合計）
+  const existing = sel.map(v => {
+    const sum = schedules
+      .filter(s =>
+        String(s.vehicle_id) === String(v.id) &&
+        s.load_date <= ud && s.unload_date >= ld
+      )
+      .reduce((acc, s) => acc + (parseFloat(s.weight) || 0), 0);
+    return Math.round(sum * 10) / 10;
+  });
+
+  const totalExisting = existing.reduce((a, b) => a + b, 0);
+  // 目標：全車両が均等になるよう平均を取る
+  const target = Math.round((totalExisting + total) / sel.length * 10) / 10;
+
+  // 各車への追加分 = target - existing（マイナスになる場合は 0）
+  let alloc = sel.map((v, i) => ({
+    v,
+    existing: existing[i],
+    w: Math.max(0, Math.round((target - existing[i]) * 10) / 10),
+  }));
+
+  // 端数調整（追加合計が total と合うように最後の車両に乗せる）
+  const allocSum = alloc.reduce((s, a) => s + a.w, 0);
+  const diff = Math.round((total - allocSum) * 10) / 10;
+  // diff を受け取れる車両（既存≤target）の最後に加える
+  const adj = [...alloc].reverse().find(a => a.w > 0 || a.existing < target);
+  if (adj) adj.w = Math.round((adj.w + diff) * 10) / 10;
+
+  // バー表示用の最大値（既存＋追加の合計）
+  const maxTotal = Math.max(...alloc.map(a => a.existing + a.w), 0.1);
+
+  document.getElementById('bulk-preview').innerHTML = alloc.map(a => {
+    const l    = a.v.kind === 'トレーラー' ? `[T] ${a.v.head_number}` : a.v.number;
+    const p    = payloadKg(a.v);
+    const afterTotal = Math.round((a.existing + a.w) * 10) / 10;
+    const over = p > 0 && afterTotal > p;
+    const existPct = Math.round(a.existing / maxTotal * 100);
+    const newPct   = Math.round(a.w        / maxTotal * 100);
+
+    const existBar = a.existing > 0
+      ? `<div style="width:${existPct}%;background:#94a3b8;height:7px;border-radius:6px 0 0 6px;display:inline-block"></div>`
+      : '';
+    const newBar = a.w > 0
+      ? `<div style="width:${newPct}%;background:var(--accent);height:7px;${a.existing>0?'border-radius:0 6px 6px 0':'border-radius:6px'};display:inline-block"></div>`
+      : '';
+
+    return `<div class="alloc-item">
+      <div class="alloc-name">
+        ${l}
+        ${a.existing > 0 ? `<span style="font-size:11px;color:#64748b;font-weight:400;margin-left:6px">既存 ${a.existing}kg</span>` : ''}
+      </div>
+      <div class="alloc-bar-wrap" style="display:flex;align-items:center">${existBar}${newBar}</div>
+      <div class="alloc-weight ${over ? 'alloc-warn' : ''}">
+        +${a.w}kg
+        <span style="font-size:11px;color:#64748b;font-weight:400"> → 計${afterTotal}kg</span>
+        ${over ? ' ⚠️' : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  const hasWarn = alloc.some(a => { const p = payloadKg(a.v); return p > 0 && (a.existing + a.w) > p; });
+  document.getElementById('bulk-warn').textContent = hasWarn ? '⚠️ 最大積載量を超えている車両があります。' : '';
+  document.getElementById('bulk-preview-wrap').style.display = 'block';
+  bulkAlloc = alloc;
+}
+
+async function saveBulk(cargoOnly = false) {
+  const ld = document.getElementById('b-load-date').value;
+  const lp = document.getElementById('b-load-place').value.trim();
+  const ud = document.getElementById('b-unload-date').value;
+  const up = document.getElementById('b-unload-place').value.trim();
+  const { cargoNote: bulkCargoNote, note: bulkNote } = buildBulkCargoResult();
+  const total = parseFloat(document.getElementById('b-total').value) || 0;
+
+  if (!ld || !lp) { alert('積み込み日と積み込み場所は必須です'); return; }
+
+  if (cargoOnly) {
+    // 車両なしで1件まとめて登録
+    await fetch('/api/schedules', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ load_date:ld, load_place:lp, unload_date:ud, unload_place:up, weight:String(total), vehicle_id:'', driver_id:'', note:bulkNote, cargo_note:bulkCargoNote })
+    });
+  } else {
+    if (!bulkAlloc.length) { alert('車両を選択してください'); return; }
+    for (const a of bulkAlloc) {
+      await fetch('/api/schedules', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ load_date:ld, load_place:lp, unload_date:ud, unload_place:up, weight:String(a.w), vehicle_id:String(a.v.id), driver_id:'', note:bulkNote, cargo_note:bulkCargoNote })
+      });
+    }
+  }
+  closeModal('bulk'); await loadAll(); switchPage('schedules');
+}
+
+// ── ダッシュボード（週間カレンダー）──────────────────────────
+let dashWeekOffset = 0;
+
+function renderDashboard() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 今週の月曜日を基点にoffset週分ずらす
+  const dayOfWeek = today.getDay(); // 0=日
+  const diffToMon = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + diffToMon + dashWeekOffset * 7);
+
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+
+  const fmt = d => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+  const todayStr = fmt(today);
+  const dayNames = ['月', '火', '水', '木', '金', '土', '日'];
+
+  const startStr = fmt(days[0]);
+  const endStr   = fmt(days[6]);
+  document.getElementById('dash-week-label').textContent =
+    `${startStr} 〜 ${endStr}`;
+
+  const cal = document.getElementById('dash-calendar');
+  cal.innerHTML = days.map((d, wi) => {
+    const dateStr = fmt(d);
+    const isToday = dateStr === todayStr;
+    const isPast  = dateStr < todayStr;
+    const isSat   = wi === 5;
+    const isSun   = wi === 6;
+
+    // その日に関係するスケジュール（下ろし日が当日）— 完了・未完了両方
+    const dayScheds   = schedules.filter(s => s.unload_date === dateStr);
+    const active      = dayScheds.filter(s => !s.done);
+    const done        = dayScheds.filter(s =>  s.done);
+    const unassigned  = active.filter(s => !s.driver_id || s.driver_id === '');
+    const assigned    = active.filter(s =>  s.driver_id && s.driver_id !== '');
+
+    const headerBg = isToday ? '#3b62c9' : isSun ? '#fff0f0' : isSat ? '#f0f4ff' : '#f5f7fa';
+    const headerColor = isToday ? '#fff' : isSun ? '#d32f2f' : isSat ? '#3b62c9' : 'var(--text-sub)';
+    const borderColor = isToday ? '#3b62c9' : 'var(--border)';
+
+    const chips = assigned.map(s => {
+      const dname = dLabel(s.driver_id).replace(/\s+/g, '');
+      const place = s.unload_place || '?';
+      const weight = s.weight ? `${Number(s.weight).toLocaleString('ja-JP')}kg` : '';
+      const hasVio = (() => {
+        const v = vehicles.find(vv => String(vv.id) === String(s.vehicle_id));
+        const w = parseFloat(s.weight), p = parseFloat(v?.payload);
+        return !isNaN(w) && !isNaN(p) && w > p;
+      })();
+      return `<div style="background:${hasVio?'#fee2e2':'#eff4ff'};border:1px solid ${hasVio?'#fca5a5':'#c7d9fd'};border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;cursor:pointer"
+        onclick="switchPage('haisha');document.getElementById('haisha-date').value='${dateStr}';renderHaisha()"
+        title="${place} ${weight}">
+        <span style="font-weight:700;color:${hasVio?'#dc2626':'#3b62c9'}">${dname}</span>
+        <span style="color:#666;margin-left:3px">${place}</span>
+        ${weight ? `<span style="color:#999;margin-left:2px;font-size:10px">${weight}</span>` : ''}
+        ${hasVio ? '<span style="color:#dc2626;font-weight:700"> ⚠️</span>' : ''}
+      </div>`;
+    }).join('');
+
+    // 完了済みチップ
+    const doneChips = done.map(s => {
+      const dname = dLabel(s.driver_id).replace(/\s+/g, '');
+      const place = s.unload_place || '?';
+      const weight = s.weight ? `${Number(s.weight).toLocaleString('ja-JP')}kg` : '';
+      return `<div style="background:#f0f0f0;border:1px solid #d0d0d0;border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;opacity:0.7">
+        <span style="color:#888">✅</span>
+        <span style="font-weight:700;color:#888;margin-left:2px">${dname}</span>
+        <span style="color:#aaa;margin-left:3px">${place}</span>
+        ${weight ? `<span style="color:#bbb;margin-left:2px;font-size:10px">${weight}</span>` : ''}
+      </div>`;
+    }).join('');
+
+    const unassignedTag = unassigned.length
+      ? unassigned.map(s => {
+          const place = s.unload_place || '?';
+          const weight = s.weight ? `${Number(s.weight).toLocaleString('ja-JP')}kg` : '';
+          const cargo = s.cargo_note || '';
+          return `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;cursor:pointer"
+            onclick="switchPage('haisha');document.getElementById('haisha-date').value='${dateStr}';renderHaisha()"
+            title="${place} ${weight}">
+            <span style="font-weight:700;color:#856404">⚠️ 未割当</span>
+            <span style="color:#5c4300;margin-left:3px">${place}</span>
+            ${weight ? `<span style="color:#999;margin-left:2px;font-size:10px">${weight}</span>` : ''}
+            ${cargo ? `<span style="color:#0891b2;margin-left:2px;font-size:10px">${cargo}</span>` : ''}
+          </div>`;
+        }).join('')
+      : '';
+
+    const emptyMsg = !dayScheds.length
+      ? `<div style="font-size:11px;color:#ccc;text-align:center;padding:8px 0">予定なし</div>`
+      : '';
+
+    return `<div style="border:1.5px solid ${borderColor};border-radius:8px;overflow:hidden;${isPast?'opacity:0.6':''}">
+      <div style="background:${headerBg};color:${headerColor};padding:6px 10px;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:space-between">
+        <span>${dayNames[wi]}  ${d.getMonth()+1}/${d.getDate()}</span>
+        ${dayScheds.length ? `<span style="background:${isToday?'rgba(255,255,255,0.25)':'rgba(0,0,0,0.08)'};border-radius:10px;padding:1px 7px;font-size:11px">${dayScheds.length}件</span>` : ''}
+      </div>
+      <div style="padding:6px 8px;min-height:60px">
+        ${chips}
+        ${unassignedTag}
+        ${doneChips ? `<div style="margin-top:${(chips||unassignedTag)?'6px':'0'};padding-top:${(chips||unassignedTag)?'5px':'0'};${(chips||unassignedTag)?'border-top:1px solid #e8e8e8':''}">${doneChips}</div>` : ''}
+        ${emptyMsg}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// モーダル外クリックで閉じる
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ── 配車予定表 ─────────────────────────────────────────────
+let haishaDateVal = '';
+let dragSchedId = null;
+let dragGroupId = null;  // 相積みグループドラッグ用
+let haishaVehicleMap = {}; // { driverId: vehicleId } — その日の車両割当
+let haishaDriverMap  = {}; // { uid: driverId } — 空き行のドライバー割当
+let haishaTextMap    = {}; // { uid: {name, vehicleNum, payload} } — 手打ち入力の保持
+
+// 初期日付：明日
+(function initHaishaDate() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const s = d.toISOString().split('T')[0];
+  document.getElementById('haisha-date').value = s;
+  haishaDateVal = s;
+})();
+
+// 車番を短い形式に変換（セル内表示用・2行）
+function haishaVnumShort(v) {
+  if (!v) return '—';
+  if (v.kind === 'トレーラー') {
+    const h = (v.head_number   || '').match(/(\d+)\s*$/)?.[1] || '';
+    const t = (v.trailer_number|| '').match(/(\d+)\s*$/)?.[1] || '';
+    if (h && t) return `<span style="display:block;font-weight:700">${h}</span><span style="display:block;color:var(--text-sub)">${t}</span>`;
+    return h || t || '—';
+  }
+  const n = (v.number || '').match(/(\d+)\s*$/)?.[1] || v.number || '—';
+  return `<span style="font-weight:700">${n}</span>`;
+}
+
+// セレクト用ラベル（1行）
+function haishaVnumLabel(v) {
+  if (!v) return '—';
+  if (v.kind === 'トレーラー') {
+    const h = (v.head_number   || '').match(/(\d+)\s*$/)?.[1] || '';
+    const t = (v.trailer_number|| '').match(/(\d+)\s*$/)?.[1] || '';
+    return (h && t) ? `${h}/${t}` : h || t || '—';
+  }
+  return (v.number || '').match(/(\d+)\s*$/)?.[1] || v.number || '—';
+}
+
+// 車両セレクトのHTML
+function haishaVehicleSelect(driverId, currentVid) {
+  const opts = vehicles.map(v => {
+    const label = `${haishaVnumLabel(v)}（${v.payload}kg）`;
+    const sel = String(currentVid) === String(v.id) ? 'selected' : '';
+    return `<option value="${v.id}" ${sel}>${label}</option>`;
+  }).join('');
+  return `<select class="haisha-vsel" onchange="haishaSetVehicle('${driverId}',this.value)">
+    <option value="">— 未選択 —</option>
+    ${opts}
+  </select>`;
+}
+
+async function haishaSetVehicle(driverId, vehicleId) {
+  haishaVehicleMap[driverId] = vehicleId;
+  renderHaisha();
+  // ドライバーのデフォルト車両として保存（y_傭車は除く）
+  if (!String(driverId).startsWith('y_')) {
+    const d = drivers.find(x => String(x.id) === String(driverId));
+    if (d) {
+      const updated = { ...d, default_vehicle_id: vehicleId ? Number(vehicleId) : null };
+      const res = await fetch(`/api/drivers/${d.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        const idx = drivers.findIndex(x => x.id === d.id);
+        if (idx !== -1) drivers[idx] = saved;
+      }
+    }
+  }
+}
+
+function haishaTextSave(uid, field, value) {
+  if (!haishaTextMap[uid]) haishaTextMap[uid] = {};
+  haishaTextMap[uid][field] = value;
+  // 再レンダリングはしない（入力中にフォーカスが外れるのを防ぐ）
+}
+
+// ── ✂️ 配達分割 ───────────────────────────────────────────
+let splitSchedId = null;
+let splitGroups  = []; // [{items:[{name,weight}]}]
+let splitPool    = []; // 未割当アイテム
+let splitDragItem = null;
+let splitDragFrom = null; // 'pool' | groupIndex
+
+// cargo_note / noteから荷物リストを解析（kg表記対応）
+function parseSplitItems(s) {
+  const src = s.cargo_note || s.note || '';
+  // 「荷物名N：Wkg」または旧形式「荷物名N：Wt」形式
+  const coilMatches = [...src.matchAll(/([^\s/　]+\d+)[：:]\s*([\d.]+)(kg|t)/g)];
+  if (coilMatches.length > 0) {
+    return coilMatches.map(m => ({
+      name: m[1].trim(),
+      weight: m[3] === 't' ? parseFloat(m[2]) * 1000 : parseFloat(m[2]),
+    }));
+  }
+  // 解析できない場合は単一アイテム
+  return [{ name: s.unload_place, weight: parseFloat(s.weight) || 0 }];
+}
+
+function openSplit(schedId) {
+  splitSchedId = schedId;
+  const s = schedules.find(x => x.id === schedId);
+  if (!s) return;
+
+  const items = parseSplitItems(s);
+  splitPool   = items.map((it, i) => ({ id: i, ...it }));
+  splitGroups = [];
+
+  document.getElementById('split-origin-info').innerHTML =
+    `<strong>${s.unload_place}</strong>　合計 ${s.weight}kg
+     <span style="color:var(--text-sub)">${s.load_date} 積込 → ${s.unload_date} 下ろし</span>`;
+
+  renderSplitModal();
+  document.getElementById('split-overlay').style.display = 'flex';
+}
+function closeSplit() {
+  document.getElementById('split-overlay').style.display = 'none';
+  splitSchedId = null;
+}
+
+function renderSplitModal() {
+  // プール
+  const poolEl = document.getElementById('split-items-pool');
+  poolEl.innerHTML = splitPool.length
+    ? splitPool.map(it => splitChipHTML(it, 'pool')).join('')
+    : '<span style="font-size:12px;color:#bbb">すべてグループに割り当て済み</span>';
+
+  // グループ
+  const groupsEl = document.getElementById('split-groups');
+  const slotLabels = ['配達①','配達②','配達③','配達④','配達⑤','配達⑥'];
+  groupsEl.innerHTML = splitGroups.map((g, gi) => {
+    const total = g.items.reduce((s, it) => s + (it.weight || 0), 0);
+    const items = g.items.map(it => splitChipHTML(it, gi)).join('');
+    return `<div class="split-group-box">
+      <div class="split-group-header">
+        <span class="split-group-label">${slotLabels[gi] || `配達${gi+1}`}</span>
+        <span class="split-group-total">${Math.round(total).toLocaleString('ja-JP')}kg</span>
+        <button onclick="removeSplitGroup(${gi})" style="margin-left:auto;background:none;border:none;color:#bbb;cursor:pointer;font-size:16px">×</button>
+      </div>
+      <div class="split-group-drop"
+           ondragover="event.preventDefault();this.classList.add('split-drag-over')"
+           ondragleave="this.classList.remove('split-drag-over')"
+           ondrop="splitDropToGroup(event,${gi})">
+        ${items || '<span style="font-size:12px;color:#bbb">ここにドロップ</span>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function splitChipHTML(it, from) {
+  const fromStr = from === 'pool' ? 'pool' : String(from);
+  return `<span class="split-chip" draggable="true"
+    ondragstart="splitDragStart(event,${it.id},'${fromStr}')"
+    ondragend="this.classList.remove('dragging')">
+    <span class="chip-name">${it.name}</span>
+    <span class="chip-weight">${it.weight}kg</span>
+  </span>`;
+}
+
+function splitDragStart(event, itemId, from) {
+  splitDragItem = itemId;
+  splitDragFrom = from === 'pool' ? 'pool' : parseInt(from);
+  event.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => event.target.classList.add('dragging'), 0);
+}
+
+function splitDropToGroup(event, groupIndex) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('split-drag-over');
+  if (splitDragItem === null) return;
+
+  const item = _removeSplitItem(splitDragItem, splitDragFrom);
+  if (!item) return;
+  splitGroups[groupIndex].items.push(item);
+  splitDragItem = null;
+  renderSplitModal();
+}
+
+function splitDropToPool(event) {
+  event.preventDefault();
+  document.getElementById('split-items-pool').classList.remove('split-drag-over');
+  if (splitDragItem === null) return;
+
+  const item = _removeSplitItem(splitDragItem, splitDragFrom);
+  if (!item) return;
+  splitPool.push(item);
+  splitDragItem = null;
+  renderSplitModal();
+}
+
+function _removeSplitItem(itemId, from) {
+  if (from === 'pool') {
+    const idx = splitPool.findIndex(x => x.id === itemId);
+    if (idx < 0) return null;
+    return splitPool.splice(idx, 1)[0];
+  } else {
+    const g = splitGroups[from];
+    if (!g) return null;
+    const idx = g.items.findIndex(x => x.id === itemId);
+    if (idx < 0) return null;
+    return g.items.splice(idx, 1)[0];
+  }
+}
+
+function addSplitGroup() {
+  if (splitGroups.length >= 6) return;
+  splitGroups.push({ items: [] });
+  // プールの未割当をすべて新グループに振り分けるヒント
+  renderSplitModal();
+}
+
+function removeSplitGroup(gi) {
+  const g = splitGroups.splice(gi, 1)[0];
+  splitPool.push(...g.items);
+  renderSplitModal();
+}
+
+async function confirmSplit() {
+  if (!splitSchedId) return;
+  const s = schedules.find(x => x.id === splitSchedId);
+  if (!s) return;
+
+  // 未割当アイテムがあれば警告
+  if (splitPool.length > 0) {
+    if (!confirm(`${splitPool.length}個の荷物がグループに入っていません。残りは元のスケジュールの重量から省かれます。続けますか？`)) return;
+  }
+
+  // 空グループを除外
+  const validGroups = splitGroups.filter(g => g.items.length > 0);
+  if (!validGroups.length) {
+    alert('グループを1つ以上作ってください');
+    return;
+  }
+
+  // 元スケジュールを削除して、グループ数分の新スケジュールを作成
+  await fetch(`/api/schedules/${s.id}`, { method: 'DELETE' });
+
+  for (const g of validGroups) {
+    const totalW = g.items.reduce((acc, it) => acc + (it.weight || 0), 0);
+    const noteStr = g.items.map(it => `${it.name}：${it.weight}kg`).join(' / ');
+    const newSched = {
+      ...s,
+      weight: String(Math.round(totalW)),
+      note: noteStr,
+    };
+    delete newSched.id;
+    await fetch('/api/schedules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newSched),
+    });
+  }
+
+  closeSplit();
+  await loadAll();
+  renderHaisha();
+}
+
+// ── 配車予定表 保存・履歴 ─────────────────────────────────
+async function saveDispatchPlan() {
+  const date = haishaDateVal;
+  if (!date) { alert('日付を選択してください'); return; }
+
+  const preloaded  = schedules.filter(s => s.unload_date === date && s.load_date < date);
+  const deliveries = schedules.filter(s => s.load_date === date && s.unload_date === date);
+
+  // ドライバー行スナップショット
+  const activeDidSet = new Set([
+    ...preloaded.filter(s=>s.driver_id).map(s=>String(s.driver_id)),
+    ...deliveries.filter(s=>s.driver_id).map(s=>String(s.driver_id)),
+  ]);
+  const driverRows = drivers
+    .filter(d => activeDidSet.has(String(d.id)))
+    .sort((a,b) => (a.display_order??999)-(b.display_order??999))
+    .map(d => {
+      const did = String(d.id);
+      const vid = haishaVehicleMap[did] || (deliveries.find(s=>s.driver_id===did)||preloaded.find(s=>s.driver_id===did))?.vehicle_id || '';
+      const v = vehicles.find(v=>String(v.id)===String(vid));
+      return {
+        type: 'driver',
+        driver_id: d.id,
+        driver_name: d.name.replace(/\s+/g,''),
+        vehicle_number: v ? haishaVnumLabel(v) : '',
+        payload_kg: v ? Number(parseFloat(v.payload) || 0) : null,
+        preloaded: preloaded.filter(s=>s.driver_id===did).map(s=>({place:s.unload_place,weight:s.weight,cargo_note:s.cargo_note||'',note:s.note})),
+        deliveries: deliveries.filter(s=>s.driver_id===did).map(s=>({place:s.unload_place,weight:s.weight,cargo_note:s.cargo_note||'',note:s.note})),
+      };
+    });
+
+  // 傭車行スナップショット
+  const youshaRows = youshas.sort((a,b)=>(a.display_order??999)-(b.display_order??999)).map(y => {
+    const ykey = `y_${y.id}`;
+    return {
+      type: 'yousha',
+      name: y.display_name,
+      vehicle_number: y.vehicle_number,
+      payload_kg: Number(parseFloat(y.payload) || 0),
+      preloaded: preloaded.filter(s=>s.driver_id===ykey).map(s=>({place:s.unload_place,weight:s.weight,cargo_note:s.cargo_note||'',note:s.note||''})),
+      deliveries: deliveries.filter(s=>s.driver_id===ykey).map(s=>({place:s.unload_place,weight:s.weight,cargo_note:s.cargo_note||'',note:s.note||''})),
+    };
+  });
+
+  // 空き行スナップショット
+  const customRows = [0,1,2].map(i => {
+    const uid = `__empty_${i}`;
+    const t = haishaTextMap[uid] || {};
+    if (!t.name && !t.vehicleNum) return null;
+    return { type:'custom', driver_name:t.name||'', vehicle_number:t.vehicleNum||'', payload_kg:t.payload||'', deliveries:[] };
+  }).filter(Boolean);
+
+  const plan = {
+    date,
+    label: `${date} 配車予定表`,
+    rows: [...driverRows, ...youshaRows, ...customRows],
+  };
+
+  const res = await fetch('/api/dispatch_plans', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(plan),
+  });
+  const saved = await res.json();
+  alert(`保存しました（ID: ${saved.id}）`);
+}
+
+let dispatchPlans = [];
+async function openPlanHistory() {
+  dispatchPlans = await fetch('/api/dispatch_plans').then(r=>r.json());
+  const list = document.getElementById('plan-history-list');
+  if (!dispatchPlans.length) {
+    list.innerHTML = '<p style="color:var(--text-sub);text-align:center;padding:24px">保存された配車予定表はありません</p>';
+  } else {
+    list.innerHTML = [...dispatchPlans].sort((a, b) => {
+      const da = a.label.match(/\d{4}-\d{2}-\d{2}/)?.[0] || a.saved_at;
+      const db = b.label.match(/\d{4}-\d{2}-\d{2}/)?.[0] || b.saved_at;
+      return db < da ? -1 : db > da ? 1 : 0; // 新しい日付順
+    }).map(p => `
+      <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:14px">${p.label}</div>
+          <div style="font-size:12px;color:var(--text-sub);margin-top:3px">保存日時: ${p.saved_at.replace('T',' ')}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="viewPlanDetail(${p.id})">詳細</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePlan(${p.id})">削除</button>
+      </div>`).join('');
+  }
+  document.getElementById('plan-history-overlay').style.display = 'flex';
+}
+function closePlanHistory() { document.getElementById('plan-history-overlay').style.display='none'; }
+
+// ── 履歴 詳細・編集 ──────────────────────────────────────
+let editingPlan = null;
+let hdDragItem = null;   // { rowIndex, area:'pre'|'del', itemIndex }
+
+function viewPlanDetail(id) {
+  const p = dispatchPlans.find(x => x.id === id);
+  if (!p) return;
+  editingPlan = JSON.parse(JSON.stringify(p)); // deep copy
+  renderEditDetail();
+  document.getElementById('plan-detail-overlay').style.display = 'flex';
+}
+function closePlanDetail() {
+  document.getElementById('plan-detail-overlay').style.display = 'none';
+  editingPlan = null;
+}
+
+function renderEditDetail() {
+  if (!editingPlan) return;
+  document.getElementById('plan-detail-title').textContent = editingPlan.label;
+  const slotNames = ['配達①','配達②','配達③','配達④','配達⑤'];
+
+  const rows = editingPlan.rows.map((row, ri) => {
+    const badge = row.type === 'yousha'
+      ? '<span style="font-size:10px;background:#fff3cd;color:#856404;border-radius:4px;padding:1px 5px;margin-left:4px">傭車</span>' : '';
+
+    // 積置き分セル（ドロップ可）
+    const preCards = (row.preloaded || []).map((d, di) =>
+      hdCardHTML(d, ri, 'pre', di)
+    ).join('');
+
+    // 配達スロット（ドロップ可）
+    const delCells = [0,1,2,3,4].map(i => {
+      const d = (row.deliveries || [])[i];
+      return `<td style="padding:6px;border-bottom:1px solid #f0f0f0;min-width:110px;vertical-align:top"
+                  ondragover="event.preventDefault();this.classList.add('drag-over')"
+                  ondragleave="this.classList.remove('drag-over')"
+                  ondrop="hdDrop(event,${ri},'del',${i})">
+        <span style="font-size:10px;color:#bbb;display:block;margin-bottom:3px">${slotNames[i]}</span>
+        ${d ? hdCardHTML(d, ri, 'del', i) : ''}
+      </td>`;
+    }).join('');
+
+    return `<tr>
+      <td style="padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:top;white-space:nowrap">
+        <input class="hd-inp" value="${(row.driver_name||row.name||'').replace(/"/g,'&quot;')}"
+               oninput="hdSet(${ri},'driver_name',this.value)" style="font-weight:700">${badge}
+      </td>
+      <td style="padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:top">
+        <input class="hd-inp" value="${(row.vehicle_number||'').replace(/"/g,'&quot;')}"
+               oninput="hdSet(${ri},'vehicle_number',this.value)">
+      </td>
+      <td style="padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:top;text-align:right;min-width:80px">
+        <input class="hd-inp" value="${row.payload_kg||''}" type="number"
+               oninput="hdSet(${ri},'payload_kg',this.value)" style="text-align:right;width:80px">
+      </td>
+      <td style="padding:6px;border-bottom:1px solid #f0f0f0;vertical-align:top;min-width:110px"
+          ondragover="event.preventDefault();this.classList.add('drag-over')"
+          ondragleave="this.classList.remove('drag-over')"
+          ondrop="hdDrop(event,${ri},'pre',0)">
+        <span style="font-size:10px;color:#bbb;display:block;margin-bottom:3px">積置き分</span>
+        ${preCards}
+      </td>
+      ${delCells}
+      <td style="padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:top;min-width:80px">
+        <input class="hd-inp" value="${(row.note||'').replace(/"/g,'&quot;')}"
+               oninput="hdSet(${ri},'note',this.value)" placeholder="備考">
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('plan-detail-content').innerHTML = `
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead><tr style="background:#f5f7fa">
+          <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">運転手</th>
+          <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">車番</th>
+          <th style="padding:10px;text-align:right;font-size:11px;color:var(--text-sub)">積載量(kg)</th>
+          <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">積置き分</th>
+          <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">配達①</th>
+          <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">配達②</th>
+          <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">配達③</th>
+          <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">配達④</th>
+          <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">配達⑤</th>
+          <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">備考</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <button class="btn btn-ghost" onclick="closePlanDetail()">閉じる</button>
+      <button class="btn btn-primary" onclick="savePlanEdits()">💾 変更を保存</button>
+    </div>`;
+}
+
+// 配達カードHTML（履歴編集用）
+function hdCardHTML(d, ri, area, idx) {
+  return `<div class="hd-card" draggable="true"
+    ondragstart="hdDragStart(event,${ri},'${area}',${idx})"
+    ondragend="this.classList.remove('dragging')">
+    <input class="hd-card-inp" value="${(d.place||'').replace(/"/g,'&quot;')}"
+           oninput="hdSetItem(${ri},'${area}',${idx},'place',this.value)" placeholder="場所">
+    ${d.cargo_note ? `<span style="font-size:10px;color:#0891b2;font-weight:600">${d.cargo_note}</span>` : ''}
+    <input class="hd-card-inp" value="${d.weight||''}" type="number" step="1"
+           oninput="hdSetItem(${ri},'${area}',${idx},'weight',this.value)"
+           placeholder="" style="width:60px;text-align:right">
+    <span style="font-size:11px;color:#bbb">kg</span>
+    <button onclick="hdRemoveItem(${ri},'${area}',${idx})"
+            style="background:none;border:none;color:#ccc;cursor:pointer;font-size:14px;line-height:1;padding:0 0 0 2px">×</button>
+  </div>`;
+}
+
+// フィールド更新
+function hdSet(ri, field, val) {
+  if (!editingPlan) return;
+  editingPlan.rows[ri][field] = val;
+}
+function hdSetItem(ri, area, idx, field, val) {
+  if (!editingPlan) return;
+  const arr = area === 'pre' ? editingPlan.rows[ri].preloaded : editingPlan.rows[ri].deliveries;
+  if (arr[idx]) arr[idx][field] = val;
+}
+function hdRemoveItem(ri, area, idx) {
+  if (!editingPlan) return;
+  const key = area === 'pre' ? 'preloaded' : 'deliveries';
+  editingPlan.rows[ri][key].splice(idx, 1);
+  renderEditDetail();
+}
+
+// ドラッグ＆ドロップ（履歴内）
+function hdDragStart(event, ri, area, idx) {
+  hdDragItem = { ri, area, idx };
+  event.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => event.target.classList.add('dragging'), 0);
+}
+function hdDrop(event, toRi, toArea, toIdx) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  if (!hdDragItem || !editingPlan) return;
+
+  const fromKey = hdDragItem.area === 'pre' ? 'preloaded' : 'deliveries';
+  const toKey   = toArea === 'pre' ? 'preloaded' : 'deliveries';
+
+  const fromArr = editingPlan.rows[hdDragItem.ri][fromKey];
+  const [item]  = fromArr.splice(hdDragItem.idx, 1);
+
+  const toArr = editingPlan.rows[toRi][toKey];
+  // toIdxが既存アイテムの位置なら入れ替え、なければ末尾に追加
+  if (toArr[toIdx]) {
+    toArr.splice(toIdx, 0, item);
+  } else {
+    toArr.push(item);
+  }
+
+  hdDragItem = null;
+  renderEditDetail();
+}
+
+async function savePlanEdits() {
+  if (!editingPlan) return;
+  const res = await fetch(`/api/dispatch_plans/${editingPlan.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(editingPlan),
+  });
+  if (res.ok) {
+    dispatchPlans = await fetch('/api/dispatch_plans').then(r => r.json());
+    alert('保存しました');
+  } else {
+    alert('保存に失敗しました');
+  }
+}
+
+async function deletePlan(id) {
+  if (!confirm('この履歴を削除しますか？')) return;
+  await fetch(`/api/dispatch_plans/${id}`, {method:'DELETE'});
+  openPlanHistory();
+}
+
+// ── 空き行へのドロップ ────────────────────────────────────
+async function hDropEmpty(event, uid) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  if (!dragSchedId) return;
+  const sched = schedules.find(s => s.id === dragSchedId);
+  if (!sched) return;
+
+  // 手打ち名がある場合は uid をそのままドライバーIDとして使う
+  const driverId = haishaDriverMap[uid] || uid;
+  const vehicleId = haishaVehicleMap[uid] || '';
+
+  await fetch(`/api/schedules/${sched.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...sched, driver_id: driverId, vehicle_id: vehicleId }),
+  });
+  await loadAll();
+  renderHaisha();
+}
+
+// ── ドライバーピッカー ────────────────────────────────────
+let _dpickerUid = null;
+function openDriverPicker(uid, currentDid) {
+  _dpickerUid = uid;
+  const sel = document.getElementById('dpicker-select');
+  sel.innerHTML = '<option value="">— 未選択 —</option>' +
+    drivers
+      .filter(d => d.status === '稼働中')
+      .sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999))
+      .map(d => {
+        const selected = String(currentDid) === String(d.id) ? 'selected' : '';
+        return `<option value="${d.id}" ${selected}>${d.name.replace(/\s+/g,'')}</option>`;
+      }).join('');
+  document.getElementById('dpicker-overlay').style.display = 'flex';
+}
+function closeDriverPicker() {
+  document.getElementById('dpicker-overlay').style.display = 'none';
+  _dpickerUid = null;
+}
+function applyDriverPicker() {
+  const did = document.getElementById('dpicker-select').value;
+  if (_dpickerUid !== null) {
+    haishaDriverMap[_dpickerUid] = did;
+  }
+  closeDriverPicker();
+  renderHaisha();
+}
+
+// ── 車両ピッカー ──────────────────────────────────────────
+let _vpickerDriverId = null;
+function openVehiclePicker(driverId, currentVid) {
+  _vpickerDriverId = driverId;
+  const sel = document.getElementById('vpicker-select');
+  sel.innerHTML = '<option value="">— 未選択 —</option>' +
+    vehicles.map(v => {
+      const lbl = `${haishaVnumLabel(v)}　${v.payload}kg`;
+      const selected = String(currentVid) === String(v.id) ? 'selected' : '';
+      return `<option value="${v.id}" ${selected}>${lbl}</option>`;
+    }).join('');
+  const ov = document.getElementById('vpicker-overlay');
+  ov.style.display = 'flex';
+}
+function closeVehiclePicker() {
+  document.getElementById('vpicker-overlay').style.display = 'none';
+  _vpickerDriverId = null;
+}
+function applyVehiclePicker() {
+  const vid = document.getElementById('vpicker-select').value;
+  if (_vpickerDriverId !== null) haishaSetVehicle(_vpickerDriverId, vid);
+  closeVehiclePicker();
+}
+
+function renderHaisha() {
+  const date = document.getElementById('haisha-date').value;
+  if (!date) return;
+
+  // 日付が変わったらvehicleMapをリセット（古い日付の割当が残らないように）
+  if (haishaDateVal !== date) {
+    haishaVehicleMap = {};
+  }
+  haishaDateVal = date;
+
+  // 積置き分：前日以前に積んで当日下ろし
+  const preloaded = schedules.filter(s => s.unload_date === date && s.load_date < date);
+  // 配達：当日積み込み＆当日下ろし（翌日以降に下ろすものは明日以降の積置き分扱い）
+  const deliveries = schedules.filter(s => s.load_date === date && s.unload_date === date);
+
+  // 車両割当を初期化：① スケジュール実績 → ② ドライバーのデフォルト車両 の優先順
+  drivers.forEach(d => {
+    const did = String(d.id);
+    if (!haishaVehicleMap[did]) {
+      // まずそのドライバーのスケジュール実績から
+      const fromSched = [...preloaded, ...deliveries].find(s => String(s.driver_id) === did && s.vehicle_id);
+      if (fromSched) {
+        haishaVehicleMap[did] = String(fromSched.vehicle_id);
+      } else if (d.default_vehicle_id) {
+        // なければドライバーに登録されたデフォルト車両
+        haishaVehicleMap[did] = String(d.default_vehicle_id);
+      }
+    }
+  });
+
+  // 未割当（当日関係の仕事でドライバー未設定）
+  // 配車表で表示されているドライバーIDのセット（haisha_visible かつ 休みでない）
+  const visibleDriverIds = new Set(
+    drivers
+      .filter(d => {
+        const sid = String(d.id);
+        const isSpot = (spotVisibleData[date] || []).includes(sid);
+        const isVisible = d.haisha_visible !== false || isSpot;
+        const isDayOff = (dayOffData[date] || []).includes(sid);
+        return isVisible && !isDayOff;
+      })
+      .map(d => String(d.id))
+  );
+  // 傭車IDのセット
+  const youshaKeys = new Set(youshas.map(y => `y_${y.id}`));
+
+  // 未割当：① driver_idが空、または ② 配車表に表示されないドライバーに割り当てられている
+  const unassigned = [...deliveries, ...preloaded].filter(s => {
+    if (!s.driver_id || s.driver_id === '') return true;
+    const did = String(s.driver_id);
+    // 傭車は傭車行で表示されるので除外
+    if (youshaKeys.has(did)) return false;
+    // 配車表に出ていないドライバー（非表示 or 休み）はプールへ
+    return !visibleDriverIds.has(did);
+  });
+
+  // 未割当プール（相積みグループはまとめて表示）
+  const uWrap = document.getElementById('haisha-unassigned-wrap');
+  const uPool = document.getElementById('haisha-pool');
+  if (unassigned.length) {
+    uWrap.style.display = '';
+    const aitsuGroups = {};
+    const normalPool = [];
+    for (const s of unassigned) {
+      if (s.ai_tsumi && s.ai_tsumi_group) {
+        if (!aitsuGroups[s.ai_tsumi_group]) aitsuGroups[s.ai_tsumi_group] = [];
+        aitsuGroups[s.ai_tsumi_group].push(s);
+      } else {
+        normalPool.push(s);
+      }
+    }
+    const normalHtml = normalPool.map(s => haishaCardHTML(s, 'pool')).join('');
+    const aitsuHtml  = Object.values(aitsuGroups).map(grp => haishaAitsumiCardHTML(grp)).join('');
+    uPool.innerHTML = normalHtml + aitsuHtml;
+  } else {
+    uWrap.style.display = 'none';
+  }
+
+  // haisha_visible=true のドライバー、または当日スポット表示中のドライバーを display_order 順で表示
+  const spotIds = spotVisibleData[date] || [];
+  const seenDriverIds = drivers
+    .filter(d => d.haisha_visible !== false || spotIds.includes(String(d.id)))
+    .sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999))
+    .map(d => String(d.id));
+
+  const tbody = document.getElementById('haisha-tbody');
+
+  // ドライバー行（display_order 順）
+  const driverRowsHtml = seenDriverIds.map(did => {
+    const driver = drivers.find(d => String(d.id) === did);
+    if (!driver) return '';
+    const dPre = preloaded.filter(s => String(s.driver_id) === did);
+    const dDel = deliveries.filter(s => String(s.driver_id) === did);
+
+    // 休みチェック
+    const isDayOff = (dayOffData[date] || []).includes(did);
+    // スポット表示チェック（通常は非表示のドライバーが当日だけ表示）
+    const isSpot = (spotVisibleData[date] || []).includes(did);
+
+    const currentVid = haishaVehicleMap[did] || (dDel[0] || dPre[0])?.vehicle_id || '';
+    const vehicle = vehicles.find(v => String(v.id) === String(currentVid));
+    const payload = vehicle
+      ? Number(parseFloat(vehicle.payload) || 0).toLocaleString('ja-JP')
+      : '—';
+    const vnumHtml = vehicle ? haishaVnumShort(vehicle) : `<span style="color:#ccc">—</span>`;
+    const name = driver.name.replace(/\s+/g, '');
+
+    // スポットドライバーにはスポットバッジ＋解除ボタン、通常ドライバーには休みボタン
+    const dayOffBtn = isSpot
+      ? `<span style="margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #7c3aed;background:#ede9fe;color:#7c3aed;font-weight:700;">📍スポット</span>
+         <button style="margin-left:4px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #d1d5db;background:#f9fafb;color:#6b7280;cursor:pointer;"
+           onclick="removeSpotVisible('${did}','${date}')" title="スポット表示を解除">✕</button>`
+      : `<button
+          style="margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid ${isDayOff ? '#dc2626' : '#d1d5db'};background:${isDayOff ? '#fee2e2' : '#f9fafb'};color:${isDayOff ? '#dc2626' : '#6b7280'};cursor:pointer;font-weight:700;"
+          onclick="toggleDayOff('${did}','${date}')"
+          title="${isDayOff ? '休みを解除' : '休みにする'}"
+        >${isDayOff ? '✕ 休み中' : '休み'}</button>`;
+
+    // 積置き分も相積みグルーピング
+    const dPreAitsu  = dPre.filter(s => s.ai_tsumi);
+    const dPreNormal = dPre.filter(s => !s.ai_tsumi);
+    let preInner = isDayOff ? '' : dPreNormal.map(s => haishaCardHTML(s, 'preloaded')).join('');
+    if (!isDayOff && dPreAitsu.length) preInner += haishaAitsumiCardHTML(dPreAitsu, 'preloaded');
+
+    // 相積み分は1枠にまとめ、通常分は個別スロットへ
+    const dDelAitsu  = dDel.filter(s => s.ai_tsumi);
+    const dDelNormal = dDel.filter(s => !s.ai_tsumi);
+
+    const slotLabels = ['配達①','配達②','配達③','配達④','配達⑤'];
+    // slot_index が付いているものを優先配置、ないものは左から埋める
+    const slotMap = Array.from({length: 5}, () => []);
+    const unslotted = [];
+    if (!isDayOff) {
+      for (const s of dDelNormal) {
+        const si = s.slot_index;
+        if (si != null && si >= 0 && si < 5) slotMap[si].push(s);
+        else unslotted.push(s);
+      }
+      let ui = 0;
+      for (const s of unslotted) {
+        slotMap[Math.min(ui++, 4)].push(s);
+      }
+      if (dDelAitsu.length) {
+        const emptyIdx = slotMap.findIndex(arr => arr.length === 0);
+        if (emptyIdx >= 0) slotMap[emptyIdx] = [{ _aitsu: dDelAitsu }];
+        else slotMap[4].push({ _aitsu: dDelAitsu });
+      }
+    }
+
+    const rowStyle = isDayOff ? 'opacity:0.45;background:#f3f4f6;' : '';
+
+    const delCells = [0,1,2,3,4].map(i => {
+      let inner = '';
+      if (!isDayOff) {
+        inner = slotMap[i].map(item => {
+          if (item._aitsu) return haishaAitsumiCardHTML(item._aitsu);
+          return haishaCardHTML(item, 'delivery');
+        }).join('');
+      }
+      return `<td class="haisha-drop-cell" style="${isDayOff ? 'pointer-events:none;' : ''}"
+                ${isDayOff ? '' : `ondragover="hDragOver(event)" ondragleave="hDragLeave(event)" ondrop="hDrop(event,'${did}',${i})"`}>
+                <span class="slot-label">${slotLabels[i]}</span>
+                ${inner}
+              </td>`;
+    }).join('');
+
+    const cargoNotes = [...dPre, ...dDel].map(s => s.cargo_note).filter(Boolean).join(' / ');
+    const noteText   = [...dPre, ...dDel].map(s => s.note).filter(Boolean).join(' / ');
+    const note = [cargoNotes ? `<span style="color:#0891b2;font-weight:600">${cargoNotes}</span>` : '', noteText].filter(Boolean).join('<br>');
+
+    return `<tr style="${rowStyle}">
+      <td style="font-weight:700;white-space:nowrap;padding:10px 12px">
+        ${name}${dayOffBtn}
+      </td>
+      <td style="white-space:nowrap;padding:10px 12px;font-size:13px;${isDayOff ? '' : 'cursor:pointer'}"
+          ${isDayOff ? '' : `title="クリックで車両変更" onclick="openVehiclePicker('${did}','${currentVid}')"`}>
+        ${isDayOff ? '<span style="color:#ccc">—</span>' : vnumHtml}
+      </td>
+      <td style="text-align:right;font-weight:600;white-space:nowrap;padding:10px 12px">${isDayOff ? '—' : (payload ? payload+'kg' : '—')}</td>
+      <td class="haisha-drop-cell" style="${isDayOff ? 'pointer-events:none;' : ''}"
+          ${isDayOff ? '' : `ondragover="hDragOver(event)" ondragleave="hDragLeave(event)" ondrop="hDropToPreloaded(event,'${did}')"`}>
+        <span class="slot-label">積置き分</span>
+        ${preInner}
+      </td>
+      ${delCells}
+      <td style="padding:8px 12px;font-size:12px;color:var(--text-sub)">${isDayOff ? '' : note}</td>
+    </tr>`;
+  }).join('');
+
+  // 傭車行（display_order に従い挿入）
+  const youshaRowsHtml = youshas
+    .sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999))
+    .map(y => {
+      const ykey = `y_${y.id}`;
+      const yPre = preloaded.filter(s => s.driver_id === ykey);
+      const yDel = deliveries.filter(s => s.driver_id === ykey);
+      const payloadKg = Number(parseFloat(y.payload) || 0).toLocaleString('ja-JP');
+
+      // 積置き分も相積みグルーピング
+      const yPreAitsu  = yPre.filter(s => s.ai_tsumi);
+      const yPreNormal = yPre.filter(s => !s.ai_tsumi);
+      let preHtml = yPreNormal.map(s => haishaCardHTML(s, 'preloaded')).join('');
+      if (yPreAitsu.length) preHtml += haishaAitsumiCardHTML(yPreAitsu, 'preloaded');
+
+      // 通常ドライバーと同じ相積みグルーピング
+      const yDelAitsu  = yDel.filter(s => s.ai_tsumi);
+      const yDelNormal = yDel.filter(s => !s.ai_tsumi);
+      const ySlotMap = Array.from({length: 5}, () => []);
+      const yUnslotted = [];
+      for (const s of yDelNormal) {
+        const si = s.slot_index;
+        if (si != null && si >= 0 && si < 5) ySlotMap[si].push(s);
+        else yUnslotted.push(s);
+      }
+      let yui = 0;
+      for (const s of yUnslotted) {
+        ySlotMap[Math.min(yui++, 4)].push(s);
+      }
+      if (yDelAitsu.length) {
+        const emptyIdx = ySlotMap.findIndex(arr => arr.length === 0);
+        if (emptyIdx >= 0) ySlotMap[emptyIdx] = [{ _aitsu: yDelAitsu }];
+        else ySlotMap[4].push({ _aitsu: yDelAitsu });
+      }
+
+      const slotLabels = ['配達①','配達②','配達③','配達④','配達⑤'];
+      const delCells = [0,1,2,3,4].map(i => {
+        const inner = ySlotMap[i].map(item => {
+          if (item._aitsu) return haishaAitsumiCardHTML(item._aitsu);
+          return haishaCardHTML(item, 'delivery');
+        }).join('');
+        return `<td class="haisha-drop-cell"
+                  ondragover="hDragOver(event)"
+                  ondragleave="hDragLeave(event)"
+                  ondrop="hDrop(event,'${ykey}',${i})">
+                  <span class="slot-label">${slotLabels[i]}</span>
+                  ${inner}
+                </td>`;
+      }).join('');
+
+      const yCargoNotes = [...yPre, ...yDel].map(s => s.cargo_note).filter(Boolean).join(' / ');
+      const yNoteText   = [...yPre, ...yDel].map(s => s.note).filter(Boolean).join(' / ');
+      const note = [yCargoNotes ? `<span style="color:#0891b2;font-weight:600">${yCargoNotes}</span>` : '', yNoteText].filter(Boolean).join('<br>');
+      const vnumLines = y.vehicle_number.includes('/')
+        ? y.vehicle_number.split('/').map((n,i) =>
+            `<span style="display:block;${i===0?'font-weight:700':'color:var(--text-sub)'}">${n.trim()}</span>`
+          ).join('')
+        : `<span style="font-weight:700">${y.vehicle_number}</span>`;
+
+      return `<tr style="background:#fffbf0">
+        <td style="font-weight:700;white-space:nowrap;padding:10px 12px;font-size:13px">
+          ${y.display_name}<br><span style="font-size:11px;font-weight:400;color:var(--text-sub)">傭車</span>
+        </td>
+        <td style="white-space:nowrap;padding:10px 12px;font-size:13px">${vnumLines}</td>
+        <td style="text-align:right;font-weight:600;white-space:nowrap;padding:10px 12px">${payloadKg ? payloadKg+'kg' : '—'}</td>
+        <td class="haisha-drop-cell"
+            ondragover="hDragOver(event)"
+            ondragleave="hDragLeave(event)"
+            ondrop="hDropToPreloaded(event,'${ykey}')">
+          <span class="slot-label">積置き分</span>
+          ${preHtml}
+        </td>
+        ${delCells}
+        <td style="padding:8px 12px;font-size:12px;color:var(--text-sub)">${note}</td>
+      </tr>`;
+    }).join('');
+
+  // 空き行3行（手打ち入力）
+  const emptyRowsHtml = [0,1,2].map(i => {
+    const uid = `__empty_${i}`;
+    const t = haishaTextMap[uid] || {};
+    const delCells = [0,1,2,3].map(() =>
+      `<td class="haisha-drop-cell"
+           ondragover="hDragOver(event)"
+           ondragleave="hDragLeave(event)"
+           ondrop="hDropEmpty(event,'${uid}')"></td>`
+    ).join('');
+    return `<tr style="background:#fafbfc">
+      <td style="padding:6px 8px;min-width:80px">
+        <input class="haisha-inp" type="text" placeholder="ドライバー名"
+               value="${t.name || ''}"
+               oninput="haishaTextSave('${uid}','name',this.value)">
+      </td>
+      <td style="padding:6px 8px;min-width:90px">
+        <input class="haisha-inp" type="text" placeholder="車番"
+               value="${t.vehicleNum || ''}"
+               oninput="haishaTextSave('${uid}','vehicleNum',this.value)">
+      </td>
+      <td style="padding:6px 8px;min-width:70px">
+        <input class="haisha-inp" type="text" placeholder="積載量(kg)"
+               value="${t.payload || ''}"
+               oninput="haishaTextSave('${uid}','payload',this.value)"
+               style="text-align:right">
+      </td>
+      <td style="padding:6px 8px"></td>
+      ${delCells}
+      <td style="padding:8px 12px"></td>
+    </tr>`;
+  }).join('');
+
+  tbody.innerHTML = driverRowsHtml + youshaRowsHtml + emptyRowsHtml;
+}
+
+// 相積みカード（複数スケジュールを1枚にまとめて表示）
+function haishaAitsumiCardHTML(schedList, type='delivery') {
+  const groupId = schedList[0]?.ai_tsumi_group || '';
+  const ids = JSON.stringify(schedList.map(s=>s.id));
+  // 積置き分タイプは黄色ベース
+  const isPreloadedType = type === 'preloaded' || schedList.some(s => s.load_date < s.unload_date);
+  const st = schedList[0]?.load_status || '';
+  const stLabel = st === 'loaded' ? '積込完了' : st === 'delivered' ? '荷下ろし完了' : '未積み込み';
+  const stBadgeCls = st === 'loaded' ? 'st-loaded' : st === 'delivered' ? 'st-delivered' : 'st-none';
+  // カード全体の背景色：ステータスが優先（黄色ベースの上にst-loaded/deliveredが重なる）
+  const baseCls = isPreloadedType ? 'haisha-card preloaded' : 'haisha-card';
+  const stCardCls = st === 'loaded' ? ' st-loaded' : st === 'delivered' ? ' st-delivered' : '';
+  const cardCls = baseCls + stCardCls;
+
+  const totalWeight = schedList.reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+  const totalStr = totalWeight > 0 ? (Math.round(totalWeight * 10) / 10) + 'kg' : '';
+
+  // 積載量オーバーチェック（グループ合計 vs 車両上限）
+  const aitsuVehicle = vehicles.find(v => String(v.id) === String(schedList[0]?.vehicle_id));
+  const aitsuPayload = parseFloat(aitsuVehicle?.payload);
+  const aitsuOver = totalWeight > 0 && !isNaN(aitsuPayload) && totalWeight > aitsuPayload;
+
+  const rows = schedList.map(s =>
+    `<div style="padding:2px 0;border-bottom:1px solid #e8ecf4">
+      <div style="display:flex;align-items:center;gap:4px">
+        <span style="font-size:11px;color:#888;min-width:14px">▸</span>
+        <span style="font-weight:600;font-size:12px;flex:1">${s.load_place||'?'} → ${s.unload_place||'?'}</span>
+        ${s.weight ? `<span style="font-size:11px;color:#666;font-weight:600">${s.weight}kg</span>` : '<span style="font-size:11px;color:#bbb">—</span>'}
+      </div>
+      ${s.cargo_note ? `<div style="font-size:10px;color:#0891b2;font-weight:600;padding-left:18px">${s.cargo_note}</div>` : ''}
+    </div>`
+  ).join('');
+
+  const totalRow = totalStr
+    ? `<div style="display:flex;justify-content:flex-end;align-items:center;gap:6px;padding-top:3px;">
+        ${aitsuOver ? `<span style="font-size:10px;font-weight:700;color:#dc2626">⚠️ 積載量オーバー</span>` : ''}
+        <span style="font-size:11px;font-weight:700;color:${aitsuOver ? '#dc2626' : '#3730a3'}">合計 ${totalStr}</span>
+       </div>`
+    : '';
+
+  return `<div class="${cardCls}" draggable="true"
+    style="flex-direction:column;align-items:stretch;gap:0;padding:6px 10px;cursor:grab;min-width:160px;${aitsuOver ? 'border-color:#dc2626 !important;background:#fef2f2 !important;' : ''}"
+    ondragstart="hDragStartGroup(event,'${groupId}')"
+    ondragend="hDragEnd(event);this._dragged=true;setTimeout(()=>{this._dragged=false},200)"
+    onclick="if(!this._dragged)openAitsumiDetail(${ids});else this._dragged=false;">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+      <span style="font-size:10px;font-weight:700;background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:4px">🔀 相積み</span>
+      <span style="font-size:11px;color:#999">${schedList.length}件</span>
+      <span class="c-status ${stBadgeCls}" title="クリックでステータス変更"
+        onclick="event.stopPropagation();toggleGroupStatus('${groupId}')"
+        ondragstart="event.stopPropagation()">${stLabel}</span>
+    </div>
+    ${rows}
+    ${totalRow}
+  </div>`;
+}
+
+function openAitsumiDetail(ids) {
+  const list = ids.map(id => schedules.find(s => s.id === id)).filter(Boolean);
+  if (!list.length) return;
+  const totalWeight = list.reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+  const totalStr = totalWeight > 0 ? (Math.round(totalWeight * 10) / 10) + 'kg' : null;
+
+  const rows = list.map(s => {
+    const unloadPlace = places.find(p => p.name === s.unload_place);
+    const caution = unloadPlace?.caution
+      ? `<div style="font-size:11px;color:#b45309;background:#fff8e1;border-radius:4px;padding:2px 6px;margin-top:2px">⚠️ ${unloadPlace.caution}</div>`
+      : '';
+    const cargoNoteStr = s.cargo_note ? `<div style="font-size:11px;color:#0891b2;font-weight:600;margin-top:2px">📦 ${s.cargo_note}</div>` : '';
+    const noteStr = s.note ? `<div style="font-size:11px;color:#888;margin-top:2px">📝 ${s.note}</div>` : '';
+    return `<div style="padding:8px 0;border-bottom:1px solid #f0f0f0">
+      <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600">
+        <span style="color:#666">${s.load_place||'?'}</span>
+        <span style="color:#aaa">→</span>
+        <span style="flex:1">${s.unload_place||'?'}</span>
+        <span style="font-size:14px;font-weight:700;color:#3730a3;white-space:nowrap">${s.weight ? s.weight + 'kg' : '<span style="color:#bbb;font-weight:400">—</span>'}</span>
+      </div>
+      ${cargoNoteStr}
+      ${noteStr}
+      ${caution}
+    </div>`;
+  }).join('');
+
+  const groupId = list[0]?.ai_tsumi_group || '';
+  const st = list[0]?.load_status || '';
+  const stLabel = st === 'loaded' ? '積込完了' : st === 'delivered' ? '荷下ろし完了' : '未積み込み';
+  const stBadgeCls = st === 'loaded' ? 'st-loaded' : st === 'delivered' ? 'st-delivered' : 'st-none';
+  const statusBtn = groupId
+    ? `<span class="c-status ${stBadgeCls}" style="cursor:pointer;font-size:13px;padding:4px 12px"
+         title="クリックでステータス変更"
+         onclick="toggleGroupStatus('${groupId}').then(()=>{ document.getElementById('card-detail-overlay').style.display='none'; })">
+         ${stLabel} 🔄</span>`
+    : '';
+
+  document.getElementById('card-detail-content').innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px">
+      <h3 style="font-size:17px;font-weight:700;margin:0">🔀 相積み</h3>
+      <span style="font-size:12px;color:#888">${list.length}件</span>
+      ${totalStr ? `<span style="margin-left:auto;font-size:15px;font-weight:700;color:#3730a3">合計 ${totalStr}</span>` : ''}
+    </div>
+    ${rows}
+    ${totalStr ? `<div style="display:flex;justify-content:flex-end;padding:10px 0 2px;font-size:14px;font-weight:700;color:#3730a3;border-top:2px solid #e0e7ff;margin-top:2px">合計重量：${totalStr}</div>` : ''}
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #eee">
+      <div style="font-size:12px;color:#666;margin-bottom:8px">ステータス（クリックで変更）</div>
+      ${statusBtn}
+    </div>`;
+  document.getElementById('card-detail-overlay').style.display = 'flex';
+}
+
+function haishaCardHTML(s, type) {
+  const st = s.load_status || '';
+  // 積置き分タイプ（前日積み）は場所に関わらず常に黄色ベース
+  const isPreloadedType = s.load_date < s.unload_date;
+  const baseCls = (type === 'preloaded' || isPreloadedType) ? 'haisha-card preloaded' : 'haisha-card';
+  const stCls = st === 'loaded' ? ' st-loaded' : st === 'delivered' ? ' st-delivered' : '';
+  const cls = baseCls + stCls;
+
+  const stLabel = st === 'loaded' ? '積込完了' : st === 'delivered' ? '荷下ろし完了' : '未積み込み';
+  const stBadgeCls = st === 'loaded' ? 'st-loaded' : st === 'delivered' ? 'st-delivered' : 'st-none';
+  const statusBadge = `<span class="c-status ${stBadgeCls}"
+    title="クリックでステータス変更"
+    onclick="event.stopPropagation();toggleLoadStatus(${s.id})"
+    ondragstart="event.stopPropagation()">${stLabel}</span>`;
+
+  // 複数荷物があれば分割ボタンを表示
+  const items = parseSplitItems(s);
+  const splitBtn = items.length > 1
+    ? `<button title="配達を分割" onclick="event.stopPropagation();openSplit(${s.id})"
+         style="background:none;border:none;cursor:pointer;font-size:13px;padding:0 0 0 4px;line-height:1;color:#94a3b8"
+         ondragstart="event.stopPropagation()">✂️</button>`
+    : '';
+  const cargoTag = s.cargo_note
+    ? `<span style="display:block;font-size:10px;color:#0891b2;font-weight:600;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%">${s.cargo_note}</span>`
+    : '';
+  // 積載量オーバーチェック（この1件の重量 vs 車両の最大積載量）
+  const cardVehicle = vehicles.find(v => String(v.id) === String(s.vehicle_id));
+  const cardWeight  = parseFloat(s.weight);
+  const cardPayload = parseFloat(cardVehicle?.payload);
+  const overweight  = !isNaN(cardWeight) && !isNaN(cardPayload) && cardWeight > cardPayload;
+  const overTag = overweight
+    ? `<span style="display:block;font-size:10px;font-weight:700;color:#dc2626;margin-top:1px">⚠️ 積載量オーバー ${Math.round(cardWeight).toLocaleString('ja-JP')}kg</span>`
+    : '';
+  return `<div class="${cls}" draggable="true" data-id="${s.id}"
+    style="${overweight ? 'border-color:#dc2626 !important;background:#fef2f2 !important;' : ''}"
+    ondragstart="hDragStart(event,${s.id})"
+    ondragend="hDragEnd(event);this._dragged=true;setTimeout(()=>{this._dragged=false},200)"
+    onclick="if(!this._dragged)openCardDetail(${s.id});else this._dragged=false;">
+    <span class="c-place">${s.unload_place}</span>
+    ${s.weight ? `<span class="c-weight">${s.weight}kg</span>` : ''}
+    ${statusBadge}
+    ${splitBtn}
+    ${cargoTag}
+    ${overTag}
+  </div>`;
+}
+
+// ステータスを 未積み込み → 積み込み完了 → 荷下ろし完了 → 未積み込み で循環
+async function toggleLoadStatus(id) {
+  const s = schedules.find(x => x.id === id);
+  if (!s) return;
+  const cycle = { '': 'loaded', 'loaded': 'delivered', 'delivered': '' };
+  const next = cycle[s.load_status || ''];
+  const updated = { ...s, load_status: next };
+  const res = await fetch(`/api/schedules/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(updated),
+  });
+  if (res.ok) {
+    const saved = await res.json();
+    const idx = schedules.findIndex(x => x.id === id);
+    if (idx !== -1) schedules[idx] = saved;
+    renderHaisha();
+    renderSchedules();
+  }
+}
+
+// ── 荷物詳細ポップアップ ────────────────────────────────────
+function openCardDetail(id) {
+  const s = schedules.find(x => x.id === id);
+  if (!s) return;
+
+  const driver  = drivers.find(d => String(d.id) === String(s.driver_id));
+  const yousha  = !driver && String(s.driver_id || '').startsWith('y_')
+    ? youshas.find(y => `y_${y.id}` === String(s.driver_id)) : null;
+  const dName   = driver ? driver.name : yousha ? (yousha.display_name || yousha.name) + '（傭車）' : '未割当';
+  const vehicle = vehicles.find(v => String(v.id) === String(s.vehicle_id));
+  const vNum    = vehicle
+    ? (vehicle.kind === 'トレーラー' ? `${vehicle.head_number} / ${vehicle.trailer_number}` : vehicle.number)
+    : '未割当';
+
+  const stMap    = { '': '未積み込み', 'loaded': '積込完了', 'delivered': '荷下ろし完了' };
+  const stColors = { '': '#3b62c9', 'loaded': '#1a7a4c', 'delivered': '#555' };
+  const stBg     = { '': '#dce9ff', 'loaded': '#b7ecd0', 'delivered': '#d0d0d0' };
+  const st = s.load_status || '';
+
+  // 下ろし場所・積み込み場所の注意事項
+  const unloadPlace = places.find(p => p.name === s.unload_place);
+  const loadPlace   = places.find(p => p.name === s.load_place);
+  const unloadCaution = unloadPlace?.caution || '';
+  const loadCaution   = loadPlace?.caution   || '';
+
+  const row = (label, val) => val
+    ? `<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f3f3;font-size:14px">
+        <span style="color:#999;min-width:90px;flex-shrink:0">${label}</span>
+        <span style="font-weight:500">${val}</span>
+       </div>` : '';
+
+  const cautionBox = (label, text) => text
+    ? `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px">
+        <div style="font-weight:700;color:#b45309;margin-bottom:4px">⚠️ ${label}の注意事項</div>
+        <div style="color:#78350f;white-space:pre-wrap">${text}</div>
+       </div>` : '';
+
+  document.getElementById('card-detail-content').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
+      <h3 style="font-size:18px;font-weight:700;margin:0">${s.unload_place}</h3>
+      <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:6px;
+        background:${stBg[st]};color:${stColors[st]}">${stMap[st]}</span>
+    </div>
+    ${row('積み込み日', s.load_date)}
+    ${row('積み込み場所', s.load_place)}
+    ${row('下ろし日', s.unload_date)}
+    ${row('重量', s.weight ? s.weight + 'kg' : '')}
+    ${s.cargo_note ? `<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f3f3;font-size:14px"><span style="color:#999;min-width:90px;flex-shrink:0">荷物</span><span style="font-weight:600;color:#0891b2">${s.cargo_note}</span></div>` : ''}
+    ${row('ドライバー', dName)}
+    ${row('車両', vNum)}
+    ${row('メモ', s.note)}
+    ${cautionBox(s.unload_place, unloadCaution)}
+    ${cautionBox(s.load_place, loadCaution)}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid #eee">
+      <button class="btn btn-ghost btn-sm" onclick="closeCardDetail();editSched(${s.id})">✏️ 編集</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeCardDetail();toggleLoadStatus(${s.id})">🔄 ステータス変更</button>
+      <button class="btn btn-danger btn-sm" onclick="closeCardDetail();delSchedFromHaisha(${s.id})">🗑️ 削除</button>
+    </div>`;
+
+  document.getElementById('card-detail-overlay').style.display = 'flex';
+}
+function closeCardDetail() {
+  document.getElementById('card-detail-overlay').style.display = 'none';
+}
+
+// ── 車両制限チェック ──────────────────────────────────────
+// 大型車判定：トレーラー、または積載量8t以上のトラック
+function isLargeVehicle(vehicle) {
+  if (!vehicle) return false;
+  if (vehicle.kind === 'トレーラー') return true;
+  const p = parseFloat(vehicle.payload);
+  return !isNaN(p) && p >= 8000;
+}
+
+/**
+ * スケジュールと車両の組み合わせで制限違反を返す
+ * @param {object} sched - スケジュール（unload_place, weight）
+ * @param {object|null} vehicle - 車両（kind, payload）
+ * @returns {string[]} 違反メッセージ配列（空なら問題なし）
+ */
+function checkVehicleViolations(sched, vehicle) {
+  const msgs = [];
+  if (!sched) return msgs;
+
+  const place = places.find(p => p.name === sched.unload_place);
+  const caution = place?.caution || '';
+
+  if (/トレーラー禁止/.test(caution) && vehicle?.kind === 'トレーラー') {
+    msgs.push(`「${sched.unload_place}」はトレーラー禁止`);
+  }
+  if (/大型禁止/.test(caution) && isLargeVehicle(vehicle)) {
+    msgs.push(`「${sched.unload_place}」は大型車禁止（${vehicle.kind} ${vehicle.payload}kg）`);
+  }
+
+  const weight  = parseFloat(sched.weight);
+  const payload = parseFloat(vehicle?.payload);
+  if (!isNaN(weight) && !isNaN(payload) && weight > payload) {
+    msgs.push(`積載量オーバー: 荷物 ${weight}kg > 車両上限 ${payload}kg`);
+  }
+
+  return msgs;
+}
+
+// ── ドラッグ＆ドロップ ──────────────────────────────────────
+function hDragStart(event, id) {
+  dragSchedId = id;
+  dragGroupId = null;
+  event.dataTransfer.effectAllowed = 'move';
+  // ドラッグ中はクリック詳細を抑制するフラグ
+  event.currentTarget._dragged = true;
+  setTimeout(() => { event.target.classList.add('dragging'); }, 0);
+}
+function hDragStartGroup(event, groupId) {
+  dragGroupId = groupId;
+  dragSchedId = null;
+  event.dataTransfer.effectAllowed = 'move';
+  event.currentTarget._dragged = true;
+  setTimeout(() => { event.target.classList.add('dragging'); }, 0);
+}
+function hDragEnd(event) {
+  event.target.classList.remove('dragging');
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+function hDragOver(event) {
+  event.preventDefault();
+  event.currentTarget.classList.add('drag-over');
+}
+function hDragLeave(event) {
+  event.currentTarget.classList.remove('drag-over');
+}
+
+async function hDrop(event, driverId, slotIndex) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+
+  // 休みチェック
+  if ((dayOffData[haishaDateVal] || []).includes(String(driverId))) {
+    alert('このドライバーは休みです。配車できません。');
+    return;
+  }
+
+  const vehicleId = haishaVehicleMap[String(driverId)] || '';
+  // haishaVehicleMapにない場合はドライバーのdefault_vehicle_idをfallback
+  const driver    = drivers.find(d => String(d.id) === String(driverId));
+  const fallbackVid = vehicleId || String(driver?.default_vehicle_id || '');
+  const vehicle   = vehicles.find(v => String(v.id) === fallbackVid) || null;
+
+  // ── 相積みグループごと移動 ──────────────────────────────
+  if (dragGroupId) {
+    const grp = schedules.filter(s => s.ai_tsumi_group === dragGroupId);
+    // 制限チェック（グループ内全スケジュール）
+    const allMsgs = grp.flatMap(s => checkVehicleViolations(s, vehicle));
+    if (allMsgs.length) {
+      const ok = confirm('⚠️ 制限違反があります：\n' + allMsgs.join('\n') + '\n\nこのまま割り当てますか？');
+      if (!ok) return;
+    }
+    for (const s of grp) {
+      // 積置き分（load_date < 当日）を配達スロットへ移動する場合はload_dateを当日に修正
+      const grpFixedLoadDate = s.load_date < haishaDateVal ? haishaDateVal : s.load_date;
+      await fetch(`/api/schedules/${s.id}`, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ ...s, driver_id: String(driverId), vehicle_id: fallbackVid, load_date: grpFixedLoadDate }),
+      });
+    }
+    dragGroupId = null;
+    await loadAll(); renderHaisha();
+    return;
+  }
+
+  if (!dragSchedId) return;
+  const sched = schedules.find(s => s.id === dragSchedId);
+  if (!sched) return;
+
+  // 制限チェック（単体カード）
+  const singleMsgs = checkVehicleViolations(sched, vehicle);
+  if (singleMsgs.length) {
+    const ok = confirm('⚠️ 制限違反があります：\n' + singleMsgs.join('\n') + '\n\nこのまま割り当てますか？');
+    if (!ok) return;
+  } else if (vehicle && !sched.weight) {
+    // 重量未入力のため積載量チェック不能 → 注意喚起
+    const w = prompt(`「${sched.unload_place}」の重量が未入力です。\n車両上限: ${Number(parseFloat(vehicle.payload)||0).toLocaleString('ja-JP')}kg\n\n重量(kg)を入力してください（スキップする場合は空欄のままOK）:`);
+    if (w !== null && w.trim() !== '') {
+      const updated = { ...sched, weight: w.trim() };
+      await fetch(`/api/schedules/${sched.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated),
+      });
+      schedules[schedules.findIndex(s => s.id === sched.id)] = updated;
+      // 入力後に再度チェック
+      const recheckMsgs = checkVehicleViolations({ ...sched, weight: w.trim() }, vehicle);
+      if (recheckMsgs.length) {
+        const ok = confirm('⚠️ 積載量オーバーです：\n' + recheckMsgs.join('\n') + '\n\nこのまま割り当てますか？');
+        if (!ok) return;
+      }
+    }
+  }
+
+  // 積置き分（load_date < haishaDateVal）→ 配達スロットに移動した場合、load_date を当日に修正
+  const fixedLoadDate = sched.load_date < haishaDateVal ? haishaDateVal : sched.load_date;
+
+  await fetch(`/api/schedules/${sched.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...sched, driver_id: String(driverId), vehicle_id: fallbackVid, load_date: fixedLoadDate, slot_index: slotIndex ?? null }),
+  });
+  await loadAll();
+  renderHaisha();
+}
+
+// 配達 → 積置き分セルにドロップ（load_date を前日に修正）
+async function hDropToPreloaded(event, driverId) {
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+
+  // 休みチェック
+  if ((dayOffData[haishaDateVal] || []).includes(String(driverId))) {
+    alert('このドライバーは休みです。配車できません。');
+    return;
+  }
+
+  const vehicleId = haishaVehicleMap[String(driverId)] || '';
+  const preDriver  = drivers.find(d => String(d.id) === String(driverId));
+  const preFallbackVid = vehicleId || String(preDriver?.default_vehicle_id || '');
+  const vehicle   = vehicles.find(v => String(v.id) === preFallbackVid) || null;
+  const d = new Date(haishaDateVal);
+  d.setDate(d.getDate() - 1);
+  const prevDay = d.toISOString().split('T')[0];
+
+  // ── 相積みグループごと積置きに移動（既存グループとマージ）──
+  if (dragGroupId) {
+    const grp = schedules.filter(s => s.ai_tsumi_group === dragGroupId);
+    // 制限チェック
+    const grpMsgs = grp.flatMap(s => checkVehicleViolations(s, vehicle));
+    if (grpMsgs.length) {
+      const ok = confirm('⚠️ 制限違反があります：\n' + grpMsgs.join('\n') + '\n\nこのまま割り当てますか？');
+      if (!ok) return;
+    }
+    // 既存の相積みと統合するか確認
+    const existingPre = schedules.filter(s =>
+      s.unload_date === haishaDateVal && s.load_date < haishaDateVal &&
+      String(s.driver_id) === String(driverId) && s.ai_tsumi &&
+      s.ai_tsumi_group !== dragGroupId
+    );
+    const masterGroupId = existingPre[0]?.ai_tsumi_group || dragGroupId;
+    // 既存グループを統合
+    for (const s of existingPre) {
+      if (s.ai_tsumi_group !== masterGroupId) {
+        await fetch(`/api/schedules/${s.id}`, {
+          method: 'PUT', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ ...s, ai_tsumi_group: masterGroupId }),
+        });
+      }
+    }
+    for (const s of grp) {
+      await fetch(`/api/schedules/${s.id}`, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ ...s, driver_id: String(driverId), vehicle_id: vehicleId, load_date: prevDay, unload_date: haishaDateVal, ai_tsumi_group: masterGroupId }),
+      });
+    }
+    dragGroupId = null;
+    await loadAll(); renderHaisha();
+    return;
+  }
+
+  if (!dragSchedId) return;
+  const sched = schedules.find(s => s.id === dragSchedId);
+  if (!sched) return;
+
+  // 制限チェック（単体）
+  const preSingleMsgs = checkVehicleViolations(sched, vehicle);
+  if (preSingleMsgs.length) {
+    const ok = confirm('⚠️ 制限違反があります：\n' + preSingleMsgs.join('\n') + '\n\nこのまま割り当てますか？');
+    if (!ok) return;
+  }
+
+  const vehicleIdSingle = vehicleId || sched.vehicle_id || '';
+
+  // 積置き分に既存の相積みカードがあれば自動マージ
+  const existingPreAitsu = schedules.filter(s =>
+    s.unload_date === haishaDateVal && s.load_date < haishaDateVal &&
+    String(s.driver_id) === String(driverId) && s.ai_tsumi && s.id !== sched.id
+  );
+  // 複数グループを1つに統合（異なるgroupIdが混在している場合も含む）
+  const allPreAitsu = [...existingPreAitsu];
+  if (sched.ai_tsumi) {
+    // ドロップカード自体も相積み → グループを統合
+    const masterGroupId = allPreAitsu[0]?.ai_tsumi_group || sched.ai_tsumi_group || `aitsu_${Date.now()}`;
+    for (const s of allPreAitsu) {
+      if (s.ai_tsumi_group !== masterGroupId) {
+        await fetch(`/api/schedules/${s.id}`, {
+          method: 'PUT', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ ...s, ai_tsumi_group: masterGroupId }),
+        });
+      }
+    }
+    await fetch(`/api/schedules/${sched.id}`, {
+      method: 'PUT', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ ...sched, driver_id: String(driverId), vehicle_id: vehicleIdSingle, load_date: prevDay, unload_date: haishaDateVal, ai_tsumi: true, ai_tsumi_group: masterGroupId }),
+    });
+    await loadAll(); renderHaisha();
+    return;
+  }
+
+  // 通常移動
+  await fetch(`/api/schedules/${sched.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      ...sched,
+      driver_id: String(driverId),
+      vehicle_id: vehicleIdSingle,
+      load_date: prevDay,
+      unload_date: haishaDateVal,
+    }),
+  });
+  await loadAll();
+  renderHaisha();
+}
+
+async function dropToPool(event) {
+  event.preventDefault();
+  document.getElementById('haisha-pool').classList.remove('drag-over');
+
+  // ── 相積みグループを未割り当てプールに戻す（グループは維持）──
+  if (dragGroupId) {
+    const grp = schedules.filter(s => s.ai_tsumi_group === dragGroupId);
+    for (const s of grp) {
+      await fetch(`/api/schedules/${s.id}`, {
+        method: 'PUT', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ ...s, driver_id: '', vehicle_id: '', slot_index: null }),
+      });
+    }
+    dragGroupId = null;
+    await loadAll(); renderHaisha();
+    return;
+  }
+
+  if (!dragSchedId) return;
+  const sched = schedules.find(s => s.id === dragSchedId);
+  if (!sched) return;
+  await fetch(`/api/schedules/${sched.id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...sched, driver_id: '', vehicle_id: '', slot_index: null }),
+  });
+  await loadAll();
+  renderHaisha();
+}
+
+// ── 自動振り分け ──────────────────────────────────────────
+async function autoAssignHaisha() {
+  const date = haishaDateVal;
+  if (!date) { alert('日付を選択してください'); return; }
+
+  const unassigned = schedules.filter(s =>
+    (!s.driver_id || s.driver_id === '') &&
+    (
+      (s.load_date === date && s.unload_date === date) ||   // 当日配達
+      (s.unload_date === date && s.load_date < date)        // 積置き分（前日以前に積んで当日下ろし）
+    )
+  );
+  if (!unassigned.length) { alert('未割当の仕事はありません'); return; }
+
+  // 当日すでに使われているドライバー・車両
+  const busyD = busyDriverIds(date, date);
+  const busyV = busyVehicleIds(date, date);
+  const dayOffIds = dayOffData[date] || [];
+  const freeDrivers = drivers.filter(d =>
+    d.status === '稼働中' &&
+    d.haisha_visible !== false &&
+    !dayOffIds.includes(String(d.id)) &&
+    !busyD.has(String(d.id))
+  );
+  const freeVehicles = vehicles.filter(v => !busyV.has(String(v.id)));
+
+  if (!freeDrivers.length) {
+    alert('空きドライバーがいません。手動で割り当ててください。');
+    return;
+  }
+
+  // ドライバーごとの車両を事前にマッピング
+  const driverVehicleMap = {};
+  for (const d of freeDrivers) {
+    const vid = haishaVehicleMap[String(d.id)] || '';
+    driverVehicleMap[d.id] = vehicles.find(v => String(v.id) === String(vid)) || null;
+  }
+
+  // 重量が大きい順にソート
+  const sorted = [...unassigned].sort((a, b) => parseFloat(b.weight || 0) - parseFloat(a.weight || 0));
+
+  const updates = [];
+  const failedItems = [];
+  const usedDriverIds = new Set();
+
+  for (const s of sorted) {
+    // 制限なし・積載量OK なドライバーを優先（積載量の大きい順）
+    const candidates = freeDrivers
+      .filter(d => !usedDriverIds.has(String(d.id)))
+      .map(d => ({ driver: d, vehicle: driverVehicleMap[d.id] }))
+      .filter(({ vehicle }) => checkVehicleViolations(s, vehicle).length === 0)
+      .sort((a, b) => parseFloat(b.vehicle?.payload || 0) - parseFloat(a.vehicle?.payload || 0));
+
+    if (candidates.length) {
+      const { driver, vehicle } = candidates[0];
+      updates.push({ ...s, driver_id: String(driver.id), vehicle_id: vehicle ? String(vehicle.id) : '' });
+      usedDriverIds.add(String(driver.id));
+    } else {
+      // 制限を満たすドライバーがいない → スキップして記録
+      failedItems.push(s);
+    }
+  }
+
+  if (!updates.length) {
+    alert('⚠️ 制限・積載量の条件を満たせるドライバーがいないため、自動振り分けできませんでした。\n手動で割り当ててください。');
+    return;
+  }
+
+  await Promise.all(updates.map(u =>
+    fetch(`/api/schedules/${u.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(u),
+    })
+  ));
+  await loadAll();
+  renderHaisha();
+
+  if (failedItems.length) {
+    const names = failedItems.map(s => `・${s.unload_place}（${s.weight || '?'}kg）`).join('\n');
+    alert(`⚠️ 以下の仕事は制限・積載量の条件を満たせるドライバーがいないため、未割り当てのままです：\n${names}\n\n手動で割り当ててください。`);
+  }
+}
+
+loadAll();
+</script>
+</html>
