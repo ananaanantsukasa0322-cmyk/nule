@@ -1293,7 +1293,7 @@ function setupAutocomplete(inputId, datalistId, getOptsOverride) {
                data-val="${label.replace(/"/g,'&quot;')}">${label}</li>`;
     }).join('');
     drop.querySelectorAll('li[data-val]').forEach(li => {
-      li.addEventListener('mouseenter', () => li.style.background = '#eff4ff');
+      li.addEventListener('mouseenter', () => li.style.background = '#2a2a2a');
       li.addEventListener('mouseleave', () => li.style.background = '');
     });
     reposition();
@@ -2078,7 +2078,7 @@ function renderSchedules() {
 
     return `<tr class="${isDone ? 'done-row' : ''} ${rowBg}">
       <td style="min-width:90px">${statusBadge}${doneBtn}</td>
-      <td>${first.load_date}${unassignedBadge}<br><span style="font-size:11px;background:#e0e7ff;color:#3730a3;border-radius:4px;padding:1px 6px">🔀 相積み×${grp.length}</span></td>
+      <td>${first.load_date}${unassignedBadge}<br><span style="font-size:11px;background:rgba(79,126,248,0.2);color:#93b5ff;border-radius:4px;padding:1px 6px">🔀 相積み×${grp.length}</span></td>
       <td colspan="2">${routeList}</td>
       <td style="text-align:right">${totalWeight ? Math.round(totalWeight).toLocaleString('ja-JP') + 'kg' : '-'}</td>
       ${vCell}
@@ -2240,7 +2240,7 @@ function toggleAitsumi() {
   document.getElementById('s-normal-mode').style.display = _aitsuMode ? 'none' : '';
   document.getElementById('s-aitsu-mode').style.display  = _aitsuMode ? '' : 'none';
   const btn = document.getElementById('aitsu-toggle-btn');
-  btn.style.background = _aitsuMode ? '#eff4ff' : '#fff';
+  btn.style.background = _aitsuMode ? 'rgba(79,126,248,0.15)' : '#1a1a1a';
   btn.style.borderColor = _aitsuMode ? 'var(--accent)' : '#d0d5e0';
   btn.style.color = _aitsuMode ? 'var(--accent)' : '#666';
   document.getElementById('s-modal-title').textContent = _aitsuMode ? '相積み追加' : '配車を追加';
@@ -2426,7 +2426,7 @@ function openSpotModal() {
       <div style="font-size:12px;color:var(--text-sub);margin-bottom:16px">${date} のみ表示するドライバーを選択</div>
       ${listHtml}
       <button onclick="document.getElementById('spot-modal').remove()"
-        style="margin-top:8px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#f9fafb;cursor:pointer;font-size:13px;">
+        style="margin-top:8px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#1a1a1a;cursor:pointer;font-size:13px;">
         キャンセル
       </button>
     </div>`;
@@ -2827,7 +2827,7 @@ function renderDashboard() {
     const unassigned  = active.filter(s => !s.driver_id || s.driver_id === '');
     const assigned    = active.filter(s =>  s.driver_id && s.driver_id !== '');
 
-    const headerBg = isToday ? '#3b62c9' : isSun ? '#fff0f0' : isSat ? '#f0f4ff' : '#f5f7fa';
+    const headerBg = isToday ? '#3b62c9' : isSun ? '#1a1212' : isSat ? '#121218' : '#1a1a1a';
     const headerColor = isToday ? '#fff' : isSun ? '#d32f2f' : isSat ? '#3b62c9' : 'var(--text-sub)';
     const borderColor = isToday ? '#3b62c9' : 'var(--border)';
 
@@ -2840,7 +2840,7 @@ function renderDashboard() {
         const w = parseFloat(s.weight), p = parseFloat(v?.payload);
         return !isNaN(w) && !isNaN(p) && w > p;
       })();
-      return `<div style="background:${hasVio?'#fee2e2':'#eff4ff'};border:1px solid ${hasVio?'#fca5a5':'#c7d9fd'};border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;cursor:pointer"
+      return `<div style="background:${hasVio?'rgba(239,68,68,0.12)':'rgba(79,126,248,0.12)'};border:1px solid ${hasVio?'rgba(239,68,68,0.3)':'rgba(79,126,248,0.3)'};border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;cursor:pointer"
         onclick="switchPage('haisha');document.getElementById('haisha-date').value='${dateStr}';renderHaisha()"
         title="${place} ${weight}">
         <span style="font-weight:700;color:${hasVio?'#dc2626':'#3b62c9'}">${dname}</span>
@@ -2868,7 +2868,7 @@ function renderDashboard() {
           const place = s.unload_place || '?';
           const weight = s.weight ? `${Number(s.weight).toLocaleString('ja-JP')}kg` : '';
           const cargo = s.cargo_note || '';
-          return `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;cursor:pointer"
+          return `<div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;cursor:pointer"
             onclick="switchPage('haisha');document.getElementById('haisha-date').value='${dateStr}';renderHaisha()"
             title="${place} ${weight}">
             <span style="font-weight:700;color:#856404">⚠️ 未割当</span>
@@ -3279,7 +3279,7 @@ function renderEditDetail() {
 
   const rows = editingPlan.rows.map((row, ri) => {
     const badge = row.type === 'yousha'
-      ? '<span style="font-size:10px;background:#fff3cd;color:#856404;border-radius:4px;padding:1px 5px;margin-left:4px">傭車</span>' : '';
+      ? '<span style="font-size:10px;background:rgba(245,158,11,0.15);color:#fbbf24;border-radius:4px;padding:1px 5px;margin-left:4px">傭車</span>' : '';
 
     // 積置き分セル（ドロップ可）
     const preCards = (row.preloaded || []).map((d, di) =>
@@ -3329,7 +3329,7 @@ function renderEditDetail() {
   document.getElementById('plan-detail-content').innerHTML = `
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
-        <thead><tr style="background:#f5f7fa">
+        <thead><tr style="background:#1a1a1a">
           <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">運転手</th>
           <th style="padding:10px;text-align:left;font-size:11px;color:var(--text-sub)">車番</th>
           <th style="padding:10px;text-align:right;font-size:11px;color:var(--text-sub)">積載量(kg)</th>
@@ -3623,11 +3623,11 @@ function _renderHaishaInner() {
 
     // スポットドライバーにはスポットバッジ＋解除ボタン、通常ドライバーには休みボタン
     const dayOffBtn = isSpot
-      ? `<span style="margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #7c3aed;background:#ede9fe;color:#7c3aed;font-weight:700;">📍スポット</span>
-         <button style="margin-left:4px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #d1d5db;background:#f9fafb;color:#6b7280;cursor:pointer;"
+      ? `<span style="margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #7c3aed;background:rgba(124,58,237,0.15);color:#a78bfa;font-weight:700;">📍スポット</span>
+         <button style="margin-left:4px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #d1d5db;background:#1a1a1a;color:#888;cursor:pointer;"
            onclick="removeSpotVisible('${did}','${date}')" title="スポット表示を解除">✕</button>`
       : `<button
-          style="margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid ${isDayOff ? '#dc2626' : '#d1d5db'};background:${isDayOff ? '#fee2e2' : '#f9fafb'};color:${isDayOff ? '#dc2626' : '#6b7280'};cursor:pointer;font-weight:700;"
+          style="margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid ${isDayOff ? '#dc2626' : '#d1d5db'};background:${isDayOff ? 'rgba(239,68,68,0.12)' : '#1a1a1a'};color:${isDayOff ? '#dc2626' : '#6b7280'};cursor:pointer;font-weight:700;"
           onclick="toggleDayOff('${did}','${date}')"
           title="${isDayOff ? '休みを解除' : '休みにする'}"
         >${isDayOff ? '✕ 休み中' : '休み'}</button>`;
@@ -3762,7 +3762,7 @@ function _renderHaishaInner() {
           ).join('')
         : `<span style="font-weight:700">${(y.vehicle_number || y.vehicle_info || '')}</span>`;
 
-      return `<tr style="background:#fffbf0">
+      return `<tr style="background:#1a1a0a">
         <td style="font-weight:700;white-space:nowrap;padding:10px 12px;font-size:13px">
           ${y.display_name}<br><span style="font-size:11px;font-weight:400;color:var(--text-sub)">傭車</span>
         </td>
@@ -3862,7 +3862,7 @@ function haishaAitsumiCardHTML(schedList, type='delivery') {
     ondragend="hDragEnd(event);this._dragged=true;setTimeout(()=>{this._dragged=false},200)"
     onclick="if(!this._dragged)openAitsumiDetail(${ids});else this._dragged=false;">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-      <span style="font-size:10px;font-weight:700;background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:4px">🔀 相積み</span>
+      <span style="font-size:10px;font-weight:700;background:rgba(79,126,248,0.2);color:#93b5ff;padding:2px 6px;border-radius:4px">🔀 相積み</span>
       <span style="font-size:11px;color:#999">${schedList.length}件</span>
       <span class="c-status ${stBadgeCls}" title="クリックでステータス変更"
         onclick="event.stopPropagation();toggleGroupStatus('${groupId}')"
@@ -3882,7 +3882,7 @@ function openAitsumiDetail(ids) {
   const rows = list.map(s => {
     const unloadPlace = places.find(p => p.name === s.unload_place);
     const caution = unloadPlace?.caution
-      ? `<div style="font-size:11px;color:#b45309;background:#fff8e1;border-radius:4px;padding:2px 6px;margin-top:2px">⚠️ ${unloadPlace.caution}</div>`
+      ? `<div style="font-size:11px;color:#b45309;background:rgba(245,158,11,0.12);border-radius:4px;padding:2px 6px;margin-top:2px">⚠️ ${unloadPlace.caution}</div>`
       : '';
     const cargoNoteStr = s.cargo_note ? `<div style="font-size:11px;color:#0891b2;font-weight:600;margin-top:2px">📦 ${s.cargo_note}</div>` : '';
     const noteStr = s.note ? `<div style="font-size:11px;color:#888;margin-top:2px">📝 ${s.note}</div>` : '';
@@ -3917,7 +3917,7 @@ function openAitsumiDetail(ids) {
       ${totalStr ? `<span style="margin-left:auto;font-size:15px;font-weight:700;color:#3730a3">合計 ${totalStr}</span>` : ''}
     </div>
     ${rows}
-    ${totalStr ? `<div style="display:flex;justify-content:flex-end;padding:10px 0 2px;font-size:14px;font-weight:700;color:#3730a3;border-top:2px solid #e0e7ff;margin-top:2px">合計重量：${totalStr}</div>` : ''}
+    ${totalStr ? `<div style="display:flex;justify-content:flex-end;padding:10px 0 2px;font-size:14px;font-weight:700;color:#93b5ff;border-top:2px solid rgba(79,126,248,0.3);margin-top:2px">合計重量：${totalStr}</div>` : ''}
     <div style="margin-top:14px;padding-top:14px;border-top:1px solid #eee">
       <div style="font-size:12px;color:#666;margin-bottom:8px">ステータス（クリックで変更）</div>
       ${statusBtn}
@@ -4025,7 +4025,7 @@ function openCardDetail(id) {
        </div>` : '';
 
   const cautionBox = (label, text) => text
-    ? `<div style="background:#fff8e1;border:1px solid #ffc107;border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px">
+    ? `<div style="background:rgba(245,158,11,0.12);border:1px solid rgba(245,158,11,0.3);border-radius:8px;padding:10px 14px;margin-top:10px;font-size:13px">
         <div style="font-weight:700;color:#b45309;margin-bottom:4px">⚠️ ${label}の注意事項</div>
         <div style="color:#78350f;white-space:pre-wrap">${text}</div>
        </div>` : '';
