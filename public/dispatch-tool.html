@@ -3943,7 +3943,8 @@ function haishaAitsumiCardHTML(schedList, type='delivery') {
     style="flex-direction:column;align-items:stretch;gap:0;padding:6px 10px;cursor:grab;min-width:160px;${aitsuOver ? 'border-color:#dc2626 !important;background:#fef2f2 !important;' : ''}"
     ondragstart="hDragStartGroup(event,'${groupId}')"
     ondragend="hDragEnd(event);this._dragged=true;setTimeout(()=>{this._dragged=false},200)"
-    onclick="if(!this._dragged)openAitsumiDetail(${ids});else this._dragged=false;">
+    onclick="if(!this._dragged)openAitsumiDetail(JSON.parse(this.dataset.ids));else this._dragged=false;"
+    data-ids='${ids}'>
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
       <span style="font-size:10px;font-weight:700;background:rgba(79,126,248,0.2);color:#93b5ff;padding:2px 6px;border-radius:4px">🔀 相積み</span>
       <span style="font-size:11px;color:#999">${schedList.length}件</span>
