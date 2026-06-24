@@ -258,47 +258,56 @@ function switchPage(name) {
 
 // ── データ ────────────────────────────────────────────────
 async function loadAll() {
-  [vehicles, drivers, schedules, places, youshas, loadPlaces, dayOffData, spotVisibleData] = await Promise.all([
-    fetch('/api/vehicles').then(r => r.json()),
-    fetch('/api/drivers').then(r => r.json()),
-    fetch('/api/schedules').then(r => r.json()),
-    fetch('/api/places').then(r => r.json()),
-    fetch('/api/youshas').then(r => r.json()),
-    fetch('/api/load_places').then(r => r.json()),
-    fetch('/api/day_off').then(r => r.json()),
-    fetch('/api/spot_visible').then(r => r.json()),
-  ]);
-  // default_vehicle_id 未設定のドライバーは過去スケジュール実績から自動セット
-  await autoSetDefaultVehicles();
+  try {
+    const results = await Promise.all([
+      fetch('/api/vehicles').then(r => r.json()).catch(() => []),
+      fetch('/api/drivers').then(r => r.json()).catch(() => []),
+      fetch('/api/schedules').then(r => r.json()).catch(() => []),
+      fetch('/api/places').then(r => r.json()).catch(() => []),
+      fetch('/api/youshas').then(r => r.json()).catch(() => []),
+      fetch('/api/load_places').then(r => r.json()).catch(() => []),
+      fetch('/api/day_off').then(r => r.json()).catch(() => ({})),
+      fetch('/api/spot_visible').then(r => r.json()).catch(() => ({})),
+    ]);
+    vehicles = Array.isArray(results[0]) ? results[0] : [];
+    drivers = Array.isArray(results[1]) ? results[1] : [];
+    schedules = Array.isArray(results[2]) ? results[2] : [];
+    places = Array.isArray(results[3]) ? results[3] : [];
+    youshas = Array.isArray(results[4]) ? results[4] : [];
+    loadPlaces = Array.isArray(results[5]) ? results[5] : [];
+    dayOffData = (results[6] && typeof results[6] === 'object' && !Array.isArray(results[6])) ? results[6] : {};
+    spotVisibleData = (results[7] && typeof results[7] === 'object' && !Array.isArray(results[7])) ? results[7] : {};
+    await autoSetDefaultVehicles();
+  } catch(e) { console.warn('loadAll error:', e); }
   renderAll();
-  // カスタムオートコンプリートを初期化（datalistが更新されてから呼ぶ）
   initPlaceAutocompletes();
 }
 
 async function autoSetDefaultVehicles() {
-  // 直近スケジュールからドライバー→車両の対応を導出
-  const recentMap = {};
-  [...schedules].sort((a,b) => (b.load_date||'') < (a.load_date||'') ? -1 : 1).forEach(s => {
-    const did = String(s.driver_id || '');
-    const vid = String(s.vehicle_id || '');
-    if (did && vid && !recentMap[did]) recentMap[did] = vid;
-  });
-  // default_vehicle_id が未設定のドライバーにセット
-  for (const d of drivers) {
-    if (!d.default_vehicle_id && recentMap[String(d.id)]) {
-      const updated = { ...d, default_vehicle_id: Number(recentMap[String(d.id)]) };
-      const res = await fetch(`/api/drivers/${d.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updated),
-      });
-      if (res.ok) {
-        const saved = await res.json();
-        const idx = drivers.findIndex(x => x.id === d.id);
-        if (idx !== -1) drivers[idx] = saved;
+  try {
+    const recentMap = {};
+    [...schedules].sort((a,b) => (b.load_date||'') < (a.load_date||'') ? -1 : 1).forEach(s => {
+      const did = String(s.driver_id || '');
+      const vid = String(s.vehicle_id || '');
+      if (did && vid && !recentMap[did]) recentMap[did] = vid;
+    });
+    for (const d of drivers) {
+      if (!d.default_vehicle_id && recentMap[String(d.id)]) {
+        const vid = recentMap[String(d.id)];
+        const updated = { ...d, default_vehicle_id: vid };
+        const res = await fetch(`/api/drivers/${d.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updated),
+        });
+        if (res.ok) {
+          const saved = await res.json();
+          const idx = drivers.findIndex(x => x.id === d.id);
+          if (idx !== -1) drivers[idx] = saved;
+        }
       }
     }
-  }
+  } catch(e) { console.warn('autoSetDefaultVehicles:', e); }
 }
 
 function renderAll() {
@@ -2443,7 +2452,7 @@ function renderHaisha() {
       const ykey = `y_${y.id}`;
       const yPre = preloaded.filter(s => s.driver_id === ykey);
       const yDel = deliveries.filter(s => s.driver_id === ykey);
-      const payloadKg = Number(parseFloat(y.payload) || 0).toLocaleString('ja-JP');
+      const payloadKg = Number(parseFloat(y.payload || y.payment_rate) || 0).toLocaleString('ja-JP');
 
       // 積置き分も相積みグルーピング
       const yPreAitsu  = yPre.filter(s => s.ai_tsumi);
