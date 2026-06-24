@@ -598,4 +598,23 @@
     .suggest-box{background:rgba(245,158,11,.08)!important;border-color:rgba(245,158,11,.3)!important}
     .caution-box{background:rgba(245,158,11,.08)!important;border-color:rgba(245,158,11,.25)!important}
     .no-candidate{background:#1a1a1a!important;border-color:#444!important}
+    .haisha-inp::placeholder{color:#555!important}
+    .hd-inp{border-bottom-color:#555!important;color:#f5f5f5!important}
+    .hd-inp:focus{background:#222!important}
+    .hd-card{background:#1a1a1a!important;border-color:#555!important}
+    .assign-select{background:#1a1a1a!important;color:#f5f5f5!important;border-color:#444!important}
+    .assign-select.unassigned{background:#111!important;color:#666!important}
+    .haisha-vsel{background:#1a1a1a!important;color:#f5f5f5!important;border-color:#444!important}
+    .split-chip{background:rgba(79,126,248,.12)!important;border-color:rgba(79,126,248,.3)!important;color:#f5f5f5!important}
+    .badge-unassigned{background:rgba(245,158,11,.15)!important;color:#fbbf24!important}
+    .done-toggle.undone{background:#333!important;color:#888!important}
+    .done-toggle.done{background:rgba(34,197,94,.15)!important;color:#4ade80!important}
+    .alloc-item{background:rgba(79,126,248,.05)!important;border-color:rgba(79,126,248,.2)!important}
+    .alloc-bar-wrap{background:#333!important}
+    .cargo-item{background:#1a1a1a!important;border-color:#444!important}
+    .cargo-item input{background:#222!important;color:#f5f5f5!important;border-color:#444!important}
+    select option{background:#1a1a1a;color:#f5f5f5}
+    .completed-header h3{color:#888!important}
+    tr.sched-row-loaded{background:rgba(34,197,94,.05)!important}
+    tr.sched-row-delivered{background:rgba(136,136,136,.05)!important}
   </style>
