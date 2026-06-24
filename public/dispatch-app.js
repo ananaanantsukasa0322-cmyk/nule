@@ -737,7 +737,7 @@ function renderSchedules() {
     let vCell;
     if (isYousha) {
       const y = youshas.find(y => `y_${y.id}` === String(s.driver_id));
-      const vnum = y ? (y.vehicle_number || '—') : '—';
+      const vnum = y ? ((y.vehicle_number || y.vehicle_info || '') || '—') : '—';
       vCell = `<td class="assign-cell"><span style="font-size:13px;color:var(--text-sub)">${vnum}</span></td>`;
     } else {
       vCell = `<td class="assign-cell"><select class="assign-select${hasVehicle ? '' : ' unassigned'}" ${isDone ? 'disabled' : ''}
@@ -811,7 +811,7 @@ function renderSchedules() {
     let vCell;
     if (isYousha) {
       const y = youshas.find(y => `y_${y.id}` === String(first.driver_id));
-      vCell = `<td class="assign-cell"><span style="font-size:13px;color:var(--text-sub)">${y ? (y.vehicle_number||'—') : '—'}</span></td>`;
+      vCell = `<td class="assign-cell"><span style="font-size:13px;color:var(--text-sub)">${y ? ((y.vehicle_number || y.vehicle_info || '')||'—') : '—'}</span></td>`;
     } else {
       vCell = `<td class="assign-cell"><select class="assign-select${hasVehicle ? '' : ' unassigned'}" ${isDone ? 'disabled' : ''}
         onchange="assignGroupField('${first.ai_tsumi_group}','vehicle_id',this.value)">
@@ -1957,8 +1957,8 @@ async function saveDispatchPlan() {
     return {
       type: 'yousha',
       name: y.display_name,
-      vehicle_number: y.vehicle_number,
-      payload_kg: Number(parseFloat(y.payload) || 0),
+      vehicle_number: (y.vehicle_number || y.vehicle_info || ''),
+      payload_kg: Number(parseFloat(y.payload || '0') || 0),
       preloaded: preloaded.filter(s=>s.driver_id===ykey).map(s=>({place:s.unload_place,weight:s.weight,cargo_note:s.cargo_note||'',note:s.note||''})),
       deliveries: deliveries.filter(s=>s.driver_id===ykey).map(s=>({place:s.unload_place,weight:s.weight,cargo_note:s.cargo_note||'',note:s.note||''})),
     };
@@ -2464,7 +2464,7 @@ function _renderHaishaInner() {
       const ykey = `y_${y.id}`;
       const yPre = preloaded.filter(s => s.driver_id === ykey);
       const yDel = deliveries.filter(s => s.driver_id === ykey);
-      const payloadKg = Number(parseFloat(y.payload || y.payment_rate) || 0).toLocaleString('ja-JP');
+      const payloadKg = Number(parseFloat(y.payload || '0') || 0).toLocaleString('ja-JP');
 
       // 積置き分も相積みグルーピング
       const yPreAitsu  = yPre.filter(s => s.ai_tsumi);
@@ -2510,11 +2510,11 @@ function _renderHaishaInner() {
       const yCargoNotes = [...yPre, ...yDel].map(s => s.cargo_note).filter(Boolean).join(' / ');
       const yNoteText   = [...yPre, ...yDel].map(s => s.note).filter(Boolean).join(' / ');
       const note = [yCargoNotes ? `<span style="color:#0891b2;font-weight:600">${yCargoNotes}</span>` : '', yNoteText].filter(Boolean).join('<br>');
-      const vnumLines = y.vehicle_number.includes('/')
-        ? y.vehicle_number.split('/').map((n,i) =>
+      const vnumLines = (y.vehicle_number || y.vehicle_info || '').includes('/')
+        ? (y.vehicle_number || y.vehicle_info || '').split('/').map((n,i) =>
             `<span style="display:block;${i===0?'font-weight:700':'color:var(--text-sub)'}">${n.trim()}</span>`
           ).join('')
-        : `<span style="font-weight:700">${y.vehicle_number}</span>`;
+        : `<span style="font-weight:700">${(y.vehicle_number || y.vehicle_info || '')}</span>`;
 
       return `<tr style="background:#fffbf0">
         <td style="font-weight:700;white-space:nowrap;padding:10px 12px;font-size:13px">
