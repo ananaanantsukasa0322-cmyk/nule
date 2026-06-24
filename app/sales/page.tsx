@@ -206,7 +206,7 @@ function SalesContent() {
             {dispatches.map((d) => (
               <tr key={d.id}>
                 <td>{d.dispatch_date}</td>
-                <td>{d.client_name || d.client?.company_name || "—"}</td>
+                <td>{(d as Record<string, unknown>).client_name as string || d.client?.company_name || "—"}</td>
                 <td>{d.driver?.name || "—"}</td>
                 <td>
                   {d.route
