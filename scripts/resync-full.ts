@@ -53,7 +53,7 @@ async function main() {
     const { data } = await supabase.from('youshas').insert({
       name: y.name, display_name: y.display_name || '',
       company: '', phone: '', vehicle_info: y.vehicle_number || '',
-      payment_rate: 0, note: y.payload ? `最大積載量${y.payload}kg` : '',
+      payment_rate: 0, payload: y.payload || '', note: y.payload ? `最大積載量${y.payload}kg` : '',
     }).select('id').single()
     if (data) { yMap[String(y.id)] = data.id; console.log(`yousha: ${y.name} → y_${data.id}`) }
   }
