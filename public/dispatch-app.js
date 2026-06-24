@@ -1152,6 +1152,24 @@ async function saveSchedule() {
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify(data)
   });
+
+  // 荷主が入力された場合、同じ積み地・下ろし先の組み合わせを持つ荷主未設定スケジュールにも自動反映
+  if (data.client_name && data.load_place && data.unload_place) {
+    const toUpdate = schedules.filter(s =>
+      s.id !== id &&
+      !s.client_name &&
+      s.load_place === data.load_place &&
+      s.unload_place === data.unload_place
+    );
+    for (const s of toUpdate) {
+      await fetch(`/api/schedules/${s.id}`, {
+        method: 'PUT',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ client_name: data.client_name })
+      });
+    }
+  }
+
   closeModal('schedule'); await loadAll();
 }
 
