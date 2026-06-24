@@ -4035,32 +4035,33 @@ function editAitsumiGroup(groupId) {
   const grp = schedules.filter(s => s.ai_tsumi_group === groupId);
   if (!grp.length) return;
   const first = grp[0];
-  // 相積みモードで開く
-  if (!_aitsuMode) toggleAitsu();
-  document.getElementById('at-client-name').value = first.client_name || '';
-  document.getElementById('at-load-date').value = first.load_date || '';
-  document.getElementById('at-unload-date').value = first.unload_date || '';
-  document.getElementById('at-vehicle').value = first.vehicle_id || '';
-  document.getElementById('at-driver').value = first.driver_id || '';
-  // 既存行をセット
-  const rowsDiv = document.getElementById('at-rows');
-  rowsDiv.innerHTML = '';
-  grp.forEach((s, i) => {
-    addAitsuRow();
-    const n = document.getElementById('at-rows').children.length;
-    const el = document.getElementById('at-rows').lastElementChild;
-    const idx = el.id.replace('at-row-', '');
-    document.getElementById(`at-load-${idx}`).value = s.load_place || '';
-    document.getElementById(`at-unload-${idx}`).value = s.unload_place || '';
-    if (document.getElementById(`at-weight-${idx}`)) document.getElementById(`at-weight-${idx}`).value = s.weight || '';
-    if (document.getElementById(`at-cargo-${idx}`)) document.getElementById(`at-cargo-${idx}`).value = s.cargo_note || '';
-  });
-  // 既存グループを削除してから新規保存するためeditIdを設定
-  editId.schedule = '__aitsu_edit__';
-  // 保存時に既存グループを削除するフラグ
-  window._editAitsuGroupId = groupId;
-  document.getElementById('s-modal-title').textContent = '相積み編集';
-  document.getElementById('modal-schedule').classList.add('open');
+  // まずモーダルを通常オープン（車両/ドライバー選択肢を初期化）
+  openModal('schedule');
+  // 相積みモードに切り替え
+  if (!_aitsuMode) toggleAitsumi();
+  // フィールドをセット
+  setTimeout(() => {
+    document.getElementById('at-client-name').value = first.client_name || '';
+    document.getElementById('at-load-date').value = first.load_date || '';
+    document.getElementById('at-unload-date').value = first.unload_date || '';
+    document.getElementById('at-vehicle').value = first.vehicle_id || '';
+    document.getElementById('at-driver').value = first.driver_id || '';
+    // 既存行をセット
+    const rowsDiv = document.getElementById('at-rows');
+    rowsDiv.innerHTML = '';
+    grp.forEach(s => {
+      addAitsuRow();
+      const el = rowsDiv.lastElementChild;
+      const idx = el.id.replace('at-row-', '');
+      if (document.getElementById(`at-load-${idx}`)) document.getElementById(`at-load-${idx}`).value = s.load_place || '';
+      if (document.getElementById(`at-unload-${idx}`)) document.getElementById(`at-unload-${idx}`).value = s.unload_place || '';
+      if (document.getElementById(`at-weight-${idx}`)) document.getElementById(`at-weight-${idx}`).value = s.weight || '';
+      if (document.getElementById(`at-cargo-${idx}`)) document.getElementById(`at-cargo-${idx}`).value = s.cargo_note || '';
+    });
+    editId.schedule = '__aitsu_edit__';
+    window._editAitsuGroupId = groupId;
+    document.getElementById('s-modal-title').textContent = '相積み編集';
+  }, 50);
 }
 
 // saveScheduleの相積みモードを拡張: 編集時は既存グループを削除してから再作成
