@@ -11,7 +11,7 @@ interface SidebarProps {
 
 const adminLinks = [
   { href: "/dashboard", label: "ダッシュボード", icon: "◆" },
-  { href: "/dispatch", label: "配車入力", icon: "◇" },
+  { href: "/dispatch", label: "配車管理", icon: "◇" },
   { href: "/daily-reports", label: "日報管理", icon: "◈" },
   { href: "/sales", label: "売上・請求", icon: "◉" },
   { href: "/driver-management", label: "ドライバー管理", icon: "◎" },
@@ -22,7 +22,7 @@ const adminLinks = [
 ];
 
 const dispatcherLinks = [
-  { href: "/dispatch", label: "配車入力", icon: "◇" },
+  { href: "/dispatch", label: "配車管理", icon: "◇" },
 ];
 
 export default function Sidebar({ userRole, userName }: SidebarProps) {

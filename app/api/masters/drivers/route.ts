@@ -29,7 +29,10 @@ export async function POST(request: NextRequest) {
       .from('drivers')
       .insert({
         name: body.name,
-        payment_percentage: body.payment_percentage,
+        payment_percentage: body.payment_percentage || 0,
+        phone: body.phone || null,
+        status: body.status || '稼働中',
+        haisha_visible: body.haisha_visible !== false,
       })
       .select()
       .single()
@@ -49,13 +52,16 @@ export async function PUT(request: NextRequest) {
     await requireAuth(['admin'])
     const body = await request.json()
 
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    if (body.name !== undefined) updateData.name = body.name
+    if (body.payment_percentage !== undefined) updateData.payment_percentage = body.payment_percentage
+    if (body.phone !== undefined) updateData.phone = body.phone
+    if (body.status !== undefined) updateData.status = body.status
+    if (body.haisha_visible !== undefined) updateData.haisha_visible = body.haisha_visible
+
     const { data, error } = await supabase
       .from('drivers')
-      .update({
-        name: body.name,
-        payment_percentage: body.payment_percentage,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', body.id)
       .select()
       .single()
