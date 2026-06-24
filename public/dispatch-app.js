@@ -105,6 +105,7 @@ function initPlaceAutocompletes() {
   setupAutocomplete('s-client-name', null, getAllClientOpts);
   setupAutocomplete('s-load-place',  'dl-load-places',  () => getLoadOptsForClient('s-client-name'));
   setupAutocomplete('s-unload-place','dl-unload-places', () => getUnloadOptsForClientAndLoad('s-client-name','s-load-place'));
+  setupAutocomplete('at-client-name', null, getAllClientOpts);
   setupAutocomplete('b-client-name', null, getAllClientOpts);
   setupAutocomplete('b-load-place',  'dl-load-places',  () => getLoadOptsForClient('b-client-name'));
   setupAutocomplete('b-unload-place','dl-unload-places', () => getUnloadOptsForClientAndLoad('b-client-name','b-load-place'));
@@ -1072,6 +1073,7 @@ async function saveSchedule() {
     const unloadDate = document.getElementById('at-unload-date').value;
     const vehicleId  = document.getElementById('at-vehicle').value;
     const driverId   = document.getElementById('at-driver').value;
+    const clientName = document.getElementById('at-client-name')?.value.trim() || '';
     if (!loadDate) { alert('積み込み日は必須です'); return; }
 
     const rows = [...document.getElementById('at-rows').children];
@@ -1088,6 +1090,15 @@ async function saveSchedule() {
 
     if (!entries.length) { alert('積み込み・下ろし場所を1行以上入力してください'); return; }
 
+    // 編集モード: 既存グループを削除
+    if (window._editAitsuGroupId) {
+      const oldGrp = schedules.filter(s => s.ai_tsumi_group === window._editAitsuGroupId);
+      for (const s of oldGrp) {
+        await fetch(`/api/schedules/${s.id}`, { method: 'DELETE' });
+      }
+      window._editAitsuGroupId = null;
+    }
+
     const groupId = `aitsu_${Date.now()}`;
     for (const e of entries) {
       await fetch('/api/schedules', {
@@ -1098,7 +1109,7 @@ async function saveSchedule() {
           unload_date: unloadDate || loadDate, unload_place: e.unload_place,
           weight: e.weight, vehicle_id: vehicleId, driver_id: driverId,
           note: '', cargo_note: e.cargo_type || '',
-          ai_tsumi: true, ai_tsumi_group: groupId,
+          ai_tsumi: true, ai_tsumi_group: groupId, client_name: clientName,
         }),
       });
     }
@@ -2731,12 +2742,53 @@ function openAitsumiDetail(ids) {
     </div>
     ${rows}
     ${totalStr ? `<div style="display:flex;justify-content:flex-end;padding:10px 0 2px;font-size:14px;font-weight:700;color:#93b5ff;border-top:2px solid rgba(79,126,248,0.3);margin-top:2px">合計重量：${totalStr}</div>` : ''}
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #eee">
-      <div style="font-size:12px;color:#888;margin-bottom:8px">ステータス（クリックで変更）</div>
-      ${statusBtn}
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid #333;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div>
+        <div style="font-size:12px;color:#888;margin-bottom:8px">ステータス（クリックで変更）</div>
+        ${statusBtn}
+      </div>
+      <button class="btn btn-primary btn-sm" style="margin-left:auto"
+        onclick="document.getElementById('card-detail-overlay').style.display='none';editAitsumiGroup('${groupId}')">
+        🔀 相積み全体を編集
+      </button>
     </div>`;
   document.getElementById('card-detail-overlay').style.display = 'flex';
 }
+
+function editAitsumiGroup(groupId) {
+  const grp = schedules.filter(s => s.ai_tsumi_group === groupId);
+  if (!grp.length) return;
+  const first = grp[0];
+  // 相積みモードで開く
+  if (!_aitsuMode) toggleAitsu();
+  document.getElementById('at-client-name').value = first.client_name || '';
+  document.getElementById('at-load-date').value = first.load_date || '';
+  document.getElementById('at-unload-date').value = first.unload_date || '';
+  document.getElementById('at-vehicle').value = first.vehicle_id || '';
+  document.getElementById('at-driver').value = first.driver_id || '';
+  // 既存行をセット
+  const rowsDiv = document.getElementById('at-rows');
+  rowsDiv.innerHTML = '';
+  grp.forEach((s, i) => {
+    addAitsuRow();
+    const n = document.getElementById('at-rows').children.length;
+    const el = document.getElementById('at-rows').lastElementChild;
+    const idx = el.id.replace('at-row-', '');
+    document.getElementById(`at-load-${idx}`).value = s.load_place || '';
+    document.getElementById(`at-unload-${idx}`).value = s.unload_place || '';
+    if (document.getElementById(`at-weight-${idx}`)) document.getElementById(`at-weight-${idx}`).value = s.weight || '';
+    if (document.getElementById(`at-cargo-${idx}`)) document.getElementById(`at-cargo-${idx}`).value = s.cargo_note || '';
+  });
+  // 既存グループを削除してから新規保存するためeditIdを設定
+  editId.schedule = '__aitsu_edit__';
+  // 保存時に既存グループを削除するフラグ
+  window._editAitsuGroupId = groupId;
+  document.getElementById('s-modal-title').textContent = '相積み編集';
+  document.getElementById('modal-schedule').classList.add('open');
+}
+
+// saveScheduleの相積みモードを拡張: 編集時は既存グループを削除してから再作成
+const _origSaveSchedule = saveSchedule;
 
 function haishaCardHTML(s, type) {
   const st = s.load_status || '';

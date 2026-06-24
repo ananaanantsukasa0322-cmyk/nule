@@ -551,6 +551,9 @@
     <!-- 相積みモード -->
     <div id="s-aitsu-mode" style="display:none">
       <div class="form-grid">
+        <div class="form-group form-full"><label>荷主</label>
+          <input id="at-client-name" placeholder="荷主名" autocomplete="off">
+        </div>
         <div class="form-group"><label>積み込み日（共通）</label><input id="at-load-date" type="date"></div>
         <div class="form-group"><label>下ろし日（共通）</label><input id="at-unload-date" type="date"></div>
         <div class="form-group"><label>車両（任意）</label><select id="at-vehicle"><option value="">-- 選択 --</option></select></div>
@@ -561,7 +564,7 @@
       </div>
       <div id="at-rows"></div>
       <button type="button" onclick="addAitsuRow()"
-        style="width:100%;margin-top:8px;padding:8px;border:1.5px dashed #d0d5e0;border-radius:8px;background:#fafbfc;color:#888;font-size:13px;cursor:pointer">
+        style="width:100%;margin-top:8px;padding:8px;border:1.5px dashed #555;border-radius:8px;background:#1a1a1a;color:#888;font-size:13px;cursor:pointer">
         ＋ 行を追加
       </button>
     </div><!-- /s-aitsu-mode -->
