@@ -2428,7 +2428,7 @@ async function saveSchedule() {
     body: JSON.stringify(data)
   });
 
-  // 荷主が入力された場合、同じ積み地・下ろし先の組み合わせを持つ荷主未設定スケジュールにも自動反映
+  // 荷主入力時、積み地＋下ろし先が完全一致する未設定スケジュールに自動反映
   if (data.client_name && data.load_place && data.unload_place) {
     const toUpdate = schedules.filter(s =>
       s.id !== id &&
