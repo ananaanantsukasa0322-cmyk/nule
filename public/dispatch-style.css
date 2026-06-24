@@ -617,4 +617,9 @@
     .completed-header h3{color:#888!important}
     tr.sched-row-loaded{background:rgba(34,197,94,.05)!important}
     tr.sched-row-delivered{background:rgba(136,136,136,.05)!important}
+    .haisha-card .c-place{color:#f5f5f5!important}
+    .haisha-card .c-weight{color:#aaa!important}
+    .c-status.st-none{background:rgba(79,126,248,.2)!important;color:#93b5ff!important}
+    .c-status.st-loaded{background:rgba(34,197,94,.2)!important;color:#4ade80!important}
+    .c-status.st-delivered{background:rgba(136,136,136,.2)!important;color:#aaa!important}
   </style>

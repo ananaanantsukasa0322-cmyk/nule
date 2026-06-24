@@ -2678,7 +2678,7 @@ function haishaAitsumiCardHTML(schedList, type='delivery') {
     : '';
 
   return `<div class="${cardCls}" draggable="true"
-    style="flex-direction:column;align-items:stretch;gap:0;padding:6px 10px;cursor:grab;min-width:160px;${aitsuOver ? 'border-color:#dc2626 !important;background:#fef2f2 !important;' : ''}"
+    style="flex-direction:column;align-items:stretch;gap:0;padding:6px 10px;cursor:grab;min-width:160px;${aitsuOver ? 'border-color:#dc2626 !important;background:rgba(239,68,68,0.15) !important;' : ''}"
     ondragstart="hDragStartGroup(event,'${groupId}')"
     ondragend="hDragEnd(event);this._dragged=true;setTimeout(()=>{this._dragged=false},200)"
     onclick="if(!this._dragged)openAitsumiDetail(JSON.parse(this.dataset.ids));else this._dragged=false;"
@@ -2825,7 +2825,7 @@ function haishaCardHTML(s, type) {
     ? `<span style="display:block;font-size:10px;font-weight:700;color:#dc2626;margin-top:1px">⚠️ 積載量オーバー ${Math.round(cardWeight).toLocaleString('ja-JP')}kg</span>`
     : '';
   return `<div class="${cls}" draggable="true" data-id="${s.id}"
-    style="${overweight ? 'border-color:#dc2626 !important;background:#fef2f2 !important;' : ''}"
+    style="${overweight ? 'border-color:#dc2626 !important;background:rgba(239,68,68,0.15) !important;' : ''}"
     ondragstart="hDragStart(event,'${s.id}')"
     ondragend="hDragEnd(event);this._dragged=true;setTimeout(()=>{this._dragged=false},200)"
     onclick="if(!this._dragged)openCardDetail('${s.id}');else this._dragged=false;">
