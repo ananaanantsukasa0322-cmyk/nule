@@ -1,45 +1,38 @@
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
+import { buildDriverNameMap } from '@/lib/resolve-drivers'
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAuth(['admin'])
+    await requireAuth(['admin', 'office'])
     const dateFrom = request.nextUrl.searchParams.get('date_from')
     const dateTo = request.nextUrl.searchParams.get('date_to')
-    const clientId = request.nextUrl.searchParams.get('client_id')
 
-    let query = supabase
-      .from('dispatches')
-      .select('*, driver:drivers(*), client:clients(*), route:routes(*)')
-      .in('status', ['confirmed', 'completed'])
+    let query = supabase.from('schedules').select('*')
+    if (dateFrom) query = query.gte('load_date', dateFrom)
+    if (dateTo) query = query.lte('load_date', dateTo)
 
-    if (dateFrom) query = query.gte('dispatch_date', dateFrom)
-    if (dateTo) query = query.lte('dispatch_date', dateTo)
-    if (clientId) query = query.eq('client_id', clientId)
-
-    const { data, error } = await query.order('dispatch_date', { ascending: false })
-
+    const { data, error } = await query.order('load_date', { ascending: false })
     if (error) throw error
 
-    const clientSummary: Record<string, { client_name: string; total: number; count: number }> = {}
-    for (const d of data || []) {
-      const cid = d.client_id || 'unknown'
-      const cname = d.client?.company_name || '不明'
-      if (!clientSummary[cid]) {
-        clientSummary[cid] = { client_name: cname, total: 0, count: 0 }
-      }
-      clientSummary[cid].total += Number(d.calculated_amount) || 0
-      clientSummary[cid].count += 1
-    }
+    const driverMap = await buildDriverNameMap()
+
+    const enriched = (data || []).map(s => ({
+      ...s,
+      dispatch_date: s.load_date,
+      driver: { name: driverMap[s.driver_id] || '未割当' },
+      route: s.load_place && s.unload_place ? { departure: s.load_place, destination: s.unload_place } : null,
+      calculated_amount: 0,
+    }))
 
     return Response.json({
-      dispatches: data,
-      summary: clientSummary,
-      total_amount: (data || []).reduce((sum, d) => sum + (Number(d.calculated_amount) || 0), 0),
+      dispatches: enriched,
+      summary: {},
+      total_amount: 0,
     })
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'エラーが発生しました'
+    const message = e instanceof Error ? e.message : ''
     if (message === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
     if (message === 'FORBIDDEN') return Response.json({ error: '権限がありません' }, { status: 403 })
     return Response.json({ error: message }, { status: 500 })
