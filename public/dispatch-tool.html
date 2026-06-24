@@ -1,6 +1,4 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>NULE - 配車管理</title>
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>NULE - 配車管理</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1559,8 +1557,13 @@ async function autoSetDefaultVehicles() {
 }
 
 function renderAll() {
-  renderVehicles(); renderDrivers(); renderSchedules(); renderDashboard(); renderPlaces(); renderLoadPlaces();
-  updatePlaceDatalist();
+  try { renderVehicles(); } catch(e) { console.error('renderVehicles:', e); }
+  try { renderDrivers(); } catch(e) { console.error('renderDrivers:', e); }
+  try { renderSchedules(); } catch(e) { console.error('renderSchedules:', e); }
+  try { renderDashboard(); } catch(e) { console.error('renderDashboard:', e); }
+  try { renderPlaces(); } catch(e) { console.error('renderPlaces:', e); }
+  try { renderLoadPlaces(); } catch(e) { console.error('renderLoadPlaces:', e); }
+  try { updatePlaceDatalist(); } catch(e) { console.error('updatePlaceDatalist:', e); }
 }
 
 // ── 積み地 ───────────────────────────────────────────────────
@@ -1572,7 +1575,7 @@ function renderLoadPlaces() {
       <tr>
         <td><strong>${p.name}</strong></td>
         <td><div class="col-actions">
-          <button class="btn btn-danger btn-sm" onclick="delLoadPlace(${p.id})">削除</button>
+          <button class="btn btn-danger btn-sm" onclick="delLoadPlace('${p.id}')">削除</button>
         </div></td>
       </tr>`).join('')
     : '<tr class="empty-row"><td colspan="2">登録された積み地がありません</td></tr>';
@@ -1609,8 +1612,8 @@ function renderPlaces() {
         <td><strong>${p.name}</strong></td>
         <td style="white-space:pre-wrap;max-width:400px;font-size:13px">${p.caution ? `<span style="color:#c2410c">⚠️ ${p.caution}</span>` : '<span style="color:#aaa">なし</span>'}</td>
         <td><div class="col-actions">
-          <button class="btn btn-ghost btn-sm" onclick="openPlaceEditById(${p.id})">編集</button>
-          <button class="btn btn-danger btn-sm" onclick="delPlace(${p.id})">削除</button>
+          <button class="btn btn-ghost btn-sm" onclick="openPlaceEditById('${p.id}')">編集</button>
+          <button class="btn btn-danger btn-sm" onclick="delPlace('${p.id}')">削除</button>
         </div></td>
       </tr>`).join('')
     : '<tr class="empty-row"><td colspan="3">登録された場所がありません</td></tr>';
@@ -1670,11 +1673,11 @@ function dLabel(id) {
   if (!id || id === '') return '-';
   const sid = String(id);
   if (sid.startsWith('y_')) {
-    const yid = parseInt(sid.slice(2));
-    const y = youshas.find(y => y.id === yid);
+    const yid = sid.slice(2);
+    const y = youshas.find(y => String(y.id) === yid || y.id == yid);
     return y ? (y.display_name || y.name || sid) : sid;
   }
-  const d = drivers.find(d => d.id == id);
+  const d = drivers.find(d => String(d.id) == String(id));
   return d ? d.name : '-';
 }
 function payloadKg(v) { return parseFloat(v.payload) || 0; }
@@ -1770,8 +1773,8 @@ function renderVehicles() {
       <td>${v.payload ? v.payload + 'kg' : '-'}</td>
       <td>${v.note || '-'}</td>
       <td><div class="col-actions">
-        <button class="btn btn-ghost btn-sm" onclick="editVehicle(${v.id})">編集</button>
-        <button class="btn btn-danger btn-sm" onclick="delVehicle(${v.id})">削除</button>
+        <button class="btn btn-ghost btn-sm" onclick="editVehicle('${v.id}')">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="delVehicle('${v.id}')">削除</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -1830,7 +1833,7 @@ function renderDrivers() {
       <td>${d.phone || '-'}</td>
       <td>${statusBadge(d.status)}</td>
       <td style="text-align:center">
-        <button onclick="toggleHaishaVisible(${d.id})"
+        <button onclick="toggleHaishaVisible('${d.id}')"
           style="border:none;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;cursor:pointer;
             background:${on ? '#4caf82' : '#e0e0e0'};color:${on ? '#fff' : '#888'}">
           ${on ? '表示' : '非表示'}
@@ -1838,8 +1841,8 @@ function renderDrivers() {
       </td>
       <td>${d.note || '-'}</td>
       <td><div class="col-actions">
-        <button class="btn btn-ghost btn-sm" onclick="editDriver(${d.id})">編集</button>
-        <button class="btn btn-danger btn-sm" onclick="delDriver(${d.id})">削除</button>
+        <button class="btn btn-ghost btn-sm" onclick="editDriver('${d.id}')">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="delDriver('${d.id}')">削除</button>
       </div></td>
     </tr>`;
   }).join('');
@@ -1998,14 +2001,14 @@ function renderSchedules() {
       ? `<span class="badge badge-unassigned" style="margin-left:4px;font-size:11px;">未割当</span>` : '';
 
     const doneBtn = `<button class="done-toggle ${isDone ? 'done' : 'undone'}"
-      onclick="toggleDone(${s.id},${isDone})">
+      onclick="toggleDone('${s.id}',${isDone})">
       ${isDone ? '✅ 完了' : '○ 未完了'}
     </button>`;
 
     const stLabel = st === 'loaded' ? '積込完了' : st === 'delivered' ? '荷下ろし完了' : '未積み込み';
     const stBadgeCls = st === 'loaded' ? 'st-loaded' : st === 'delivered' ? 'st-delivered' : 'st-none';
     const statusBadge = `<button class="c-status ${stBadgeCls}" title="クリックでステータス変更"
-      onclick="toggleLoadStatus(${s.id})" style="border:none;cursor:pointer;font-size:11px;padding:3px 7px;border-radius:5px;display:block;width:100%;margin-bottom:4px">
+      onclick="toggleLoadStatus('${s.id}')" style="border:none;cursor:pointer;font-size:11px;padding:3px 7px;border-radius:5px;display:block;width:100%;margin-bottom:4px">
       ${stLabel}</button>`;
 
     const rowBg = st === 'loaded' ? 'sched-row-loaded' : st === 'delivered' ? 'sched-row-delivered' : '';
@@ -2025,8 +2028,8 @@ function renderSchedules() {
         ${s.note || (!s.cargo_note ? '-' : '')}
       </td>
       <td><div class="col-actions">
-        <button class="btn btn-ghost btn-sm" onclick="editSched(${s.id})">編集</button>
-        <button class="btn btn-danger btn-sm" onclick="delSched(${s.id})">削除</button>
+        <button class="btn btn-ghost btn-sm" onclick="editSched('${s.id}')">編集</button>
+        <button class="btn btn-danger btn-sm" onclick="delSched('${s.id}')">削除</button>
       </div></td>
     </tr>`;
   };
@@ -2069,7 +2072,7 @@ function renderSchedules() {
     const routeList = grp.map(s =>
       `<div style="display:flex;align-items:center;gap:6px;font-size:12px;white-space:nowrap;margin-bottom:2px">
         <strong>${s.load_place}</strong> → <strong>${s.unload_place}</strong>${s.weight ? ` <span style="color:#999">${s.weight}kg</span>` : ''}
-        <button class="btn btn-ghost btn-sm" onclick="editSched(${s.id})" style="font-size:11px;padding:1px 6px;flex-shrink:0">編集</button>
+        <button class="btn btn-ghost btn-sm" onclick="editSched('${s.id}')" style="font-size:11px;padding:1px 6px;flex-shrink:0">編集</button>
       </div>`
     ).join('');
 
@@ -2961,7 +2964,7 @@ async function haishaSetVehicle(driverId, vehicleId) {
   if (!String(driverId).startsWith('y_')) {
     const d = drivers.find(x => String(x.id) === String(driverId));
     if (d) {
-      const updated = { ...d, default_vehicle_id: vehicleId ? Number(vehicleId) : null };
+      const updated = { ...d, default_vehicle_id: vehicleId || null };
       const res = await fetch(`/api/drivers/${d.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -3245,8 +3248,8 @@ async function openPlanHistory() {
           <div style="font-weight:700;font-size:14px">${p.label}</div>
           <div style="font-size:12px;color:var(--text-sub);margin-top:3px">保存日時: ${p.saved_at.replace('T',' ')}</div>
         </div>
-        <button class="btn btn-ghost btn-sm" onclick="viewPlanDetail(${p.id})">詳細</button>
-        <button class="btn btn-danger btn-sm" onclick="deletePlan(${p.id})">削除</button>
+        <button class="btn btn-ghost btn-sm" onclick="viewPlanDetail('${p.id}')">詳細</button>
+        <button class="btn btn-danger btn-sm" onclick="deletePlan('${p.id}')">削除</button>
       </div>`).join('');
   }
   document.getElementById('plan-history-overlay').style.display = 'flex';
@@ -3505,6 +3508,13 @@ function applyVehiclePicker() {
 }
 
 function renderHaisha() {
+  try { _renderHaishaInner(); } catch(e) {
+    console.error('renderHaisha error:', e);
+    const tbody = document.getElementById('haisha-tbody');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="10" style="color:red;padding:20px">エラー: ${e.message}</td></tr>`;
+  }
+}
+function _renderHaishaInner() {
   const date = document.getElementById('haisha-date').value;
   if (!date) return;
 
@@ -3927,13 +3937,13 @@ function haishaCardHTML(s, type) {
   const stBadgeCls = st === 'loaded' ? 'st-loaded' : st === 'delivered' ? 'st-delivered' : 'st-none';
   const statusBadge = `<span class="c-status ${stBadgeCls}"
     title="クリックでステータス変更"
-    onclick="event.stopPropagation();toggleLoadStatus(${s.id})"
+    onclick="event.stopPropagation();toggleLoadStatus('${s.id}')"
     ondragstart="event.stopPropagation()">${stLabel}</span>`;
 
   // 複数荷物があれば分割ボタンを表示
   const items = parseSplitItems(s);
   const splitBtn = items.length > 1
-    ? `<button title="配達を分割" onclick="event.stopPropagation();openSplit(${s.id})"
+    ? `<button title="配達を分割" onclick="event.stopPropagation();openSplit('${s.id}')"
          style="background:none;border:none;cursor:pointer;font-size:13px;padding:0 0 0 4px;line-height:1;color:#94a3b8"
          ondragstart="event.stopPropagation()">✂️</button>`
     : '';
@@ -3950,9 +3960,9 @@ function haishaCardHTML(s, type) {
     : '';
   return `<div class="${cls}" draggable="true" data-id="${s.id}"
     style="${overweight ? 'border-color:#dc2626 !important;background:#fef2f2 !important;' : ''}"
-    ondragstart="hDragStart(event,${s.id})"
+    ondragstart="hDragStart(event,'${s.id}')"
     ondragend="hDragEnd(event);this._dragged=true;setTimeout(()=>{this._dragged=false},200)"
-    onclick="if(!this._dragged)openCardDetail(${s.id});else this._dragged=false;">
+    onclick="if(!this._dragged)openCardDetail('${s.id}');else this._dragged=false;">
     <span class="c-place">${s.unload_place}</span>
     ${s.weight ? `<span class="c-weight">${s.weight}kg</span>` : ''}
     ${statusBadge}
@@ -4037,9 +4047,9 @@ function openCardDetail(id) {
     ${cautionBox(s.unload_place, unloadCaution)}
     ${cautionBox(s.load_place, loadCaution)}
     <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid #eee">
-      <button class="btn btn-ghost btn-sm" onclick="closeCardDetail();editSched(${s.id})">✏️ 編集</button>
-      <button class="btn btn-ghost btn-sm" onclick="closeCardDetail();toggleLoadStatus(${s.id})">🔄 ステータス変更</button>
-      <button class="btn btn-danger btn-sm" onclick="closeCardDetail();delSchedFromHaisha(${s.id})">🗑️ 削除</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeCardDetail();editSched('${s.id}')">✏️ 編集</button>
+      <button class="btn btn-ghost btn-sm" onclick="closeCardDetail();toggleLoadStatus('${s.id}')">🔄 ステータス変更</button>
+      <button class="btn btn-danger btn-sm" onclick="closeCardDetail();delSchedFromHaisha('${s.id}')">🗑️ 削除</button>
     </div>`;
 
   document.getElementById('card-detail-overlay').style.display = 'flex';
@@ -4417,5 +4427,4 @@ async function autoAssignHaisha() {
 }
 
 loadAll();
-</script>
-</html>
+</script></html>
