@@ -1,0 +1,642 @@
+<body>
+
+<!-- ===== トップナビ ===== -->
+<nav class="topnav">
+  <div class="topnav-logo">
+    <span class="icon">🚛</span>
+    <span class="name">配車管理</span>
+  </div>
+  <button class="nav-item active" onclick="switchPage('dashboard')">
+    <span class="nav-icon">📊</span> ダッシュボード
+  </button>
+  <button class="nav-item" onclick="switchPage('schedules')">
+    <span class="nav-icon">📅</span> 配車スケジュール
+  </button>
+  <button class="nav-item" onclick="switchPage('vehicles')">
+    <span class="nav-icon">🚛</span> 車両管理
+  </button>
+  <button class="nav-item" onclick="switchPage('drivers')">
+    <span class="nav-icon">👤</span> ドライバー管理
+  </button>
+  <button class="nav-item" onclick="switchPage('places')">
+    <span class="nav-icon">📍</span> 場所・注意事項
+  </button>
+  <button class="nav-item" onclick="switchPage('haisha')">
+    <span class="nav-icon">📋</span> 配車予定表
+  </button>
+</nav>
+
+<!-- ===== メインコンテンツ ===== -->
+<main class="main" style="width:100%">
+
+  <!-- ダッシュボード -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+      <div>
+        <h1>週間カレンダー</h1>
+        <p>配達予定の一週間ビュー</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn btn-ghost btn-sm" onclick="dashWeekOffset--;renderDashboard()">◀ 前週</button>
+        <button class="btn btn-ghost btn-sm" onclick="dashWeekOffset=0;renderDashboard()">今週</button>
+        <button class="btn btn-ghost btn-sm" onclick="dashWeekOffset++;renderDashboard()">次週 ▶</button>
+      </div>
+    </div>
+    <div id="dash-week-label" style="text-align:center;font-size:13px;color:var(--text-sub);margin-bottom:12px"></div>
+    <div id="dash-calendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:8px"></div>
+  </div>
+
+  <!-- 配車スケジュール -->
+  <div id="page-schedules" class="page">
+    <div class="page-header">
+      <h1>配車スケジュール</h1>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">スケジュール一覧</span>
+        <div class="btn-group">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('schedule')">＋ 1件追加</button>
+          <button class="btn btn-primary btn-sm" onclick="openModal('bulk')">📦 まとめて配車</button>
+        </div>
+      </div>
+      <!-- 日付フィルター -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);background:#f8fafc;flex-wrap:wrap">
+        <span style="font-size:13px;font-weight:600;color:var(--text-sub)">📅 日付で絞り込み</span>
+        <input type="date" id="filter-date"
+          oninput="renderSchedules()"
+          style="border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:13px;outline:none">
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('filter-date').value='';renderSchedules()">クリア</button>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('filter-date').value=new Date().toISOString().slice(0,10);renderSchedules()">今日</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>状態</th><th>積み込み日</th><th>積み込み場所</th><th>下ろし日</th><th>下ろし場所</th><th>重量</th><th>車両</th><th>ドライバー</th><th>メモ</th><th></th></tr></thead>
+          <tbody id="sched-tbody"><tr class="empty-row"><td colspan="10">データがありません</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 完了済みセクション -->
+    <div class="completed-section">
+      <div class="completed-header" onclick="toggleCompleted(this)">
+        <span class="toggle-icon">▶</span>
+        <h3>✅ 完了済み <span id="completed-count" style="font-weight:400;font-size:13px"></span></h3>
+      </div>
+      <div id="completed-body" style="display:none">
+        <div class="card" style="margin-top:0">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>状態</th><th>積み込み日</th><th>積み込み場所</th><th>下ろし日</th><th>下ろし場所</th><th>重量</th><th>車両</th><th>ドライバー</th><th>メモ</th><th></th></tr></thead>
+              <tbody id="completed-tbody"><tr class="empty-row"><td colspan="10">データがありません</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 車両管理 -->
+  <div id="page-vehicles" class="page">
+    <div class="page-header">
+      <h1>車両管理</h1>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">車両一覧</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('vehicle')">＋ 車両を追加</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>種別</th><th>ナンバー（ヘッド）</th><th>台車ナンバー</th><th>最大積載量</th><th>メモ</th><th></th></tr></thead>
+          <tbody id="vehicle-tbody"><tr class="empty-row"><td colspan="6">データがありません</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ドライバー管理 -->
+  <div id="page-drivers" class="page">
+    <div class="page-header">
+      <h1>ドライバー管理</h1>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">ドライバー一覧</span>
+        <button class="btn btn-primary btn-sm" onclick="openModal('driver')">＋ ドライバーを追加</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>氏名</th><th>連絡先</th><th>稼働状況</th><th>配車表示</th><th>メモ</th><th></th></tr></thead>
+          <tbody id="driver-tbody"><tr class="empty-row"><td colspan="7">データがありません</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 場所・注意事項管理 -->
+  <div id="page-places" class="page">
+    <div class="page-header">
+      <h1>場所・注意事項</h1>
+    </div>
+    <!-- 積み地一覧 -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header">
+        <span class="card-title">積み地一覧</span>
+        <button class="btn btn-primary btn-sm" onclick="openAddLoadPlace()">＋ 積み地を追加</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>場所名</th><th></th></tr></thead>
+          <tbody id="load-places-tbody"><tr class="empty-row"><td colspan="2">登録された積み地がありません</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">下ろし先一覧</span>
+        <button class="btn btn-primary btn-sm" onclick="openNewPlaceModal()">＋ 場所を追加</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>場所名</th><th>注意事項</th><th></th></tr></thead>
+          <tbody id="places-tbody"><tr class="empty-row"><td colspan="3">データがありません</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+    <!-- スケジュールに登録されている場所（まだ注意事項なし）-->
+    <div class="card" style="margin-top:16px">
+      <div class="card-header">
+        <span class="card-title">スケジュール登録済みの場所（注意事項なし）</span>
+        <span style="font-size:12px;color:var(--text-sub)">クリックで注意事項を追加できます</span>
+      </div>
+      <div id="places-from-schedules" style="display:flex;flex-wrap:wrap;gap:8px;padding:14px 16px"></div>
+    </div>
+  </div>
+
+  <!-- 配車履歴モーダル -->
+  <div id="plan-history-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:400;align-items:flex-start;justify-content:center;padding-top:60px"
+       onclick="if(event.target===this)closePlanHistory()">
+    <div style="background:#fff;border-radius:14px;padding:28px;width:700px;max-width:95vw;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <strong style="font-size:17px">📂 配車予定表 履歴</strong>
+        <button onclick="closePlanHistory()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">×</button>
+      </div>
+      <div id="plan-history-list"></div>
+    </div>
+  </div>
+
+  <!-- 分割モーダル -->
+  <div id="split-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:600;align-items:center;justify-content:center"
+       onclick="if(event.target===this)closeSplit()">
+    <div style="background:#fff;border-radius:14px;padding:28px;width:520px;max-width:96vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <strong style="font-size:16px">✂️ 配達分割</strong>
+        <button onclick="closeSplit()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">×</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-sub);margin-bottom:18px">荷物をグループ分けして、それぞれ別の配達スケジュールに分割します</p>
+
+      <!-- 元スケジュール情報 -->
+      <div id="split-origin-info" style="background:#f5f7fa;border-radius:8px;padding:12px 14px;margin-bottom:18px;font-size:13px"></div>
+
+      <!-- 荷物リスト（ドラッグ可能） -->
+      <div style="margin-bottom:16px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">荷物一覧（ドラッグでグループ移動）</div>
+        <div id="split-items-pool" class="split-pool"
+             ondragover="event.preventDefault();this.classList.add('split-drag-over')"
+             ondragleave="this.classList.remove('split-drag-over')"
+             ondrop="splitDropToPool(event)"></div>
+      </div>
+
+      <!-- グループ（配達①②③…） -->
+      <div style="font-size:11px;font-weight:700;color:var(--text-sub);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">配達グループ</div>
+      <div id="split-groups"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addSplitGroup()" style="margin-top:8px">＋ グループを追加</button>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:24px;padding-top:18px;border-top:1px solid var(--border)">
+        <button class="btn btn-ghost" onclick="closeSplit()">キャンセル</button>
+        <button class="btn btn-primary" onclick="confirmSplit()">✅ この分割で登録</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 配車履歴 詳細モーダル -->
+  <div id="plan-detail-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;align-items:flex-start;justify-content:center;padding-top:40px"
+       onclick="if(event.target===this)closePlanDetail()">
+    <div style="background:#fff;border-radius:14px;padding:28px;width:1100px;max-width:97vw;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.25)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <strong id="plan-detail-title" style="font-size:17px"></strong>
+        <button onclick="closePlanDetail()" style="background:none;border:none;font-size:22px;cursor:pointer;color:#999">×</button>
+      </div>
+      <div id="plan-detail-content"></div>
+    </div>
+  </div>
+
+  <!-- 荷物詳細ポップアップ -->
+  <div id="card-detail-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:600;align-items:center;justify-content:center"
+       onclick="if(event.target===this)closeCardDetail()">
+    <div id="card-detail-box" style="background:#fff;border-radius:14px;padding:28px 32px;width:420px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.25);position:relative">
+      <button onclick="closeCardDetail()" style="position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:#aaa">×</button>
+      <div id="card-detail-content"></div>
+    </div>
+  </div>
+
+  <!-- ドライバーピッカー（配車予定表用） -->
+  <div id="dpicker-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:300;align-items:center;justify-content:center"
+       onclick="if(event.target===this)closeDriverPicker()">
+    <div style="background:#fff;border-radius:12px;padding:20px 24px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.18)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <strong style="font-size:15px">ドライバーを選択</strong>
+        <button onclick="closeDriverPicker()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999">×</button>
+      </div>
+      <select id="dpicker-select" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:14px;outline:none">
+        <option value="">— 未選択 —</option>
+      </select>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="btn btn-ghost" onclick="closeDriverPicker()">キャンセル</button>
+        <button class="btn btn-primary" onclick="applyDriverPicker()">決定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 車両ピッカー（配車予定表用） -->
+  <div id="vpicker-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.25);z-index:300;align-items:center;justify-content:center"
+       onclick="if(event.target===this)closeVehiclePicker()">
+    <div style="background:#fff;border-radius:12px;padding:20px 24px;width:320px;box-shadow:0 12px 40px rgba(0,0,0,0.18)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <strong style="font-size:15px">車両を選択</strong>
+        <button onclick="closeVehiclePicker()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999">×</button>
+      </div>
+      <select id="vpicker-select" style="width:100%;border:1px solid var(--border);border-radius:7px;padding:10px 12px;font-size:14px;outline:none">
+        <option value="">— 未選択 —</option>
+      </select>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button class="btn btn-ghost" onclick="closeVehiclePicker()">キャンセル</button>
+        <button class="btn btn-primary" onclick="applyVehiclePicker()">決定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 配車予定表 ===== -->
+  <div id="page-haisha" class="page">
+    <div class="page-header">
+      <h1>📋 配車予定表</h1>
+      <p>日付を選んで自動振り分け・ドラッグ&amp;ドロップで調整</p>
+    </div>
+
+    <!-- コントロール -->
+    <div class="card" style="padding:16px 24px;margin-bottom:16px">
+      <div class="haisha-controls">
+        <div class="form-group" style="flex-direction:row;align-items:center;gap:10px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sub);white-space:nowrap">対象日</label>
+          <input type="date" id="haisha-date" style="border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:14px;outline:none;" onchange="renderHaisha()">
+        </div>
+        <button class="btn btn-primary" onclick="autoAssignHaisha()">⚡ 自動振り分け</button>
+        <button class="btn btn-ghost" onclick="openSpotModal()" title="非表示ドライバーをこの日だけ一時表示">👤 スポット追加</button>
+        <button class="btn btn-success" onclick="saveDispatchPlan()">💾 この日の配車を保存</button>
+        <button class="btn btn-ghost" onclick="openPlanHistory()">📂 履歴</button>
+      </div>
+    </div>
+
+    <!-- 未割当プール -->
+    <div id="haisha-unassigned-wrap" class="card" style="display:none;margin-bottom:16px">
+      <div class="card-header" style="margin-bottom:12px">
+        <span class="card-title">⚠️ 未割当の仕事</span>
+        <span style="font-size:12px;color:var(--text-sub)">ドライバー行にドロップして割り当て</span>
+      </div>
+      <div id="haisha-pool"
+           class="haisha-pool"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="dropToPool(event)">
+        <span class="haisha-pool-empty">なし</span>
+      </div>
+    </div>
+
+    <!-- 配車テーブル -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div class="table-wrap">
+        <table class="haisha-table">
+          <thead>
+            <tr>
+              <th>運転手</th>
+              <th>車番</th>
+              <th style="text-align:right">積載量</th>
+              <th>積置き分</th>
+              <th>配達①</th>
+              <th>配達②</th>
+              <th>配達③</th>
+              <th>配達④</th>
+              <th>配達⑤</th>
+              <th>備考</th>
+            </tr>
+          </thead>
+          <tbody id="haisha-tbody">
+            <tr class="empty-row"><td colspan="9">日付を選択してください</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ===== 注意事項編集モーダル ===== -->
+<div class="modal-overlay" id="modal-place">
+  <div class="modal" style="width:480px">
+    <div class="modal-head">
+      <h3>⚠️ 注意事項の編集</h3>
+      <button class="modal-close" onclick="closeModal('place')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>場所名</label>
+        <input id="place-name" readonly style="background:#f8fafc;color:#888">
+      </div>
+      <div class="form-group form-full">
+        <label>注意事項</label>
+        <textarea id="place-caution" rows="5"
+          style="border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:14px;outline:none;resize:vertical;font-family:inherit;transition:border-color 0.15s"
+          placeholder="例：8時以降入場不可、要事前連絡など"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('place')">キャンセル</button>
+      <button class="btn btn-primary" onclick="savePlace()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== 車両モーダル ===== -->
+<div class="modal-overlay" id="modal-vehicle">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="v-modal-title">車両を追加</h3>
+      <button class="modal-close" onclick="closeModal('vehicle')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group form-full">
+        <label>種別</label>
+        <select id="v-kind" onchange="onVehicleKindChange()">
+          <option value="トラック">トラック</option>
+          <option value="トレーラー">トレーラー</option>
+        </select>
+      </div>
+      <div class="form-group form-full" id="v-number-group">
+        <label>ナンバープレート</label>
+        <input id="v-number" placeholder="品川 100 あ 1234">
+      </div>
+      <div class="form-group" id="v-head-group" style="display:none">
+        <label>ヘッドナンバー</label>
+        <input id="v-head" placeholder="品川 100 あ 1234">
+      </div>
+      <div class="form-group" id="v-trailer-group" style="display:none">
+        <label>台車ナンバー</label>
+        <input id="v-trailer" placeholder="品川 800 あ 1234">
+      </div>
+      <div class="form-group">
+        <label>最大積載量（kg）</label>
+        <input id="v-payload" type="number" step="1" min="0" placeholder="10000">
+      </div>
+      <div class="form-group">
+        <label>メモ</label>
+        <input id="v-note" placeholder="任意のメモ">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('vehicle')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveVehicle()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ドライバーモーダル ===== -->
+<div class="modal-overlay" id="modal-driver">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="d-modal-title">ドライバーを追加</h3>
+      <button class="modal-close" onclick="closeModal('driver')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>氏名</label><input id="d-name" placeholder="山田 太郎"></div>
+      <div class="form-group"><label>連絡先</label><input id="d-phone" placeholder="090-0000-0000"></div>
+      <div class="form-group">
+        <label>稼働状況</label>
+        <select id="d-status">
+          <option value="稼働中">稼働中</option>
+          <option value="休暇中">休暇中</option>
+          <option value="退職">退職</option>
+        </select>
+      </div>
+      <div class="form-group form-full"><label>メモ</label><input id="d-note" placeholder="任意のメモ"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('driver')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveDriver()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== スケジュール（1件）モーダル ===== -->
+<div class="modal-overlay" id="modal-schedule">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="s-modal-title">配車を追加</h3>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button id="aitsu-toggle-btn" type="button"
+          onclick="toggleAitsumi()"
+          style="font-size:12px;font-weight:700;padding:4px 12px;border-radius:20px;border:1.5px solid #d0d5e0;background:#fff;color:#666;cursor:pointer">
+          🔀 相積み
+        </button>
+        <button class="modal-close" onclick="closeModal('schedule')">×</button>
+      </div>
+    </div>
+    <datalist id="dl-load-places"></datalist>
+    <datalist id="dl-unload-places"></datalist>
+    <datalist id="dl-cargo-types">
+      <option value="コイル">
+      <option value="亜鉛コイル">
+      <option value="矢板">
+      <option value="特丸">
+      <option value="SC">
+      <option value="H鋼">
+      <option value="タルク">
+    </datalist>
+
+    <!-- 通常モード -->
+    <div id="s-normal-mode">
+    <div class="form-grid">
+      <div class="form-group"><label>積み込み日</label><input id="s-load-date" type="date"></div>
+      <div class="form-group"><label>積み込み場所</label>
+        <input id="s-load-place" placeholder="〇〇倉庫" list="dl-load-places" autocomplete="off"
+               oninput="onRouteInput(); filterUnloadByLoadPlace(this.value)">
+      </div>
+      <div class="form-group"><label>下ろし日</label><input id="s-unload-date" type="date"></div>
+      <div class="form-group"><label>下ろし場所</label>
+        <input id="s-unload-place" placeholder="〇〇工場" list="dl-unload-places" autocomplete="off"
+               oninput="onRouteInput(); onUnloadPlaceInput()">
+      </div>
+
+      <!-- 注意事項ボックス -->
+      <div class="caution-box" id="s-caution-box">
+        <div class="caution-icon">⚠️</div>
+        <div class="caution-content">
+          <div class="caution-label">注意事項</div>
+          <div class="caution-text" id="s-caution-text"></div>
+          <button class="caution-edit" onclick="openPlaceEdit()">編集する</button>
+        </div>
+      </div>
+
+      <!-- 荷物の種類 -->
+      <div class="cargo-section">
+        <div class="cargo-type-row">
+          <label>荷物の種類</label>
+          <input id="s-cargo-type" type="text" list="dl-cargo-types" placeholder="コイル・自由入力も可"
+            oninput="onSCargoTypeChange()"
+            style="border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;outline:none;flex:1">
+        </div>
+        <div id="s-coil-section" style="display:none">
+          <div class="cargo-list" id="s-coil-list"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <button type="button" class="btn btn-ghost btn-sm btn-add-cargo" onclick="addSCoil()">＋ コイルを追加</button>
+            <div class="cargo-total">合計：<strong id="s-coil-total">0</strong> t</div>
+          </div>
+        </div>
+        <div id="s-other-cargo-section" style="display:none">
+          <div class="cargo-list" id="s-other-cargo-list"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <button type="button" class="btn btn-ghost btn-sm btn-add-cargo" onclick="addSOtherCargo()">＋ 荷物を追加</button>
+            <div class="cargo-total">合計：<strong id="s-other-cargo-total">0</strong> t</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group"><label>重量（kg）<span style="font-size:11px;color:var(--accent);margin-left:4px">↑荷物を入力すると自動入力</span></label><input id="s-weight" type="number" step="1" min="0" placeholder="8000"></div>
+      <div class="form-group"><label>メモ</label><input id="s-note" placeholder="任意のメモ"></div>
+
+      <!-- パターン提案ボックス -->
+      <div class="suggest-box" id="suggest-box">
+        <div class="suggest-title">💡 過去の配車実績から提案</div>
+        <div class="suggest-list" id="suggest-list"></div>
+      </div>
+
+      <hr class="form-sep">
+
+      <div class="form-group form-full" style="flex-direction:row; align-items:center; justify-content:space-between;">
+        <span class="section-label">空き確認</span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="checkAvail()">🔍 空き確認</button>
+      </div>
+
+      <div id="avail-wrap" class="form-full" style="display:none">
+        <div class="avail-section">
+          <h4>空き車両</h4>
+          <div class="candidate-list" id="avail-v-list"></div>
+        </div>
+        <div class="avail-section" style="margin-top:12px">
+          <h4>空きドライバー</h4>
+          <div class="candidate-list" id="avail-d-list"></div>
+        </div>
+      </div>
+
+      <hr class="form-sep">
+
+      <div class="form-group"><label>車両（任意）</label><select id="s-vehicle"><option value="">-- 選択 --</option></select></div>
+      <div class="form-group"><label>ドライバー（任意）</label><select id="s-driver"><option value="">-- 選択 --</option></select></div>
+    </div>
+    </div><!-- /s-normal-mode -->
+
+    <!-- 相積みモード -->
+    <div id="s-aitsu-mode" style="display:none">
+      <div class="form-grid">
+        <div class="form-group"><label>積み込み日（共通）</label><input id="at-load-date" type="date"></div>
+        <div class="form-group"><label>下ろし日（共通）</label><input id="at-unload-date" type="date"></div>
+        <div class="form-group"><label>車両（任意）</label><select id="at-vehicle"><option value="">-- 選択 --</option></select></div>
+        <div class="form-group"><label>ドライバー（任意）</label><select id="at-driver"><option value="">-- 選択 --</option></select></div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--text-sub);margin:16px 0 8px;text-transform:uppercase;letter-spacing:0.5px">
+        積み込み・下ろし場所
+      </div>
+      <div id="at-rows"></div>
+      <button type="button" onclick="addAitsuRow()"
+        style="width:100%;margin-top:8px;padding:8px;border:1.5px dashed #d0d5e0;border-radius:8px;background:#fafbfc;color:#888;font-size:13px;cursor:pointer">
+        ＋ 行を追加
+      </button>
+    </div><!-- /s-aitsu-mode -->
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('schedule')">キャンセル</button>
+      <button class="btn btn-primary" id="s-save-btn" onclick="saveSchedule()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== まとめて配車モーダル ===== -->
+<div class="modal-overlay" id="modal-bulk">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>📦 まとめて配車</h3>
+      <button class="modal-close" onclick="closeModal('bulk')">×</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>積み込み日</label><input id="b-load-date" type="date"></div>
+      <div class="form-group"><label>積み込み場所</label><input id="b-load-place" placeholder="〇〇倉庫" list="dl-load-places" autocomplete="off" oninput="filterUnloadByLoadPlace(this.value)"></div>
+      <div class="form-group"><label>下ろし日</label><input id="b-unload-date" type="date"></div>
+      <div class="form-group"><label>下ろし場所</label><input id="b-unload-place" placeholder="〇〇工場" list="dl-unload-places" autocomplete="off"></div>
+      <!-- 荷物リスト -->
+      <div class="cargo-section">
+        <div class="cargo-type-row">
+          <label>荷物の種類</label>
+          <input id="b-cargo-type" type="text" list="dl-cargo-types" placeholder="コイル・自由入力も可"
+            oninput="onCargoTypeChange()"
+            style="border:1px solid var(--border);border-radius:7px;padding:7px 10px;font-size:13px;outline:none;flex:1">
+        </div>
+
+        <!-- コイル入力リスト -->
+        <div id="coil-section" style="display:none">
+          <div class="cargo-list" id="coil-list"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <button type="button" class="btn btn-ghost btn-sm btn-add-cargo" onclick="addCoil()">＋ コイルを追加</button>
+            <div class="cargo-total">合計：<strong id="coil-total">0</strong> t</div>
+          </div>
+        </div>
+
+        <!-- その他 -->
+        <div id="other-cargo-section" style="display:none">
+          <div class="cargo-list" id="other-cargo-list"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-top:4px">
+            <button type="button" class="btn btn-ghost btn-sm btn-add-cargo" onclick="addOtherCargo()">＋ 荷物を追加</button>
+            <div class="cargo-total">合計：<strong id="other-cargo-total">0</strong> t</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>合計重量（kg）<span style="font-size:11px;color:var(--accent);margin-left:4px">↑荷物を入力すると自動入力</span></label>
+        <input id="b-total" type="number" step="1" min="0" placeholder="30000" oninput="updateBulkPreview()">
+      </div>
+      <div class="form-group"><label>メモ</label><input id="b-note" placeholder="任意のメモ"></div>
+
+      <hr class="form-sep">
+
+      <div class="form-group form-full" style="flex-direction:row; align-items:center; justify-content:space-between;">
+        <span class="section-label">空き車両を選んで割り振る</span>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="checkBulkAvail()">🔍 空き確認</button>
+      </div>
+
+      <div id="bulk-v-wrap" class="form-full" style="display:none">
+        <div class="candidate-list" id="bulk-v-list"></div>
+      </div>
+
+      <div id="bulk-preview-wrap" class="form-full" style="display:none">
+        <div class="section-label" style="margin-bottom:8px">割り振り結果</div>
+        <div class="alloc-list" id="bulk-preview"></div>
+        <p id="bulk-warn" style="font-size:12px; color:var(--danger); margin-top:8px;"></p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('bulk')">キャンセル</button>
+      <button class="btn btn-ghost" onclick="saveBulk(true)">📋 荷物だけ登録</button>
+      <button class="btn btn-success" onclick="saveBulk(false)">✅ 車両も割り当てて登録</button>
+    </div>
+  </div>
+</div>
+
