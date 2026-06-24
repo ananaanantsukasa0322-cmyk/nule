@@ -2544,7 +2544,7 @@ function _renderHaishaInner() {
            ondragleave="hDragLeave(event)"
            ondrop="hDropEmpty(event,'${uid}')"></td>`
     ).join('');
-    return `<tr style="background:#fafbfc">
+    return `<tr style="background:#111">
       <td style="padding:6px 8px;min-width:80px">
         <input class="haisha-inp" type="text" placeholder="ドライバー名"
                value="${t.name || ''}"
