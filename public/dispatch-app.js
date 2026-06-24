@@ -41,13 +41,13 @@ function setupAutocomplete(inputId, datalistId, getOptsOverride) {
     if (!filtered.length) { drop.style.display = 'none'; return; }
     drop.innerHTML = filtered.map((v, i) => {
       const sep = i > 0 && filtered[i-1]._group !== v._group && v._group === 'other'
-        ? '<li style="height:1px;background:#e8ecf0;margin:4px 0;pointer-events:none"></li>' : '';
+        ? '<li style="height:1px;background:#444;margin:4px 0;pointer-events:none"></li>' : '';
       const label = typeof v === 'object' ? v.val : v;
       return `${sep}<li style="padding:9px 14px;cursor:pointer;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
                data-val="${label.replace(/"/g,'&quot;')}">${label}</li>`;
     }).join('');
     drop.querySelectorAll('li[data-val]').forEach(li => {
-      li.addEventListener('mouseenter', () => li.style.background = '#eff4ff');
+      li.addEventListener('mouseenter', () => li.style.background = '#2a2a2a');
       li.addEventListener('mouseleave', () => li.style.background = '');
     });
     reposition();
@@ -495,7 +495,7 @@ function closeModal(type) {
     document.getElementById('at-rows').innerHTML = '';
     _aitsuRowCount = 0;
     const btn = document.getElementById('aitsu-toggle-btn');
-    if (btn) { btn.style.background='#fff'; btn.style.borderColor='#d0d5e0'; btn.style.color='#666'; }
+    if (btn) { btn.style.background='#1a1a1a'; btn.style.borderColor='#555'; btn.style.color='#888'; }
     document.getElementById('s-modal-title').textContent = '配車を追加';
   }
 }
@@ -575,7 +575,7 @@ function renderDrivers() {
       <td style="text-align:center">
         <button onclick="toggleHaishaVisible(${d.id})"
           style="border:none;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;cursor:pointer;
-            background:${on ? '#4caf82' : '#e0e0e0'};color:${on ? '#fff' : '#888'}">
+            background:${on ? '#22c55e' : '#333'};color:${on ? '#fff' : '#888'}">
           ${on ? '表示' : '非表示'}
         </button>
       </td>
@@ -818,7 +818,7 @@ function renderSchedules() {
 
     return `<tr class="${isDone ? 'done-row' : ''} ${rowBg}">
       <td style="min-width:90px">${statusBadge}${doneBtn}</td>
-      <td>${first.load_date}${unassignedBadge}<br><span style="font-size:11px;background:#e0e7ff;color:#3730a3;border-radius:4px;padding:1px 6px">🔀 相積み×${grp.length}</span></td>
+      <td>${first.load_date}${unassignedBadge}<br><span style="font-size:11px;background:rgba(79,126,248,0.2);color:#93b5ff;border-radius:4px;padding:1px 6px">🔀 相積み×${grp.length}</span></td>
       <td colspan="2">${routeList}</td>
       <td style="text-align:right">${totalWeight ? Math.round(totalWeight).toLocaleString('ja-JP') + 'kg' : '-'}</td>
       ${vCell}
@@ -980,7 +980,7 @@ function toggleAitsumi() {
   document.getElementById('s-normal-mode').style.display = _aitsuMode ? 'none' : '';
   document.getElementById('s-aitsu-mode').style.display  = _aitsuMode ? '' : 'none';
   const btn = document.getElementById('aitsu-toggle-btn');
-  btn.style.background = _aitsuMode ? '#eff4ff' : '#fff';
+  btn.style.background = _aitsuMode ? 'rgba(79,126,248,0.15)' : '#1a1a1a';
   btn.style.borderColor = _aitsuMode ? 'var(--accent)' : '#d0d5e0';
   btn.style.color = _aitsuMode ? 'var(--accent)' : '#666';
   document.getElementById('s-modal-title').textContent = _aitsuMode ? '相積み追加' : '配車を追加';
@@ -999,7 +999,7 @@ function addAitsuRow() {
   const n = _aitsuRowCount;
   const div = document.createElement('div');
   div.id = `at-row-${n}`;
-  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;padding:10px;background:#1a1a1a;border-radius:8px;border:1px solid #e8ecf0';
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;padding:10px;background:#1a1a1a;border-radius:8px;border:1px solid #444';
   div.innerHTML = `
     <input class="form-input" placeholder="積み込み場所" list="dl-load-places" autocomplete="off"
            id="at-load-${n}" oninput="filterUnloadByLoadPlace(this.value)" style="font-size:13px;padding:7px 10px;border:1px solid var(--border);border-radius:6px;outline:none">
@@ -1166,7 +1166,7 @@ function openSpotModal() {
       <div style="font-size:12px;color:var(--text-sub);margin-bottom:16px">${date} のみ表示するドライバーを選択</div>
       ${listHtml}
       <button onclick="document.getElementById('spot-modal').remove()"
-        style="margin-top:8px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#f9fafb;cursor:pointer;font-size:13px;">
+        style="margin-top:8px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#1a1a1a;cursor:pointer;font-size:13px;">
         キャンセル
       </button>
     </div>`;
@@ -1595,7 +1595,7 @@ function renderDashboard() {
       const dname = dLabel(s.driver_id).replace(/\s+/g, '');
       const place = s.unload_place || '?';
       const weight = s.weight ? `${Number(s.weight).toLocaleString('ja-JP')}kg` : '';
-      return `<div style="background:#f0f0f0;border:1px solid #d0d0d0;border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;opacity:0.7">
+      return `<div style="background:rgba(136,136,136,0.1);border:1px solid #555;border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;opacity:0.7">
         <span style="color:#888">✅</span>
         <span style="font-weight:700;color:#888;margin-left:2px">${dname}</span>
         <span style="color:#aaa;margin-left:3px">${place}</span>
@@ -2356,8 +2356,8 @@ function renderHaisha() {
 
     // スポットドライバーにはスポットバッジ＋解除ボタン、通常ドライバーには休みボタン
     const dayOffBtn = isSpot
-      ? `<span style="margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #7c3aed;background:#ede9fe;color:#7c3aed;font-weight:700;">📍スポット</span>
-         <button style="margin-left:4px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #d1d5db;background:#f9fafb;color:#6b7280;cursor:pointer;"
+      ? `<span style="margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid rgba(124,58,237,0.4);background:rgba(124,58,237,0.15);color:#a78bfa;font-weight:700;">📍スポット</span>
+         <button style="margin-left:4px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #555;background:#1a1a1a;color:#888;cursor:pointer;"
            onclick="removeSpotVisible('${did}','${date}')" title="スポット表示を解除">✕</button>`
       : `<button
           style="margin-left:6px;font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid ${isDayOff ? '#dc2626' : '#d1d5db'};background:${isDayOff ? '#fee2e2' : '#f9fafb'};color:${isDayOff ? '#dc2626' : '#6b7280'};cursor:pointer;font-weight:700;"
@@ -2396,7 +2396,7 @@ function renderHaisha() {
       }
     }
 
-    const rowStyle = isDayOff ? 'opacity:0.45;background:#f3f4f6;' : '';
+    const rowStyle = isDayOff ? 'opacity:0.45;background:#1a1a1a;' : '';
 
     const delCells = [0,1,2,3,4].map(i => {
       let inner = '';
@@ -2590,12 +2590,12 @@ function haishaAitsumiCardHTML(schedList, type='delivery') {
     : '';
 
   return `<div class="${cardCls}" draggable="true"
-    style="flex-direction:column;align-items:stretch;gap:0;padding:6px 10px;cursor:grab;min-width:160px;${aitsuOver ? 'border-color:#dc2626 !important;background:#fef2f2 !important;' : ''}"
+    style="flex-direction:column;align-items:stretch;gap:0;padding:6px 10px;cursor:grab;min-width:160px;${aitsuOver ? 'border-color:#ef4444 !important;background:rgba(239,68,68,0.1) !important;' : ''}"
     ondragstart="hDragStartGroup(event,'${groupId}')"
     ondragend="hDragEnd(event);this._dragged=true;setTimeout(()=>{this._dragged=false},200)"
     onclick="if(!this._dragged)openAitsumiDetail(${ids});else this._dragged=false;">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-      <span style="font-size:10px;font-weight:700;background:#e0e7ff;color:#3730a3;padding:2px 6px;border-radius:4px">🔀 相積み</span>
+      <span style="font-size:10px;font-weight:700;background:rgba(79,126,248,0.2);color:#93b5ff;padding:2px 6px;border-radius:4px">🔀 相積み</span>
       <span style="font-size:11px;color:#999">${schedList.length}件</span>
       <span class="c-status ${stBadgeCls}" title="クリックでステータス変更"
         onclick="event.stopPropagation();toggleGroupStatus('${groupId}')"
@@ -2692,7 +2692,7 @@ function haishaCardHTML(s, type) {
     ? `<span style="display:block;font-size:10px;font-weight:700;color:#dc2626;margin-top:1px">⚠️ 積載量オーバー ${Math.round(cardWeight).toLocaleString('ja-JP')}kg</span>`
     : '';
   return `<div class="${cls}" draggable="true" data-id="${s.id}"
-    style="${overweight ? 'border-color:#dc2626 !important;background:#fef2f2 !important;' : ''}"
+    style="${overweight ? 'border-color:#ef4444 !important;background:rgba(239,68,68,0.1) !important;' : ''}"
     ondragstart="hDragStart(event,${s.id})"
     ondragend="hDragEnd(event);this._dragged=true;setTimeout(()=>{this._dragged=false},200)"
     onclick="if(!this._dragged)openCardDetail(${s.id});else this._dragged=false;">

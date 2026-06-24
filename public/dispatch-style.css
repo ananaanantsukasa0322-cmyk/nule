@@ -434,7 +434,7 @@
       padding:6px 8px; border-bottom:1px solid var(--border); vertical-align:top;
     }
     .haisha-table tbody tr:last-child td { border-bottom:none; }
-    .haisha-table tbody tr:hover td { background:#fafcff; }
+    .haisha-table tbody tr:hover td { background:#1a1a1a; }
     .haisha-driver-name { font-weight:700; font-size:13px; white-space:nowrap; min-width:70px; }
     .haisha-vnum { font-size:11px; color:var(--text-sub); white-space:nowrap; min-width:80px; }
     .haisha-payload { font-weight:600; white-space:nowrap; text-align:right; }

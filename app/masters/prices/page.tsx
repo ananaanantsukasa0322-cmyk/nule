@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import AuthGuard from "@/components/AuthGuard";
 import Modal from "@/components/Modal";
+import FileImport from "@/components/FileImport";
 import type { Client, Route, Price, PriceType } from "@/types/database";
 
 function PricesContent() {
@@ -88,12 +89,15 @@ function PricesContent() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">単価マスタ</h2>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200 transition-colors"
-        >
-          + 新規単価
-        </button>
+        <div className="flex items-center gap-3">
+          <FileImport target="prices" label="CSV/Excel" onComplete={loadData} />
+          <button
+            onClick={() => { resetForm(); setShowModal(true); }}
+            className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200 transition-colors"
+          >
+            + 新規単価
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">

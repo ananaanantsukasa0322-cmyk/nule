@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import AuthGuard from "@/components/AuthGuard";
 import Modal from "@/components/Modal";
+import FileImport from "@/components/FileImport";
 import type { DailyReport, Driver } from "@/types/database";
 
 function DailyReportsContent() {
@@ -91,12 +92,15 @@ function DailyReportsContent() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">日報管理</h2>
-        <button
-          onClick={() => setShowUpload(true)}
-          className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200 transition-colors"
-        >
-          + PDFアップロード
-        </button>
+        <div className="flex items-center gap-3">
+          <FileImport target="daily_reports" label="Excel" onComplete={loadData} />
+          <button
+            onClick={() => setShowUpload(true)}
+            className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200 transition-colors"
+          >
+            + PDFアップロード
+          </button>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -193,10 +197,10 @@ function DailyReportsContent() {
             </select>
           </div>
           <div>
-            <label className="block text-xs text-muted mb-1">PDFファイル</label>
+            <label className="block text-xs text-muted mb-1">ファイル (PDF / Excel)</label>
             <input
               type="file"
-              accept=".pdf"
+              accept=".pdf,.xlsx,.xls,.csv"
               onChange={(e) => setFile(e.target.files?.[0] || null)}
               className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-accent file:text-foreground file:text-xs"
             />
