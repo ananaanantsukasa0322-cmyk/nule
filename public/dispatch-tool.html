@@ -3592,8 +3592,8 @@ function _renderHaishaInner() {
   // 未割当プール（相積みグループはまとめて表示）
   const uWrap = document.getElementById('haisha-unassigned-wrap');
   const uPool = document.getElementById('haisha-pool');
+  uWrap.style.display = '';
   if (unassigned.length) {
-    uWrap.style.display = '';
     const aitsuGroups = {};
     const normalPool = [];
     for (const s of unassigned) {
@@ -3608,7 +3608,7 @@ function _renderHaishaInner() {
     const aitsuHtml  = Object.values(aitsuGroups).map(grp => haishaAitsumiCardHTML(grp)).join('');
     uPool.innerHTML = normalHtml + aitsuHtml;
   } else {
-    uWrap.style.display = 'none';
+    uPool.innerHTML = '<span class="haisha-pool-empty">ここにドロップして未割当に戻す</span>';
   }
 
   // haisha_visible=true のドライバー、または当日スポット表示中のドライバーを display_order 順で表示
