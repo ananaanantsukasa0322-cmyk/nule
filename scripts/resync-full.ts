@@ -14,6 +14,14 @@ async function main() {
   ])
   console.log(`既存: drivers=${eDr.length} vehicles=${eVe.length} schedules=${eSc.length} places=${ePl.length} youshas=${eYo.length} load_places=${eLp.length}`)
 
+  // Save client_name mapping before clearing
+  const { data: existingScheds } = await supabase.from('schedules').select('load_place,unload_place,client_name').not('client_name', 'is', null)
+  const clientMap: Record<string, string> = {}
+  for (const s of existingScheds || []) {
+    if (s.client_name) clientMap[`${s.load_place}|||${s.unload_place}`] = s.client_name
+  }
+  console.log(`保存済み荷主マッピング: ${Object.keys(clientMap).length}件`)
+
   // Clear
   await supabase.from('schedules').delete().neq('id', '00000000-0000-0000-0000-000000000000')
   await supabase.from('vehicles').delete().neq('id', '00000000-0000-0000-0000-000000000000')
@@ -94,6 +102,7 @@ async function main() {
       cargo_note: s.cargo_note || null,
       items: s.items || null,
       slot_index: s.slot_index != null ? Number(s.slot_index) : null,
+      client_name: clientMap[`${s.load_place || ''}|||${s.unload_place || ''}`] || null,
     })
     if (error) { ng++; if (ng <= 3) console.error(`  ✗ #${s.id}: ${error.message}`) } else ok++
   }
