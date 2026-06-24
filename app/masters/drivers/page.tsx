@@ -125,7 +125,7 @@ function DriversContent() {
 
 export default function DriversPage() {
   return (
-    <AuthGuard requiredRole="admin">
+    <AuthGuard allowedRoles={["admin", "office"]}>
       <DriversContent />
     </AuthGuard>
   );

@@ -196,7 +196,7 @@ function PricesContent() {
 
 export default function PricesPage() {
   return (
-    <AuthGuard requiredRole="admin">
+    <AuthGuard allowedRoles={["admin", "office"]}>
       <PricesContent />
     </AuthGuard>
   );

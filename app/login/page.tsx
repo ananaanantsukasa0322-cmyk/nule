@@ -10,7 +10,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [isSignup, setIsSignup] = useState(false);
   const [name, setName] = useState("");
-  const [role, setRole] = useState<"admin" | "dispatcher">("dispatcher");
+  const [role, setRole] = useState<"admin" | "office" | "dispatcher">("dispatcher");
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -37,10 +37,10 @@ export default function LoginPage() {
         return;
       }
 
-      if (data.user.role === "admin") {
-        router.push("/dashboard");
-      } else {
+      if (data.user.role === "dispatcher") {
         router.push("/dispatch");
+      } else {
+        router.push("/dashboard");
       }
     } catch {
       setError("通信エラーが発生しました");
@@ -82,10 +82,11 @@ export default function LoginPage() {
                 </label>
                 <select
                   value={role}
-                  onChange={(e) => setRole(e.target.value as "admin" | "dispatcher")}
+                  onChange={(e) => setRole(e.target.value as "admin" | "office" | "dispatcher")}
                   className="w-full"
                 >
                   <option value="admin">管理者</option>
+                  <option value="office">事務所</option>
                   <option value="dispatcher">配車係</option>
                 </select>
               </div>

@@ -2,15 +2,21 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import type { User } from "@/types/database";
+import type { User, UserRole } from "@/types/database";
 import Sidebar from "./Sidebar";
 
 interface AuthGuardProps {
   children: ReactNode;
-  requiredRole?: "admin" | "dispatcher";
+  allowedRoles?: UserRole[];
 }
 
-export default function AuthGuard({ children, requiredRole }: AuthGuardProps) {
+const defaultRedirect: Record<UserRole, string> = {
+  admin: "/dashboard",
+  office: "/dashboard",
+  dispatcher: "/dispatch",
+};
+
+export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -22,15 +28,16 @@ export default function AuthGuard({ children, requiredRole }: AuthGuardProps) {
         return res.json();
       })
       .then((data) => {
-        if (requiredRole && data.user.role !== requiredRole && data.user.role !== "admin") {
-          router.push("/dispatch");
+        const u = data.user as User;
+        if (allowedRoles && !allowedRoles.includes(u.role) && u.role !== "admin") {
+          router.push(defaultRedirect[u.role]);
           return;
         }
-        setUser(data.user);
+        setUser(u);
       })
       .catch(() => router.push("/login"))
       .finally(() => setLoading(false));
-  }, [router, requiredRole]);
+  }, [router, allowedRoles]);
 
   if (loading) {
     return (

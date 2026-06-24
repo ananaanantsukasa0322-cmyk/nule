@@ -8,9 +8,9 @@ export default async function Home() {
     redirect("/login");
   }
 
-  if (user.role === "admin") {
-    redirect("/dashboard");
-  } else {
+  if (user.role === "dispatcher") {
     redirect("/dispatch");
+  } else {
+    redirect("/dashboard");
   }
 }

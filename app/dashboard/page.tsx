@@ -111,7 +111,7 @@ function StatCard({
 
 export default function DashboardPage() {
   return (
-    <AuthGuard requiredRole="admin">
+    <AuthGuard allowedRoles={["admin", "office"]}>
       <DashboardContent />
     </AuthGuard>
   );

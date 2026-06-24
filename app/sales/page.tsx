@@ -225,7 +225,7 @@ function SalesContent() {
 
 export default function SalesPage() {
   return (
-    <AuthGuard requiredRole="admin">
+    <AuthGuard allowedRoles={["admin", "office"]}>
       <SalesContent />
     </AuthGuard>
   );

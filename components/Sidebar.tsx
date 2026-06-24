@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import type { UserRole } from "@/types/database";
 
 interface SidebarProps {
-  userRole: "admin" | "dispatcher";
+  userRole: UserRole;
   userName: string;
 }
 
@@ -21,14 +22,31 @@ const adminLinks = [
   { href: "/masters/drivers", label: "ドライバーマスタ", icon: "─" },
 ];
 
+const officeLinks = [
+  { href: "/dashboard", label: "ダッシュボード", icon: "◆" },
+  { href: "/daily-reports", label: "日報管理", icon: "◈" },
+  { href: "/sales", label: "売上・請求", icon: "◉" },
+  { href: "/driver-management", label: "ドライバー管理", icon: "◎" },
+  { href: "/masters/clients", label: "荷主マスタ", icon: "─" },
+  { href: "/masters/routes", label: "ルートマスタ", icon: "─" },
+  { href: "/masters/prices", label: "単価マスタ", icon: "─" },
+  { href: "/masters/drivers", label: "ドライバーマスタ", icon: "─" },
+];
+
 const dispatcherLinks = [
   { href: "/dispatch", label: "配車管理", icon: "◇" },
 ];
 
+const roleLabel: Record<UserRole, string> = {
+  admin: "管理者",
+  office: "事務所",
+  dispatcher: "配車係",
+};
+
 export default function Sidebar({ userRole, userName }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const links = userRole === "admin" ? adminLinks : dispatcherLinks;
+  const links = userRole === "admin" ? adminLinks : userRole === "office" ? officeLinks : dispatcherLinks;
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -79,9 +97,7 @@ export default function Sidebar({ userRole, userName }: SidebarProps) {
 
         <div className="p-4 border-t border-border">
           <p className="text-xs text-muted mb-1">{userName}</p>
-          <p className="text-xs text-muted/60 mb-3">
-            {userRole === "admin" ? "管理者" : "配車係"}
-          </p>
+          <p className="text-xs text-muted/60 mb-3">{roleLabel[userRole]}</p>
           <button
             onClick={handleLogout}
             className="text-xs text-muted hover:text-danger transition-colors"

@@ -266,7 +266,7 @@ function DailyReportsContent() {
 
 export default function DailyReportsPage() {
   return (
-    <AuthGuard requiredRole="admin">
+    <AuthGuard allowedRoles={["admin", "office"]}>
       <DailyReportsContent />
     </AuthGuard>
   );

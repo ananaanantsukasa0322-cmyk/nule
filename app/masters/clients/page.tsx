@@ -131,7 +131,7 @@ function ClientsContent() {
 
 export default function ClientsPage() {
   return (
-    <AuthGuard requiredRole="admin">
+    <AuthGuard allowedRoles={["admin", "office"]}>
       <ClientsContent />
     </AuthGuard>
   );

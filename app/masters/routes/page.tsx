@@ -125,7 +125,7 @@ function RoutesContent() {
 
 export default function RoutesPage() {
   return (
-    <AuthGuard requiredRole="admin">
+    <AuthGuard allowedRoles={["admin", "office"]}>
       <RoutesContent />
     </AuthGuard>
   );
