@@ -2389,17 +2389,18 @@ async function saveSchedule() {
 
     const groupId = `aitsu_${Date.now()}`;
     for (const e of entries) {
-      await fetch('/api/schedules', {
+      const aitsuRes = await fetch('/api/schedules', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           load_date: loadDate, load_place: e.load_place,
           unload_date: unloadDate || loadDate, unload_place: e.unload_place,
-          weight: e.weight, vehicle_id: vehicleId, driver_id: driverId,
+          weight: e.weight, vehicle_id: vehicleId || null, driver_id: driverId,
           note: '', cargo_note: e.cargo_type || '',
           ai_tsumi: true, ai_tsumi_group: groupId, client_name: clientName,
         }),
       });
+      if (!aitsuRes.ok) { const err = await aitsuRes.text(); alert('相積み保存エラー: ' + err); return; }
     }
     closeModal('schedule'); await loadAll();
     return;
@@ -2434,11 +2435,23 @@ async function saveSchedule() {
       if (!cargoNote && existing.cargo_note) data.cargo_note = existing.cargo_note;
     }
   }
-  await fetch(id ? `/api/schedules/${id}` : '/api/schedules', {
-    method: id ? 'PUT' : 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify(data)
-  });
+  const saveUrl = id ? `/api/schedules/${id}` : '/api/schedules';
+  const saveMethod = id ? 'PUT' : 'POST';
+  try {
+    const saveRes = await fetch(saveUrl, {
+      method: saveMethod,
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    if (!saveRes.ok) {
+      const errBody = await saveRes.text();
+      alert(`保存エラー (${saveRes.status}): ${errBody}`);
+      return;
+    }
+  } catch(e) {
+    alert('通信エラー: ' + e.message);
+    return;
+  }
 
   // 荷主入力時、積み地＋下ろし先が完全一致する未設定スケジュールに自動反映
   if (data.client_name && data.load_place && data.unload_place) {
