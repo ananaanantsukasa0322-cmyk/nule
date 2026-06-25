@@ -16,8 +16,9 @@ export async function POST(request: NextRequest) {
 
     let text = ''
     try {
-      const pdfParse = (await import('pdf-parse')).default
-      const pdf = await pdfParse(buffer)
+      const pdfParse = await import('pdf-parse')
+      const parseFn = typeof pdfParse === 'function' ? pdfParse : (pdfParse as unknown as {default: Function}).default
+      const pdf = await parseFn(buffer)
       text = pdf.text || ''
     } catch {
       text = ''
