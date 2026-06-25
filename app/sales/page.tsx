@@ -47,6 +47,15 @@ function SalesContent() {
   useEffect(() => { loadClients(); }, [loadClients]);
   useEffect(() => { loadSales(); }, [loadSales]);
 
+  async function updateClientName(schedId: string, newName: string) {
+    await fetch(`/api/schedules/${schedId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ client_name: newName }),
+    });
+    loadSales();
+  }
+
   async function generateInvoice() {
     if (!invoiceClient) return;
     const params = new URLSearchParams({
@@ -206,7 +215,19 @@ function SalesContent() {
             {dispatches.map((d) => (
               <tr key={d.id}>
                 <td>{d.dispatch_date}</td>
-                <td>{(d as unknown as {client_name?:string}).client_name || d.client?.company_name || "—"}</td>
+                <td>
+                  <input
+                    type="text"
+                    defaultValue={(d as unknown as {client_name?:string}).client_name || ""}
+                    placeholder="荷主名"
+                    className="bg-transparent border-b border-border text-sm w-full outline-none focus:border-white"
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      const current = (d as unknown as {client_name?:string}).client_name || "";
+                      if (v !== current) updateClientName(d.id, v);
+                    }}
+                  />
+                </td>
                 <td>{d.driver?.name || "—"}</td>
                 <td>
                   {d.route

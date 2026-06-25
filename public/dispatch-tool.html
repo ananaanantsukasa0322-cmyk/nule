@@ -4182,7 +4182,12 @@ function openCardDetail(id) {
       <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:6px;
         background:${stBg[st]};color:${stColors[st]}">${stMap[st]}</span>
     </div>
-    ${row('荷主', s.client_name || '')}
+    <div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #333;font-size:14px;align-items:center">
+      <span style="color:#888;min-width:90px;flex-shrink:0">荷主</span>
+      <input type="text" value="${(s.client_name||'').replace(/"/g,'&quot;')}" placeholder="荷主名を入力"
+        style="flex:1;background:transparent;border:none;border-bottom:1px dashed #555;color:#f5f5f5;font-size:14px;outline:none;padding:2px 4px"
+        onblur="saveCardClientName('${s.id}',this.value)" id="card-client-input">
+    </div>
     ${row('積み込み日', s.load_date)}
     ${row('積み込み場所', s.load_place)}
     ${row('下ろし日', s.unload_date)}
@@ -4200,6 +4205,23 @@ function openCardDetail(id) {
     </div>`;
 
   document.getElementById('card-detail-overlay').style.display = 'flex';
+}
+async function saveCardClientName(id, value) {
+  const cn = value.trim();
+  const s = schedules.find(x => x.id === id);
+  if (!s || cn === (s.client_name || '')) return;
+  await fetch(`/api/schedules/${id}`, {
+    method: 'PUT', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ client_name: cn || null }),
+  });
+  // 同じルートの未設定スケジュールにも反映
+  if (cn && s.load_place && s.unload_place) {
+    const toUpdate = schedules.filter(x => x.id !== id && !x.client_name && x.load_place === s.load_place && x.unload_place === s.unload_place);
+    for (const x of toUpdate) {
+      await fetch(`/api/schedules/${x.id}`, { method: 'PUT', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ client_name: cn }) });
+    }
+  }
+  await loadAll();
 }
 function closeCardDetail() {
   document.getElementById('card-detail-overlay').style.display = 'none';
