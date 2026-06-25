@@ -936,7 +936,7 @@ async function toggleGroupDone(groupId, currentDone) {
 async function toggleGroupStatus(groupId) {
   const grp = getGroup(groupId);
   if (!grp.length) return;
-  const cycle = { '': 'loaded', 'none': 'loaded', 'loaded': 'delivered', 'delivered': '' };
+  const cycle = { '': 'loaded', 'none': 'loaded', 'loaded': 'delivered', 'delivered': 'none' };
   const next = cycle[grp[0].load_status || ''] || 'loaded';
   for (const s of grp) {
     await fetch(`/api/schedules/${s.id}`, {
@@ -2855,7 +2855,7 @@ function haishaCardHTML(s, type) {
 async function toggleLoadStatus(id) {
   const s = schedules.find(x => x.id === id);
   if (!s) return;
-  const cycle = { '': 'loaded', 'none': 'loaded', 'loaded': 'delivered', 'delivered': '' };
+  const cycle = { '': 'loaded', 'none': 'loaded', 'loaded': 'delivered', 'delivered': 'none' };
   const next = cycle[s.load_status || ''] || 'loaded';
   const res = await fetch(`/api/schedules/${id}`, {
     method: 'PUT',
