@@ -1234,7 +1234,7 @@ function openSpotModal() {
 
   const listHtml = hidden.map(d => `
     <button onclick="addSpotVisible('${d.id}','${date}')"
-      style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:6px;border:1px solid var(--border);border-radius:8px;background:#1a1a1a;cursor:pointer;font-size:14px;font-weight:600;">
+      style="display:block;width:100%;text-align:left;padding:10px 14px;margin-bottom:6px;border:1px solid #444;border-radius:8px;background:#222;color:#f5f5f5;cursor:pointer;font-size:14px;font-weight:600;">
       👤 ${d.name}
     </button>`).join('');
 
@@ -1247,7 +1247,7 @@ function openSpotModal() {
       <div style="font-size:12px;color:var(--text-sub);margin-bottom:16px">${date} のみ表示するドライバーを選択</div>
       ${listHtml}
       <button onclick="document.getElementById('spot-modal').remove()"
-        style="margin-top:8px;width:100%;padding:8px;border:1px solid var(--border);border-radius:8px;background:#1a1a1a;cursor:pointer;font-size:13px;">
+        style="margin-top:8px;width:100%;padding:8px;border:1px solid #444;border-radius:8px;background:#1a1a1a;color:#888;cursor:pointer;font-size:13px;">
         キャンセル
       </button>
     </div>`;
