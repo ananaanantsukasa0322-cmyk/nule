@@ -14,7 +14,7 @@ function DailyReportsContent() {
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [showParse, setShowParse] = useState(false);
-  const [schedules, setSchedules] = useState<{id:string;load_date:string;weight:number;driver_id:string}[]>([]);
+  const [schedules, setSchedules] = useState<{id:string;load_date:string;weight:number;driver_id:string;load_place:string;unload_place:string;client_name?:string;note?:string}[]>([]);
 
   const [parseFile, setParseFile] = useState<File | null>(null);
   const [parseDate, setParseDate] = useState(new Date().toISOString().split("T")[0]);
@@ -105,22 +105,36 @@ function DailyReportsContent() {
         </button>
       </div>
 
+      <h3 className="text-sm font-light text-muted mb-3 mt-6">取り込み済みスケジュール（日報取込分）</h3>
       <div className="overflow-x-auto">
         <table>
-          <thead><tr><th>日付</th><th>ドライバー</th><th>内容</th><th>操作</th></tr></thead>
+          <thead><tr><th>日付</th><th>荷主</th><th>ドライバー</th><th>発地→納入先</th><th>重量</th><th>操作</th></tr></thead>
           <tbody>
-            {reports.length === 0 ? (
-              <tr><td colSpan={4} className="text-center text-muted py-8">日報データがありません</td></tr>
-            ) : reports.map(r => (
-              <tr key={r.id}>
-                <td>{r.report_date}</td>
-                <td>{r.driver?.name || "—"}</td>
-                <td className="max-w-xs truncate text-xs text-muted">{r.ocr_text || r.notes || "—"}</td>
-                <td>
-                  <button onClick={() => deleteReport(r.id)} className="text-xs text-muted hover:text-danger">削除</button>
-                </td>
-              </tr>
-            ))}
+            {schedules.filter(s => (s as unknown as {note?:string}).note === '日報取込').length === 0 ? (
+              <tr><td colSpan={6} className="text-center text-muted py-8">日報取込データなし</td></tr>
+            ) : schedules.filter(s => (s as unknown as {note?:string}).note === '日報取込').map((s: unknown) => {
+              const sc = s as {id:string;load_date:string;client_name?:string;driver_id:string;load_place:string;unload_place:string;weight:number;note?:string};
+              const driver = drivers.find(d => d.id === sc.driver_id);
+              return (
+                <tr key={sc.id}>
+                  <td className="text-sm">{sc.load_date}</td>
+                  <td className="text-sm">
+                    <input type="text" defaultValue={sc.client_name || ""} placeholder="荷主"
+                      className="bg-transparent border-b border-border text-sm w-24 outline-none focus:border-white"
+                      onBlur={e => { const v=e.target.value.trim(); if(v!==(sc.client_name||'')) fetch(`/api/schedules/${sc.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_name:v})}); }} />
+                  </td>
+                  <td className="text-sm">{driver?.name || "—"}</td>
+                  <td className="text-sm">{sc.load_place} → {sc.unload_place}</td>
+                  <td className="text-sm">{sc.weight ? `${sc.weight}kg` : "—"}</td>
+                  <td>
+                    <div className="flex gap-2">
+                      <button onClick={async () => { if(!confirm('削除しますか？')) return; await fetch(`/api/schedules/${sc.id}`,{method:'DELETE'}); loadData(); }}
+                        className="text-xs text-muted hover:text-danger">削除</button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
