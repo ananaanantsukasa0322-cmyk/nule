@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       for (const pr of knownProducts) { if (line.includes(pr) && !foundProducts.includes(pr)) foundProducts.push(pr) }
     }
 
-    const maxRows = Math.max(weights.length, foundDest.length, 1)
+    const maxRows = Math.max(weights.length, foundDest.length, 5)
     for (let i = 0; i < maxRows; i++) {
       entries.push({
         shipper: foundShippers[Math.min(i, foundShippers.length - 1)] || '',

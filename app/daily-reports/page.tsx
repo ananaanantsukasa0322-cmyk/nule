@@ -144,10 +144,17 @@ function DailyReportsContent() {
               className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-accent file:text-foreground file:text-xs" />
           </div>
 
-          <button onClick={handleParse} disabled={!parseFile || parsing}
-            className="w-full py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50">
-            {parsing ? "解析中..." : "PDF解析"}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={handleParse} disabled={!parseFile || parsing}
+              className="flex-1 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50">
+              {parsing ? "解析中..." : "PDF解析"}
+            </button>
+            <button onClick={() => { if (parsedEntries.length === 0) { for(let i=0;i<5;i++) addEntry(); } }}
+              className="px-4 py-2 bg-accent text-white text-sm rounded-md hover:bg-border">
+              手入力
+            </button>
+          </div>
+          <p className="text-xs text-muted">手書きPDFは自動解析が難しい場合があります。「手入力」で直接入力できます。</p>
 
           {rawText && (
             <details className="text-xs">
