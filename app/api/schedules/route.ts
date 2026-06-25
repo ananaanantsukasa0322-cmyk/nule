@@ -32,12 +32,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     if (Array.isArray(body)) {
-      const { data, error } = await supabase.from('schedules').insert(body).select('*, driver:drivers(*), vehicle:vehicles(*)')
+      const { data, error } = await supabase.from('schedules').insert(body).select('*')
       if (error) throw error
       return Response.json(data, { status: 201 })
     }
 
-    const { data, error } = await supabase.from('schedules').insert(body).select('*, driver:drivers(*), vehicle:vehicles(*)').single()
+    const { data, error } = await supabase.from('schedules').insert(body).select('*').single()
     if (error) throw error
     return Response.json(data, { status: 201 })
   } catch (e) {
