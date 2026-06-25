@@ -34,7 +34,17 @@ export async function POST(request: NextRequest) {
 
     function clean(obj: Record<string, unknown>) {
       const out: Record<string, unknown> = {}
-      for (const k of allowed) { if (k in obj) { let v = obj[k]; if (k === 'vehicle_id' && (!v || v === '')) v = null; out[k] = v; } }
+      for (const k of allowed) {
+        if (!(k in obj)) continue
+        let v = obj[k]
+        if (k === 'vehicle_id' && (!v || v === '')) v = null
+        if (k === 'driver_id' && v === '') v = null
+        if (k === 'weight') v = Number(v) || 0
+        if (k === 'slot_index' && v != null) v = Number(v)
+        if (k === 'done') v = !!v
+        if (k === 'ai_tsumi') v = !!v
+        out[k] = v
+      }
       return out
     }
 
@@ -45,8 +55,9 @@ export async function POST(request: NextRequest) {
       return Response.json(data, { status: 201 })
     }
 
-    const { data, error } = await supabase.from('schedules').insert(clean(body)).select('*').single()
-    if (error) throw error
+    const cleaned = clean(body)
+    const { data, error } = await supabase.from('schedules').insert(cleaned).select('*').single()
+    if (error) { console.error('POST insert error:', error, 'cleaned:', JSON.stringify(cleaned)); throw error }
     return Response.json(data, { status: 201 })
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
