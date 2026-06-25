@@ -2872,9 +2872,9 @@ function openCardDetail(id) {
     ? (vehicle.kind === 'トレーラー' ? `${vehicle.head_number} / ${vehicle.trailer_number}` : vehicle.number)
     : '未割当';
 
-  const stMap    = { '': '未積み込み', 'loaded': '積込完了', 'delivered': '荷下ろし完了' };
-  const stColors = { '': '#3b62c9', 'loaded': '#1a7a4c', 'delivered': '#555' };
-  const stBg     = { '': '#dce9ff', 'loaded': '#b7ecd0', 'delivered': '#d0d0d0' };
+  const stMap    = { '': '未積み込み', 'none': '未積み込み', 'loaded': '積込完了', 'delivered': '荷下ろし完了' };
+  const stColors = { '': '#93b5ff', 'none': '#93b5ff', 'loaded': '#4ade80', 'delivered': '#aaa' };
+  const stBg     = { '': 'rgba(79,126,248,0.2)', 'none': 'rgba(79,126,248,0.2)', 'loaded': 'rgba(34,197,94,0.2)', 'delivered': 'rgba(136,136,136,0.2)' };
   const st = s.load_status || '';
 
   // 下ろし場所・積み込み場所の注意事項
@@ -2884,7 +2884,7 @@ function openCardDetail(id) {
   const loadCaution   = loadPlace?.caution   || '';
 
   const row = (label, val) => val
-    ? `<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #f3f3f3;font-size:14px">
+    ? `<div style="display:flex;gap:8px;padding:8px 0;border-bottom:1px solid #333;font-size:14px">
         <span style="color:#888;min-width:90px;flex-shrink:0">${label}</span>
         <span style="font-weight:500">${val}</span>
        </div>` : '';
@@ -2901,6 +2901,7 @@ function openCardDetail(id) {
       <span style="font-size:12px;font-weight:700;padding:3px 10px;border-radius:6px;
         background:${stBg[st]};color:${stColors[st]}">${stMap[st]}</span>
     </div>
+    ${row('荷主', s.client_name || '')}
     ${row('積み込み日', s.load_date)}
     ${row('積み込み場所', s.load_place)}
     ${row('下ろし日', s.unload_date)}
@@ -2911,7 +2912,7 @@ function openCardDetail(id) {
     ${row('メモ', s.note)}
     ${cautionBox(s.unload_place, unloadCaution)}
     ${cautionBox(s.load_place, loadCaution)}
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid #eee">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding-top:14px;border-top:1px solid #333">
       <button class="btn btn-ghost btn-sm" onclick="closeCardDetail();editSched('${s.id}')">✏️ 編集</button>
       <button class="btn btn-ghost btn-sm" onclick="closeCardDetail();toggleLoadStatus('${s.id}')">🔄 ステータス変更</button>
       <button class="btn btn-danger btn-sm" onclick="closeCardDetail();delSchedFromHaisha('${s.id}')">🗑️ 削除</button>
