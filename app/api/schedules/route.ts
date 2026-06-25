@@ -30,19 +30,28 @@ export async function POST(request: NextRequest) {
   try {
     await requireAuth()
     const body = await request.json()
+    const allowed = ['client_name','load_date','load_place','unload_date','unload_place','weight','vehicle_id','driver_id','note','done','load_status','cargo_type','cargo_items','ai_tsumi','ai_tsumi_group','cargo_note','items','slot_index']
+
+    function clean(obj: Record<string, unknown>) {
+      const out: Record<string, unknown> = {}
+      for (const k of allowed) { if (k in obj) { let v = obj[k]; if (k === 'vehicle_id' && (!v || v === '')) v = null; out[k] = v; } }
+      return out
+    }
 
     if (Array.isArray(body)) {
-      const { data, error } = await supabase.from('schedules').insert(body).select('*')
+      const cleaned = body.map(clean)
+      const { data, error } = await supabase.from('schedules').insert(cleaned).select('*')
       if (error) throw error
       return Response.json(data, { status: 201 })
     }
 
-    const { data, error } = await supabase.from('schedules').insert(body).select('*').single()
+    const { data, error } = await supabase.from('schedules').insert(clean(body)).select('*').single()
     if (error) throw error
     return Response.json(data, { status: 201 })
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
     if (msg === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
+    console.error('schedules POST error:', e)
     return Response.json({ error: msg }, { status: 500 })
   }
 }
