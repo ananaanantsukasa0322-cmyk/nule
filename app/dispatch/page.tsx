@@ -6,7 +6,7 @@ function DispatchContent() {
   return (
     <div className="-m-6 md:-m-8">
       <iframe
-        src="/dispatch-tool.html"
+        src="/api/dispatch-tool"
         className="w-full border-none"
         style={{ height: "calc(100vh)" }}
       />
