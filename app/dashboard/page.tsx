@@ -71,7 +71,7 @@ function DashboardContent() {
         </div>
 
         <div className="bg-[#111] border border-border rounded-lg p-5">
-          <h3 className="text-sm font-light text-muted mb-4">ドライバー別売上一覧</h3>
+          <h3 className="text-sm font-light text-muted mb-4">ドライバー別配車件数</h3>
           {data.driver_sales.length === 0 ? (
             <p className="text-xs text-muted">データなし</p>
           ) : (
@@ -79,7 +79,7 @@ function DashboardContent() {
               {data.driver_sales.map((d) => (
                 <div key={d.id} className="flex items-center justify-between">
                   <span className="text-sm">{d.name}</span>
-                  <span className="text-sm font-light">{formatCurrency(d.total)}</span>
+                  <span className="text-sm font-light">{d.total}件</span>
                 </div>
               ))}
             </div>
