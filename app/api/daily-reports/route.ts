@@ -96,3 +96,17 @@ export async function PUT(request: NextRequest) {
     return Response.json({ error: message }, { status: 500 })
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    await requireAuth(['admin', 'office'])
+    const { id } = await request.json()
+    const { error } = await supabase.from('daily_reports').delete().eq('id', id)
+    if (error) throw error
+    return Response.json({ success: true })
+  } catch (e) {
+    const message = e instanceof Error ? e.message : ''
+    if (message === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
+    return Response.json({ error: message }, { status: 500 })
+  }
+}
