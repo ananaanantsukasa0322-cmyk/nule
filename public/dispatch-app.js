@@ -2080,7 +2080,7 @@ async function openPlanHistory() {
       <div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px">
         <div style="flex:1">
           <div style="font-weight:700;font-size:14px">${p.label}</div>
-          <div style="font-size:12px;color:var(--text-sub);margin-top:3px">保存日時: ${(p.saved_at||'').replace('T',' ').replace(/\.\d+.*$/,'').replace(/\+.*$/,'')}</div>
+          <div style="font-size:12px;color:var(--text-sub);margin-top:3px">保存日時: ${p.saved_at ? new Date(p.saved_at).toLocaleString('ja-JP',{timeZone:'Asia/Tokyo'}) : ''}</div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="viewPlanDetail('${p.id}')">詳細</button>
         <button class="btn btn-danger btn-sm" onclick="deletePlan('${p.id}')">削除</button>
