@@ -1689,7 +1689,7 @@ function renderDashboard() {
       const dname = dLabel(s.driver_id).replace(/\s+/g, '');
       const place = s.unload_place || '?';
       const weight = s.weight ? `${Number(s.weight).toLocaleString('ja-JP')}kg` : '';
-      return `<div style="background:#f0f0f0;border:1px solid #d0d0d0;border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;opacity:0.7">
+      return `<div style="background:rgba(136,136,136,0.1);border:1px solid #555;border-radius:5px;padding:3px 7px;margin-bottom:3px;font-size:11px;line-height:1.4;opacity:0.7">
         <span style="color:#aaa">✅</span>
         <span style="font-weight:700;color:#aaa;margin-left:2px">${dname}</span>
         <span style="color:#777;margin-left:3px">${place}</span>
@@ -2123,7 +2123,7 @@ function renderEditDetail() {
     // 配達スロット（ドロップ可）
     const delCells = [0,1,2,3,4].map(i => {
       const d = (row.deliveries || [])[i];
-      return `<td style="padding:6px;border-bottom:1px solid #f0f0f0;min-width:110px;vertical-align:top"
+      return `<td style="padding:6px;border-bottom:1px solid #333;min-width:110px;vertical-align:top"
                   ondragover="event.preventDefault();this.classList.add('drag-over')"
                   ondragleave="this.classList.remove('drag-over')"
                   ondrop="hdDrop(event,${ri},'del',${i})">
@@ -2133,19 +2133,19 @@ function renderEditDetail() {
     }).join('');
 
     return `<tr>
-      <td style="padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:top;white-space:nowrap">
+      <td style="padding:8px;border-bottom:1px solid #333;vertical-align:top;white-space:nowrap">
         <input class="hd-inp" value="${(row.driver_name||row.name||'').replace(/"/g,'&quot;')}"
                oninput="hdSet(${ri},'driver_name',this.value)" style="font-weight:700">${badge}
       </td>
-      <td style="padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:top">
+      <td style="padding:8px;border-bottom:1px solid #333;vertical-align:top">
         <input class="hd-inp" value="${(row.vehicle_number||'').replace(/"/g,'&quot;')}"
                oninput="hdSet(${ri},'vehicle_number',this.value)">
       </td>
-      <td style="padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:top;text-align:right;min-width:80px">
+      <td style="padding:8px;border-bottom:1px solid #333;vertical-align:top;text-align:right;min-width:80px">
         <input class="hd-inp" value="${row.payload_kg||''}" type="number"
                oninput="hdSet(${ri},'payload_kg',this.value)" style="text-align:right;width:80px">
       </td>
-      <td style="padding:6px;border-bottom:1px solid #f0f0f0;vertical-align:top;min-width:110px"
+      <td style="padding:6px;border-bottom:1px solid #333;vertical-align:top;min-width:110px"
           ondragover="event.preventDefault();this.classList.add('drag-over')"
           ondragleave="this.classList.remove('drag-over')"
           ondrop="hdDrop(event,${ri},'pre',0)">
@@ -2153,7 +2153,7 @@ function renderEditDetail() {
         ${preCards}
       </td>
       ${delCells}
-      <td style="padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:top;min-width:80px">
+      <td style="padding:8px;border-bottom:1px solid #333;vertical-align:top;min-width:80px">
         <input class="hd-inp" value="${(row.note||'').replace(/"/g,'&quot;')}"
                oninput="hdSet(${ri},'note',this.value)" placeholder="備考">
       </td>

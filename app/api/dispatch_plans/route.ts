@@ -12,13 +12,18 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
-    const enriched = (data || []).map(p => ({
-      ...p,
-      ...(p.plan_data || {}),
-      label: p.plan_data?.label || `${p.plan_date} 配車予定表`,
-      saved_at: p.plan_data?.saved_at || p.created_at,
-      date: p.plan_date,
-    }))
+    const enriched = (data || []).map(p => {
+      const pd = p.plan_data || {}
+      return {
+        id: p.id,
+        plan_date: p.plan_date,
+        created_at: p.created_at,
+        label: pd.label || `${p.plan_date} 配車予定表`,
+        saved_at: pd.saved_at || pd.updated_at || p.created_at,
+        date: p.plan_date,
+        rows: pd.rows || [],
+      }
+    })
     return Response.json(enriched)
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
@@ -31,7 +36,11 @@ export async function POST(request: NextRequest) {
   try {
     await requireAuth()
     const body = await request.json()
-    const { data, error } = await supabase.from('dispatch_plans').insert(body).select().single()
+    const insert = {
+      plan_date: body.plan_date || body.date,
+      plan_data: body.plan_data || body,
+    }
+    const { data, error } = await supabase.from('dispatch_plans').insert(insert).select().single()
     if (error) throw error
     return Response.json(data, { status: 201 })
   } catch (e) {
