@@ -12,7 +12,14 @@ export async function GET(request: NextRequest) {
 
     const { data, error } = await query.order('created_at', { ascending: false })
     if (error) throw error
-    return Response.json(data)
+    const enriched = (data || []).map(p => ({
+      ...p,
+      ...(p.plan_data || {}),
+      label: p.plan_data?.label || `${p.plan_date} 配車予定表`,
+      saved_at: p.plan_data?.saved_at || p.created_at,
+      date: p.plan_date,
+    }))
+    return Response.json(enriched)
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
     if (msg === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
