@@ -1201,6 +1201,14 @@ async function saveSchedule() {
     return;
   }
 
+  // 荷主マスタに自動登録
+  if (data.client_name) {
+    fetch('/api/masters/clients', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ company_name: data.client_name })
+    }).catch(() => {});
+  }
+
   // 荷主入力時、積み地＋下ろし先が完全一致する未設定スケジュールに自動反映
   if (data.client_name && data.load_place && data.unload_place) {
     const toUpdate = schedules.filter(s =>
