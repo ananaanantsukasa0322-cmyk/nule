@@ -171,7 +171,14 @@ function PricesContent() {
             const pt = t === "1" ? "per_ton" : t === "2" ? "fixed" : null;
             if (!pt) { alert("1か2を入力してください"); return; }
             for (const id of selected) {
-              await fetch("/api/masters/prices", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id, price_type: pt }) });
+              const p = prices.find(x => x.id === id);
+              if (!p) continue;
+              const currentRate = p.per_ton_rate || p.fixed_amount || 0;
+              await fetch("/api/masters/prices", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify({
+                id, price_type: pt,
+                per_ton_rate: pt === "per_ton" ? currentRate : null,
+                fixed_amount: pt === "fixed" ? currentRate : null,
+              }) });
             }
             loadData();
           }} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">タイプ変更</button>
