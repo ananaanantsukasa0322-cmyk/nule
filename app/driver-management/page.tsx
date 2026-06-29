@@ -21,8 +21,9 @@ function DriverManagementContent() {
   const [loading, setLoading] = useState(true);
 
   const now = new Date();
-  const [dateFrom, setDateFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]);
-  const [dateTo, setDateTo] = useState(new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0]);
+  const y = now.getFullYear(), m = now.getMonth() + 1;
+  const [dateFrom, setDateFrom] = useState(`${y}-${String(m).padStart(2,"0")}-01`);
+  const [dateTo, setDateTo] = useState(`${y}-${String(m).padStart(2,"0")}-${new Date(y, m, 0).getDate()}`);
 
   const loadData = useCallback(async () => {
     setLoading(true);
