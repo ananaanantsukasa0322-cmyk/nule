@@ -98,22 +98,15 @@ function PricesContent() {
     loadData();
   }
 
-  async function editSelectedRate() {
+  async function editSelectedField(field: "client_name" | "load_place" | "unload_place") {
     if (!selected.size) return;
-    const rate = prompt("新しい単価/金額を入力してください（円）");
-    if (rate === null || rate === "") return;
-    const num = Number(rate);
-    if (isNaN(num)) { alert("数値を入力してください"); return; }
+    const labels = { client_name: "荷主", load_place: "積み地", unload_place: "下ろし先" };
+    const val = prompt(`${labels[field]}を入力してください`);
+    if (val === null) return;
     for (const id of selected) {
-      const p = prices.find(x => x.id === id);
-      if (!p) continue;
       await fetch("/api/masters/prices", {
         method: "PUT", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id, price_type: p.price_type,
-          per_ton_rate: p.price_type === "per_ton" ? num : null,
-          fixed_amount: p.price_type === "fixed" ? num : null,
-        }),
+        body: JSON.stringify({ id, [field]: val }),
       });
     }
     loadData();
@@ -168,7 +161,9 @@ function PricesContent() {
       {selected.size > 0 && (
         <div className="flex items-center gap-3 mb-4 p-3 bg-accent/30 rounded">
           <span className="text-sm">{selected.size}件選択中</span>
-          <button onClick={editSelectedRate} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">まとめて単価変更</button>
+          <button onClick={() => editSelectedField("client_name")} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">荷主変更</button>
+          <button onClick={() => editSelectedField("load_place")} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">積み地変更</button>
+          <button onClick={() => editSelectedField("unload_place")} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">下ろし先変更</button>
           <button onClick={deleteSelected} className="text-xs px-3 py-1 bg-danger text-white rounded hover:bg-red-600">まとめて削除</button>
           <button onClick={() => setSelected(new Set())} className="text-xs text-muted hover:text-white ml-auto">選択解除</button>
         </div>
