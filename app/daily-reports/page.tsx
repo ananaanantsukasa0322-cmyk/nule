@@ -3,38 +3,46 @@
 import { useEffect, useState, useCallback } from "react";
 import AuthGuard from "@/components/AuthGuard";
 import Modal from "@/components/Modal";
-import type { DailyReport, Driver } from "@/types/database";
 
 interface ParsedEntry {
   shipper: string; origin: string; destination: string; product: string; weight: string;
 }
 
-function DailyReportsContent() {
-  const [reports, setReports] = useState<DailyReport[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showParse, setShowParse] = useState(false);
-  const [schedules, setSchedules] = useState<{id:string;load_date:string;weight:number;driver_id:string;load_place:string;unload_place:string;client_name?:string;note?:string}[]>([]);
+interface Schedule {
+  id: string; load_date: string; load_place: string; unload_place: string;
+  weight: number; client_name?: string; driver_id?: string; note?: string;
+}
 
+interface Driver { id: string; name: string; }
+
+function DailyReportsContent() {
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 取り込みモーダル
+  const [showParse, setShowParse] = useState(false);
   const [parseFile, setParseFile] = useState<File | null>(null);
   const [parseDate, setParseDate] = useState(new Date().toISOString().split("T")[0]);
   const [parseDriver, setParseDriver] = useState("");
   const [parsedEntries, setParsedEntries] = useState<ParsedEntry[]>([]);
   const [parsing, setParsing] = useState(false);
-  const [rawText, setRawText] = useState("");
 
-  // 候補リスト（スケジュールから自動生成）
-  const knownShippers = [...new Set(schedules.map(s => (s as unknown as {client_name?:string}).client_name).filter(Boolean) as string[])].sort();
+  // 照合モーダル
+  const [showVerify, setShowVerify] = useState(false);
+  const [verifyDate, setVerifyDate] = useState(new Date().toISOString().split("T")[0]);
+  const [verifyDriver, setVerifyDriver] = useState("");
+  const [matchedSchedules, setMatchedSchedules] = useState<(Schedule & { report_weight?: string; status?: string })[]>([]);
+
+  const knownShippers = [...new Set(schedules.map(s => s.client_name).filter(Boolean) as string[])].sort();
   const knownOrigins = [...new Set(schedules.map(s => s.load_place).filter(Boolean))].sort();
-  const knownDestinations = [...new Set(schedules.map(s => s.unload_place).filter(Boolean))].sort();
+  const knownDests = [...new Set(schedules.map(s => s.unload_place).filter(Boolean))].sort();
 
   const loadData = useCallback(async () => {
-    const [r, d, s] = await Promise.all([
-      fetch("/api/daily-reports").then(r => r.json()),
+    const [d, s] = await Promise.all([
       fetch("/api/masters/drivers").then(r => r.json()),
       fetch("/api/schedules").then(r => r.json()).catch(() => []),
     ]);
-    setReports(r.reports || []);
     setDrivers(d.drivers || []);
     setSchedules(Array.isArray(s) ? s : []);
     setLoading(false);
@@ -42,19 +50,18 @@ function DailyReportsContent() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // AI解析
   async function handleParse() {
     if (!parseFile) return;
     setParsing(true);
-    const formData = new FormData();
-    formData.append("file", parseFile);
-    formData.append("type", "daily_report");
+    const fd = new FormData();
+    fd.append("file", parseFile);
+    fd.append("type", "daily_report");
     try {
-      const res = await fetch("/api/ai-parse", { method: "POST", body: formData });
+      const res = await fetch("/api/ai-parse", { method: "POST", body: fd });
       const data = await res.json();
-      if (res.ok) {
-        setParsedEntries(data.entries || []);
-        setRawText(data.raw || "");
-      } else { alert(data.error || "AI解析に失敗しました"); }
+      if (res.ok) setParsedEntries(data.entries || []);
+      else alert(data.error || "AI解析に失敗しました");
     } catch { alert("通信エラー"); }
     setParsing(false);
   }
@@ -62,18 +69,14 @@ function DailyReportsContent() {
   function updateEntry(idx: number, field: keyof ParsedEntry, value: string) {
     setParsedEntries(prev => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
   }
-  function addEntry() {
-    setParsedEntries(prev => [...prev, { shipper: "", origin: "", destination: "", product: "", weight: "" }]);
-  }
-  function removeEntry(idx: number) {
-    setParsedEntries(prev => prev.filter((_, i) => i !== idx));
-  }
+  function addEntry() { setParsedEntries(prev => [...prev, { shipper: "", origin: "", destination: "", product: "", weight: "" }]); }
+  function removeEntry(idx: number) { setParsedEntries(prev => prev.filter((_, i) => i !== idx)); }
 
   async function confirmImport() {
     const driverId = parseDriver;
     let ok = 0;
     for (const entry of parsedEntries) {
-      if (!entry.destination || !entry.destination.trim()) continue;
+      if (!entry.destination?.trim()) continue;
       const res = await fetch("/api/schedules", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -83,17 +86,10 @@ function DailyReportsContent() {
         }),
       });
       if (res.ok) ok++;
-      // 荷主を同じルートの未設定スケジュールにも自動反映
       if (entry.shipper && entry.origin && entry.destination) {
-        const toUpdate = schedules.filter(s =>
-          !(s as unknown as {client_name?:string}).client_name &&
-          s.load_place === entry.origin && s.unload_place === entry.destination
-        );
+        const toUpdate = schedules.filter(s => !s.client_name && s.load_place === entry.origin && s.unload_place === entry.destination);
         for (const s of toUpdate) {
-          await fetch(`/api/schedules/${s.id}`, {
-            method: "PUT", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ client_name: entry.shipper }),
-          });
+          await fetch(`/api/schedules/${s.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_name: entry.shipper }) });
         }
       }
     }
@@ -101,12 +97,46 @@ function DailyReportsContent() {
     setShowParse(false); setParsedEntries([]); setParseFile(null); loadData();
   }
 
-  async function deleteReport(id: string) {
-    if (!confirm("この日報を削除しますか？")) return;
-    await fetch("/api/daily-reports", {
-      method: "DELETE", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
+  // 照合
+  function openVerify() {
+    setShowVerify(true);
+    loadVerifyData(verifyDate, verifyDriver);
+  }
+
+  function loadVerifyData(date: string, driverId: string) {
+    if (!date || !driverId) { setMatchedSchedules([]); return; }
+    const matched = schedules.filter(s => s.load_date === date && s.driver_id === driverId);
+    setMatchedSchedules(matched.map(s => ({ ...s, report_weight: "", status: s.weight ? "未確認" : "重量未入力" })));
+  }
+
+  function updateReportWeight(idx: number, weight: string) {
+    setMatchedSchedules(prev => prev.map((s, i) => {
+      if (i !== idx) return s;
+      const rw = Number(weight);
+      const dw = s.weight || 0;
+      let status = "未確認";
+      if (weight && !isNaN(rw)) {
+        if (rw === dw) status = "一致";
+        else if (Math.abs(rw - dw) <= 100) status = "誤差少";
+        else status = `差異 ${Math.abs(rw - dw).toLocaleString()}kg`;
+      }
+      return { ...s, report_weight: weight, status };
+    }));
+  }
+
+  async function confirmVerify() {
+    let updated = 0;
+    for (const s of matchedSchedules) {
+      if (s.report_weight && Number(s.report_weight) !== s.weight) {
+        await fetch(`/api/schedules/${s.id}`, {
+          method: "PUT", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ weight: Number(s.report_weight) }),
+        });
+        updated++;
+      }
+    }
+    alert(`${updated}件の重量を更新しました`);
+    setShowVerify(false);
     loadData();
   }
 
@@ -123,40 +153,43 @@ function DailyReportsContent() {
           </div>
         </div>
       )}
+
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">日報管理</h2>
-        <button onClick={() => setShowParse(true)}
-          className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
-          日報取り込み
-        </button>
+        <div className="flex items-center gap-3">
+          <button onClick={openVerify} className="px-4 py-2 bg-accent text-white text-sm rounded-md hover:bg-border">
+            配車照合
+          </button>
+          <button onClick={() => setShowParse(true)} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
+            日報取り込み
+          </button>
+        </div>
       </div>
 
-      <h3 className="text-sm font-light text-muted mb-3 mt-6">取り込み済みスケジュール（日報取込分）</h3>
+      {/* 取り込み済みスケジュール */}
+      <h3 className="text-sm font-light text-muted mb-3">取り込み済みスケジュール（日報取込分）</h3>
       <div className="overflow-x-auto">
         <table>
           <thead><tr><th>日付</th><th>荷主</th><th>ドライバー</th><th>発地→納入先</th><th>重量</th><th>操作</th></tr></thead>
           <tbody>
-            {schedules.filter(s => (s as unknown as {note?:string}).note === '日報取込').length === 0 ? (
+            {schedules.filter(s => s.note === '日報取込').length === 0 ? (
               <tr><td colSpan={6} className="text-center text-muted py-8">日報取込データなし</td></tr>
-            ) : schedules.filter(s => (s as unknown as {note?:string}).note === '日報取込').map((s: unknown) => {
-              const sc = s as {id:string;load_date:string;client_name?:string;driver_id:string;load_place:string;unload_place:string;weight:number;note?:string};
-              const driver = drivers.find(d => d.id === sc.driver_id);
+            ) : schedules.filter(s => s.note === '日報取込').map(s => {
+              const driver = drivers.find(d => d.id === s.driver_id);
               return (
-                <tr key={sc.id}>
-                  <td className="text-sm">{sc.load_date}</td>
+                <tr key={s.id}>
+                  <td className="text-sm">{s.load_date}</td>
                   <td className="text-sm">
-                    <input type="text" defaultValue={sc.client_name || ""} placeholder="荷主"
+                    <input type="text" defaultValue={s.client_name || ""} placeholder="荷主"
                       className="bg-transparent border-b border-border text-sm w-24 outline-none focus:border-white"
-                      onBlur={e => { const v=e.target.value.trim(); if(v!==(sc.client_name||'')) fetch(`/api/schedules/${sc.id}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({client_name:v})}); }} />
+                      onBlur={e => { const v = e.target.value.trim(); if (v !== (s.client_name || '')) fetch(`/api/schedules/${s.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_name: v }) }); }} />
                   </td>
                   <td className="text-sm">{driver?.name || "—"}</td>
-                  <td className="text-sm">{sc.load_place} → {sc.unload_place}</td>
-                  <td className="text-sm">{sc.weight ? `${sc.weight}kg` : "—"}</td>
+                  <td className="text-sm">{s.load_place} → {s.unload_place}</td>
+                  <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
                   <td>
-                    <div className="flex gap-2">
-                      <button onClick={async () => { if(!confirm('削除しますか？')) return; await fetch(`/api/schedules/${sc.id}`,{method:'DELETE'}); loadData(); }}
-                        className="text-xs text-muted hover:text-danger">削除</button>
-                    </div>
+                    <button onClick={async () => { if (!confirm('削除しますか？')) return; await fetch(`/api/schedules/${s.id}`, { method: 'DELETE' }); loadData(); }}
+                      className="text-xs text-muted hover:text-danger">削除</button>
                   </td>
                 </tr>
               );
@@ -165,46 +198,31 @@ function DailyReportsContent() {
         </table>
       </div>
 
+      {/* 日報取り込みモーダル */}
       <Modal open={showParse} onClose={() => setShowParse(false)} title="日報取り込み">
         <datalist id="dl-shippers">{knownShippers.map(s => <option key={s} value={s} />)}</datalist>
         <datalist id="dl-origins">{knownOrigins.map(s => <option key={s} value={s} />)}</datalist>
-        <datalist id="dl-dests">{knownDestinations.map(s => <option key={s} value={s} />)}</datalist>
+        <datalist id="dl-dests">{knownDests.map(s => <option key={s} value={s} />)}</datalist>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div><label className="block text-xs text-muted mb-1">日付</label>
-              <input type="date" value={parseDate} onChange={e => setParseDate(e.target.value)} className="w-full" />
-            </div>
+              <input type="date" value={parseDate} onChange={e => setParseDate(e.target.value)} className="w-full" /></div>
             <div><label className="block text-xs text-muted mb-1">ドライバー</label>
               <select value={parseDriver} onChange={e => setParseDriver(e.target.value)} className="w-full">
                 <option value="">選択...</option>
                 {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-              </select>
-            </div>
+              </select></div>
           </div>
-
           <div><label className="block text-xs text-muted mb-1">日報PDF</label>
             <input type="file" accept=".pdf" onChange={e => setParseFile(e.target.files?.[0] || null)}
-              className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-accent file:text-foreground file:text-xs" />
-          </div>
-
+              className="w-full text-sm file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-accent file:text-foreground file:text-xs" /></div>
           <div className="flex gap-2">
             <button onClick={handleParse} disabled={!parseFile || parsing}
               className="flex-1 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50">
-              {parsing ? "AI解析中..." : "AI解析（手書き対応）"}
-            </button>
-            <button onClick={() => { if (parsedEntries.length === 0) { for(let i=0;i<5;i++) addEntry(); } }}
-              className="px-4 py-2 bg-accent text-white text-sm rounded-md hover:bg-border">
-              手入力
-            </button>
+              {parsing ? "AI解析中..." : "AI解析（手書き対応）"}</button>
+            <button onClick={() => { if (!parsedEntries.length) for (let i = 0; i < 5; i++) addEntry(); }}
+              className="px-4 py-2 bg-accent text-white text-sm rounded-md hover:bg-border">手入力</button>
           </div>
-          <p className="text-xs text-muted">手書きPDFは自動解析が難しい場合があります。「手入力」で直接入力できます。</p>
-
-          {rawText && (
-            <details className="text-xs">
-              <summary className="text-muted cursor-pointer">読み取りテキスト表示</summary>
-              <pre className="mt-2 p-2 bg-accent rounded text-xs max-h-32 overflow-y-auto whitespace-pre-wrap">{rawText}</pre>
-            </details>
-          )}
 
           {parsedEntries.length > 0 && (
             <div>
@@ -234,9 +252,62 @@ function DailyReportsContent() {
               <button onClick={addEntry} className="mt-2 text-xs text-muted hover:text-white">+ 行を追加</button>
               <button onClick={confirmImport}
                 className="w-full py-2.5 bg-success text-white text-sm rounded-md hover:bg-green-600 mt-4">
-                NULEに取り込む（{parsedEntries.length}件）
+                NULEに取り込む（{parsedEntries.filter(e => e.destination?.trim()).length}件）
               </button>
             </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* 配車照合モーダル */}
+      <Modal open={showVerify} onClose={() => setShowVerify(false)} title="配車照合（配車係 vs 日報）">
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-xs text-muted mb-1">日付</label>
+              <input type="date" value={verifyDate} onChange={e => { setVerifyDate(e.target.value); loadVerifyData(e.target.value, verifyDriver); }} className="w-full" /></div>
+            <div><label className="block text-xs text-muted mb-1">ドライバー</label>
+              <select value={verifyDriver} onChange={e => { setVerifyDriver(e.target.value); loadVerifyData(verifyDate, e.target.value); }} className="w-full">
+                <option value="">選択...</option>
+                {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select></div>
+          </div>
+
+          {matchedSchedules.length > 0 && (
+            <div>
+              <div className="overflow-x-auto">
+                <table>
+                  <thead><tr><th>下ろし先</th><th>配車重量</th><th>日報重量</th><th>状態</th></tr></thead>
+                  <tbody>
+                    {matchedSchedules.map((s, i) => (
+                      <tr key={s.id}>
+                        <td className="text-sm">{s.unload_place}</td>
+                        <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
+                        <td>
+                          <input type="number" value={s.report_weight || ""} onChange={e => updateReportWeight(i, e.target.value)}
+                            className="w-24 text-sm bg-transparent border-b border-border outline-none focus:border-white" placeholder="kg" />
+                        </td>
+                        <td>
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            s.status === '一致' ? 'bg-success/20 text-success' :
+                            s.status === '誤差少' ? 'bg-blue-500/20 text-blue-400' :
+                            s.status?.startsWith('差異') ? 'bg-warning/20 text-warning' :
+                            'bg-accent text-muted'
+                          }`}>{s.status}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <button onClick={confirmVerify}
+                className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-4">
+                日報の重量で更新（差異があるもののみ）
+              </button>
+            </div>
+          )}
+
+          {verifyDate && verifyDriver && matchedSchedules.length === 0 && (
+            <p className="text-xs text-muted text-center py-4">この日のこのドライバーの配車データがありません</p>
           )}
         </div>
       </Modal>
