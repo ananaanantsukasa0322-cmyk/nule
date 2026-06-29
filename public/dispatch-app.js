@@ -1015,8 +1015,15 @@ function editSched(id) {
   document.getElementById('s-note').value = s.note || '';
   document.getElementById('avail-wrap').style.display = 'none';
   // cargo_note + items から荷物を復元
-  if (s.cargo_note) {
-    const cargoType = s.cargo_note.split(/[0-9０-９]/)[0].replace(/[：:]/g,'').trim() || s.cargo_note.split(' ')[0] || '';
+  if (s.cargo_note || (s.items && s.items.length)) {
+    // 荷物名から種別を推測（タルク1→タルク、コイル2→コイル、SC1→SC）
+    let cargoType = '';
+    if (s.items && s.items.length > 0) {
+      cargoType = (s.items[0].name || '').replace(/[0-9０-９]+$/, '').trim();
+    }
+    if (!cargoType && s.cargo_note) {
+      cargoType = s.cargo_note.split(/[0-9０-９]/)[0].replace(/[：:／/\s]/g, '').trim();
+    }
     document.getElementById('s-cargo-type').value = cargoType;
     onSCargoTypeChange();
     // items配列から個別重量を復元
@@ -1024,6 +1031,7 @@ function editSched(id) {
       const isCoilType = ['コイル','亜鉛コイル'].includes(cargoType);
       const listId = isCoilType ? 's-coil-list' : 's-other-cargo-list';
       document.getElementById(listId).innerHTML = '';
+      sCoilCount = 0; sOtherCargoCount = 0;
       s.items.forEach((item, i) => {
         if (isCoilType) { addSCoil(); } else { addSOtherCargo(); }
         const inputs = document.querySelectorAll(`#${listId} .inp-weight`);
@@ -3004,7 +3012,17 @@ function checkVehicleViolations(sched, vehicle) {
   const weight  = parseFloat(sched.weight);
   const payload = parseFloat(vehicle?.payload);
   if (!isNaN(weight) && !isNaN(payload) && weight > payload) {
-    msgs.push(`積載量オーバー: 荷物 ${weight}kg > 車両上限 ${payload}kg`);
+    msgs.push(`積載量オーバー: 荷物 ${weight.toLocaleString()}kg > 車両上限 ${payload.toLocaleString()}kg`);
+  }
+  // 既存の配達合計+この荷物で車両上限を超える場合
+  if (!isNaN(weight) && !isNaN(payload) && sched._targetDriverId) {
+    const did = sched._targetDriverId;
+    const date = haishaDateVal;
+    const existing = schedules.filter(s => String(s.driver_id) === did && s.load_date === date && s.id !== sched.id);
+    const existTotal = existing.reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+    if (existTotal + weight > payload) {
+      msgs.push(`合計積載量オーバー: 既存${existTotal.toLocaleString()}kg + 追加${weight.toLocaleString()}kg = ${(existTotal+weight).toLocaleString()}kg > 上限${payload.toLocaleString()}kg`);
+    }
   }
 
   return msgs;
@@ -3080,8 +3098,10 @@ async function hDrop(event, driverId, slotIndex) {
   const sched = schedules.find(s => s.id === dragSchedId);
   if (!sched) return;
 
-  // 制限チェック（単体カード）
+  // 制限チェック（単体カード + 既存合計）
+  sched._targetDriverId = String(driverId);
   const singleMsgs = checkVehicleViolations(sched, vehicle);
+  delete sched._targetDriverId;
   if (singleMsgs.length) {
     const ok = confirm('⚠️ 制限違反があります：\n' + singleMsgs.join('\n') + '\n\nこのまま割り当てますか？');
     if (!ok) return;

@@ -87,26 +87,29 @@ function PricesContent() {
             AI単価取込
             <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={async (ev) => {
               const f = ev.target.files?.[0]; if (!f) return;
-              const fd = new FormData(); fd.append("file", f); fd.append("type", "price_sheet");
-              const res = await fetch("/api/ai-parse", { method: "POST", body: fd });
-              const data = await res.json();
-              if (res.ok && data.entries) {
-                let ok = 0;
-                for (const ent of data.entries) {
-                  if (!ent.rate) continue;
-                  await fetch("/api/masters/prices", {
-                    method: "POST", headers: {"Content-Type":"application/json"},
-                    body: JSON.stringify({
-                      client_name: ent.shipper || '', load_place: ent.origin || '', unload_place: ent.destination || '',
-                      price_type: ent.price_type || "fixed",
-                      fixed_amount: ent.price_type !== "per_ton" ? Number(ent.rate) : null,
-                      per_ton_rate: ent.price_type === "per_ton" ? Number(ent.rate) : null,
-                    })
-                  });
-                  ok++;
-                }
-                alert(`${ok}件の単価を取り込みました`); loadData();
-              } else { alert(data.error || "解析失敗"); }
+              try {
+                alert("AI解析中...しばらくお待ちください");
+                const fd = new FormData(); fd.append("file", f); fd.append("type", "price_sheet");
+                const res = await fetch("/api/ai-parse", { method: "POST", body: fd });
+                const data = await res.json();
+                if (res.ok && data.entries && data.entries.length > 0) {
+                  let ok = 0;
+                  for (const ent of data.entries) {
+                    if (!ent.rate) continue;
+                    await fetch("/api/masters/prices", {
+                      method: "POST", headers: {"Content-Type":"application/json"},
+                      body: JSON.stringify({
+                        client_name: ent.shipper || '', load_place: ent.origin || '', unload_place: ent.destination || '',
+                        price_type: ent.price_type || "fixed",
+                        fixed_amount: ent.price_type !== "per_ton" ? Number(ent.rate) : null,
+                        per_ton_rate: ent.price_type === "per_ton" ? Number(ent.rate) : null,
+                      })
+                    });
+                    ok++;
+                  }
+                  alert(`${ok}件の単価を取り込みました`); loadData();
+                } else { alert("解析結果: " + (data.error || JSON.stringify(data))); }
+              } catch(err) { alert("エラー: " + (err instanceof Error ? err.message : String(err))); }
               ev.target.value = "";
             }} />
           </label>
