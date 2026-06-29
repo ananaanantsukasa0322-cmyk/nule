@@ -14,6 +14,7 @@ interface Schedule {
 interface PriceEntry {
   client_name: string; load_place: string; unload_place: string;
   price_type: string; per_ton_rate: number | null; fixed_amount: number | null;
+  vehicle_type: string | null;
 }
 
 function SalesContent() {
@@ -37,6 +38,7 @@ function SalesContent() {
     setPrices((p.prices || []).map((x: Record<string, unknown>) => ({
       client_name: x.client_name || '', load_place: x.load_place || '', unload_place: x.unload_place || '',
       price_type: x.price_type || 'fixed', per_ton_rate: x.per_ton_rate as number | null, fixed_amount: x.fixed_amount as number | null,
+      vehicle_type: (x.vehicle_type || null) as string | null,
     })));
     setLoading(false);
   }, [dateFrom, dateTo]);
@@ -51,12 +53,25 @@ function SalesContent() {
   }
 
   function findPrice(s: Schedule): { rate: number; type: string } {
+    const vt = (s.weight || 0) >= 15000 ? "トレーラー" : "大型";
+
+    function matchVehicle(p: PriceEntry): boolean {
+      if (!p.vehicle_type) return true;
+      return p.vehicle_type === vt;
+    }
+
+    function search(matchFn: (p: PriceEntry) => boolean): PriceEntry | undefined {
+      // 車両タイプ一致を優先、なければ「全て」
+      return prices.find(p => matchFn(p) && p.vehicle_type === vt)
+        || prices.find(p => matchFn(p) && !p.vehicle_type);
+    }
+
     // 1. 完全一致
-    let p = prices.find(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place);
-    // 2. 部分一致（積み地・下ろし先）
-    if (!p) p = prices.find(p => p.client_name === s.client_name && matchPlace(p.load_place, s.load_place) && matchPlace(p.unload_place, s.unload_place));
-    // 3. 荷主のみ一致（積み地・下ろし先なし）
-    if (!p) p = prices.find(p => p.client_name === s.client_name && !p.load_place && !p.unload_place);
+    let p = search(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place);
+    // 2. 部分一致
+    if (!p) p = search(p => p.client_name === s.client_name && matchPlace(p.load_place, s.load_place) && matchPlace(p.unload_place, s.unload_place));
+    // 3. 荷主のみ
+    if (!p) p = search(p => p.client_name === s.client_name && !p.load_place && !p.unload_place);
 
     if (p) {
       if (p.price_type === "per_ton" && p.per_ton_rate) return { rate: p.per_ton_rate, type: "per_ton" };
