@@ -67,7 +67,8 @@ function UserManagementContent() {
                 <td className="text-sm text-muted">{u.email}</td>
                 <td><span className="text-xs px-2 py-0.5 rounded bg-accent">{roleLabel[u.role] || u.role}</span></td>
                 <td>
-                  <button onClick={() => deleteUser(u.id)} className="text-xs text-muted hover:text-danger">削除</button>
+                  {u.email === "test@test.com" ? <span className="text-xs text-muted">オーナー</span> :
+                    <button onClick={() => deleteUser(u.id)} className="text-xs text-muted hover:text-danger">削除</button>}
                 </td>
               </tr>
             ))}
