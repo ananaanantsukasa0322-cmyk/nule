@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       : { type: 'image' as const, source: { type: 'base64' as const, media_type: mediaType, data: base64 } }
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6' as string,
       max_tokens: 4096,
       messages: [{
         role: 'user',
