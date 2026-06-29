@@ -1135,6 +1135,21 @@ async function saveSchedule() {
       });
       if (!aitsuRes.ok) { const err = await aitsuRes.text(); alert('相積み保存エラー: ' + err); return; }
     }
+    // 相積みの荷主を同じルートの未設定スケジュールに自動反映
+    if (clientName) {
+      for (const e of entries) {
+        if (!e.load_place || !e.unload_place) continue;
+        const toUpdate = schedules.filter(s =>
+          !s.client_name && s.load_place === e.load_place && s.unload_place === e.unload_place
+        );
+        for (const s of toUpdate) {
+          await fetch(`/api/schedules/${s.id}`, {
+            method: 'PUT', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ client_name: clientName })
+          });
+        }
+      }
+    }
     closeModal('schedule'); await loadAll();
     return;
   }
