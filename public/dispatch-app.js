@@ -1014,10 +1014,23 @@ function editSched(id) {
   document.getElementById('s-weight').value = s.weight || '';
   document.getElementById('s-note').value = s.note || '';
   document.getElementById('avail-wrap').style.display = 'none';
-  // cargo_note からカーゴタイプを復元（あれば）
+  // cargo_note + items から荷物を復元
   if (s.cargo_note) {
-    document.getElementById('s-cargo-type').value = s.cargo_note.split(' ')[0] || '';
+    const cargoType = s.cargo_note.split(/[0-9０-９]/)[0].replace(/[：:]/g,'').trim() || s.cargo_note.split(' ')[0] || '';
+    document.getElementById('s-cargo-type').value = cargoType;
     onSCargoTypeChange();
+    // items配列から個別重量を復元
+    if (s.items && Array.isArray(s.items) && s.items.length > 0) {
+      const isCoilType = ['コイル','亜鉛コイル'].includes(cargoType);
+      const listId = isCoilType ? 's-coil-list' : 's-other-cargo-list';
+      document.getElementById(listId).innerHTML = '';
+      s.items.forEach((item, i) => {
+        if (isCoilType) { addSCoil(); } else { addSOtherCargo(); }
+        const inputs = document.querySelectorAll(`#${listId} .inp-weight`);
+        if (inputs[i]) inputs[i].value = item.weight || '';
+      });
+      calcSCargoTotal();
+    }
   }
   fillSchedSelects(s.vehicle_id, s.driver_id);
   document.getElementById('modal-schedule').classList.add('open');
