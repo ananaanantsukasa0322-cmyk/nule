@@ -41,15 +41,14 @@ export async function PUT(request: NextRequest) {
   try {
     await requireAuth(['admin', 'office'])
     const body = await request.json()
-    const { data, error } = await supabase.from('prices').update({
-      client_name: body.client_name || null,
-      load_place: body.load_place || null,
-      unload_place: body.unload_place || null,
-      price_type: body.price_type,
-      per_ton_rate: body.per_ton_rate || null,
-      fixed_amount: body.fixed_amount || null,
-      updated_at: new Date().toISOString(),
-    }).eq('id', body.id).select().single()
+    const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    if ('client_name' in body) updateData.client_name = body.client_name || null
+    if ('load_place' in body) updateData.load_place = body.load_place || null
+    if ('unload_place' in body) updateData.unload_place = body.unload_place || null
+    if ('price_type' in body) updateData.price_type = body.price_type
+    if ('per_ton_rate' in body) updateData.per_ton_rate = body.per_ton_rate || null
+    if ('fixed_amount' in body) updateData.fixed_amount = body.fixed_amount || null
+    const { data, error } = await supabase.from('prices').update(updateData).eq('id', body.id).select().single()
     if (error) throw error
     return Response.json({ price: data })
   } catch (e) {
