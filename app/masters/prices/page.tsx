@@ -7,6 +7,7 @@ import Modal from "@/components/Modal";
 interface PriceEntry {
   id: string; client_name: string; load_place: string; unload_place: string;
   price_type: string; per_ton_rate: number | null; fixed_amount: number | null;
+  vehicle_type: string | null;
 }
 
 function PricesContent() {
@@ -19,7 +20,7 @@ function PricesContent() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({
     client_name: "", load_place: "", unload_place: "",
-    price_type: "per_ton", per_ton_rate: "", fixed_amount: "",
+    price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "",
   });
 
   const loadData = useCallback(async () => {
@@ -31,6 +32,7 @@ function PricesContent() {
       id: x.id as string, client_name: (x.client_name || '') as string, load_place: (x.load_place || '') as string,
       unload_place: (x.unload_place || '') as string, price_type: (x.price_type || 'fixed') as string,
       per_ton_rate: x.per_ton_rate as number | null, fixed_amount: x.fixed_amount as number | null,
+      vehicle_type: (x.vehicle_type || null) as string | null,
     })));
     setSchedules(Array.isArray(s) ? s : []);
     setSelected(new Set());
@@ -44,7 +46,7 @@ function PricesContent() {
   const knownDests = [...new Set(schedules.map(s => s.unload_place).filter(Boolean))].sort();
 
   function resetForm() {
-    setForm({ client_name: "", load_place: "", unload_place: "", price_type: "per_ton", per_ton_rate: "", fixed_amount: "" });
+    setForm({ client_name: "", load_place: "", unload_place: "", price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "" });
     setEditingId(null);
   }
 
@@ -52,7 +54,7 @@ function PricesContent() {
     setForm({
       client_name: p.client_name, load_place: p.load_place, unload_place: p.unload_place,
       price_type: p.price_type, per_ton_rate: p.per_ton_rate?.toString() || "",
-      fixed_amount: p.fixed_amount?.toString() || "",
+      fixed_amount: p.fixed_amount?.toString() || "", vehicle_type: p.vehicle_type || "",
     });
     setEditingId(p.id);
     setShowModal(true);
@@ -64,6 +66,7 @@ function PricesContent() {
       ...form,
       per_ton_rate: form.price_type === "per_ton" ? Number(form.per_ton_rate) || 0 : null,
       fixed_amount: form.price_type === "fixed" ? Number(form.fixed_amount) || 0 : null,
+      vehicle_type: form.vehicle_type || null,
     };
     const method = editingId ? "PUT" : "POST";
     const payload = editingId ? { ...body, id: editingId } : body;
@@ -192,7 +195,18 @@ function PricesContent() {
               }) });
             }
             loadData();
-          }} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">タイプ変更</button>
+          }} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">単価タイプ変更</button>
+          <button onClick={async () => {
+            if (!selected.size) return;
+            const t = prompt("車両タイプを入力\n1: トレーラー\n2: 大型\n3: 全て（共通）");
+            if (!t) return;
+            const vt = t === "1" ? "トレーラー" : t === "2" ? "大型" : t === "3" ? "" : null;
+            if (vt === null) { alert("1〜3を入力してください"); return; }
+            for (const id of selected) {
+              await fetch("/api/masters/prices", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id, vehicle_type: vt }) });
+            }
+            loadData();
+          }} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">車両タイプ変更</button>
           <button onClick={deleteSelected} className="text-xs px-3 py-1 bg-danger text-white rounded hover:bg-red-600">まとめて削除</button>
           <button onClick={() => setSelected(new Set())} className="text-xs text-muted hover:text-white ml-auto">選択解除</button>
         </div>
@@ -202,17 +216,18 @@ function PricesContent() {
         <table>
           <thead><tr>
             <th><input type="checkbox" checked={selected.size === prices.length && prices.length > 0} onChange={toggleAll} /></th>
-            <th>荷主</th><th>積み地</th><th>下ろし先</th><th>タイプ</th><th>単価/金額</th><th>操作</th>
+            <th>荷主</th><th>積み地</th><th>下ろし先</th><th>車両</th><th>タイプ</th><th>単価/金額</th><th>操作</th>
           </tr></thead>
           <tbody>
             {prices.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-muted py-8">単価データがありません</td></tr>
+              <tr><td colSpan={8} className="text-center text-muted py-8">単価データがありません</td></tr>
             ) : prices.map(p => (
               <tr key={p.id} className={selected.has(p.id) ? "bg-accent/20" : ""}>
                 <td><input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)} /></td>
                 <td className="text-sm">{p.client_name || "—"}</td>
                 <td className="text-sm">{p.load_place || "—"}</td>
                 <td className="text-sm">{p.unload_place || "—"}</td>
+                <td className="text-xs text-muted">{p.vehicle_type || "全て"}</td>
                 <td><span className="text-xs px-2 py-0.5 rounded bg-accent">{p.price_type === "per_ton" ? "t単価" : "固定"}</span></td>
                 <td className="text-sm">{p.price_type === "per_ton" ? `${fmt(p.per_ton_rate)}/t` : fmt(p.fixed_amount)}</td>
                 <td>
@@ -240,6 +255,12 @@ function PricesContent() {
             <div><label className="block text-xs text-muted mb-1">下ろし先</label>
               <input type="text" list="dl-pd" value={form.unload_place} onChange={e => setForm({ ...form, unload_place: e.target.value })} className="w-full" /></div>
           </div>
+          <div><label className="block text-xs text-muted mb-1">車両タイプ</label>
+            <select value={form.vehicle_type} onChange={e => setForm({ ...form, vehicle_type: e.target.value })} className="w-full">
+              <option value="">全て（共通）</option>
+              <option value="トレーラー">トレーラー</option>
+              <option value="大型">大型</option>
+            </select></div>
           <div><label className="block text-xs text-muted mb-1">単価タイプ</label>
             <select value={form.price_type} onChange={e => setForm({ ...form, price_type: e.target.value })} className="w-full">
               <option value="per_ton">t単価（円/t）</option>

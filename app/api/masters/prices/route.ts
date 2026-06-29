@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
           price_type: body.price_type,
           per_ton_rate: body.per_ton_rate || null,
           fixed_amount: body.fixed_amount || null,
+          vehicle_type: body.vehicle_type || null,
         })
       }
     }
@@ -60,6 +61,7 @@ export async function PUT(request: NextRequest) {
     if ('price_type' in body) updateData.price_type = body.price_type
     if ('per_ton_rate' in body) updateData.per_ton_rate = body.per_ton_rate || null
     if ('fixed_amount' in body) updateData.fixed_amount = body.fixed_amount || null
+    if ('vehicle_type' in body) updateData.vehicle_type = body.vehicle_type || null
     const { data, error } = await supabase.from('prices').update(updateData).eq('id', body.id).select().single()
     if (error) throw error
     return Response.json({ price: data })
