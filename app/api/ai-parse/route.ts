@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
   - product: 品名
   - weight: 重量（kg、数字のみ）
 
+納入先（下ろし先）が読み取れない行は省いてください。
+
 以下のJSON形式で返してください。JSON以外のテキストは含めないでください:
 {"entries":[{"shipper":"","origin":"","destination":"","product":"","weight":""}]}`
     } else if (parseType === 'price_sheet') {
@@ -73,6 +75,9 @@ export async function POST(request: NextRequest) {
       parsed = { entries: [], raw: text }
     }
 
+    if (parsed.entries) {
+      parsed.entries = parsed.entries.filter((e: Record<string, string>) => e.destination && e.destination.trim())
+    }
     return Response.json(parsed)
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
