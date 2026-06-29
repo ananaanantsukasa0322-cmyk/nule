@@ -25,6 +25,7 @@ function SalesContent() {
   const [dateFrom, setDateFrom] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0]);
   const [dateTo, setDateTo] = useState(new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0]);
   const [clientFilter, setClientFilter] = useState("");
+  const [issuerName, setIssuerName] = useState("サンテツ運輸株式会社");
 
   const loadData = useCallback(async () => {
     const [s, p] = await Promise.all([
@@ -117,7 +118,7 @@ function SalesContent() {
         </div>
         <div class="header-right">
           <div>発行日: ${new Date().toLocaleDateString('ja-JP')}</div>
-          <div style="margin-top:10px;font-weight:bold">株式会社 仲山商事</div>
+          <div style="margin-top:10px;font-weight:bold">${issuerName}</div>
         </div>
       </div>
       <table>
@@ -146,6 +147,11 @@ function SalesContent() {
           <select value={clientFilter} onChange={e => setClientFilter(e.target.value)}>
             <option value="">全て</option>
             {clients.map(c => <option key={c} value={c}>{c}</option>)}
+          </select></div>
+        <div><label className="block text-xs text-muted mb-1">請求書発行者名</label>
+          <select value={issuerName} onChange={e => setIssuerName(e.target.value)}>
+            <option value="サンテツ運輸株式会社">サンテツ運輸株式会社</option>
+            <option value="株式会社仲山商事">株式会社仲山商事</option>
           </select></div>
       </div>
 
