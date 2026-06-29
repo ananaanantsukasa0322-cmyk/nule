@@ -8,6 +8,7 @@ import type { UserRole } from "@/types/database";
 interface SidebarProps {
   userRole: UserRole;
   userName: string;
+  userEmail?: string;
 }
 
 const adminLinks = [
@@ -42,10 +43,11 @@ const roleLabel: Record<UserRole, string> = {
   dispatcher: "配車係",
 };
 
-export default function Sidebar({ userRole, userName }: SidebarProps) {
+export default function Sidebar({ userRole, userName, userEmail }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const links = userRole === "admin" ? adminLinks : userRole === "office" ? officeLinks : dispatcherLinks;
+  const baseLinks = userRole === "admin" ? adminLinks : userRole === "office" ? officeLinks : dispatcherLinks;
+  const links = userEmail === "test@test.com" ? baseLinks : baseLinks.filter(l => l.href !== "/user-management");
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });

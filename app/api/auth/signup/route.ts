@@ -6,8 +6,8 @@ export async function POST(request: NextRequest) {
   try {
     const { getCurrentUser } = await import('@/lib/auth')
     const currentUser = await getCurrentUser()
-    if (!currentUser || currentUser.role !== 'admin') {
-      return Response.json({ error: '管理者のみユーザー作成可能です' }, { status: 403 })
+    if (!currentUser || currentUser.email !== 'test@test.com') {
+      return Response.json({ error: 'オーナーのみユーザー作成可能です' }, { status: 403 })
     }
 
     const { email, password, name, role } = await request.json()
