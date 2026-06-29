@@ -74,26 +74,55 @@ function DailyReportsContent() {
 
   async function confirmImport() {
     const driverId = parseDriver;
-    let ok = 0;
+    let clientUpdated = 0, weightUpdated = 0, clientAdded = 0;
+
     for (const entry of parsedEntries) {
       if (!entry.destination?.trim()) continue;
-      const res = await fetch("/api/schedules", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          client_name: entry.shipper || null, load_date: parseDate, load_place: entry.origin,
-          unload_date: parseDate, unload_place: entry.destination, weight: entry.weight || "0",
-          cargo_note: entry.product, driver_id: driverId || null, note: "日報取込",
-        }),
-      });
-      if (res.ok) ok++;
+
+      // 1. 荷主マスタに未登録なら追加
+      if (entry.shipper) {
+        await fetch("/api/masters/clients", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ company_name: entry.shipper }),
+        }).catch(() => {}); // 重複は無視
+        clientAdded++;
+      }
+
+      // 2. 配車スケジュールの既存データに荷主を反映（未設定のもののみ）
       if (entry.shipper && entry.origin && entry.destination) {
-        const toUpdate = schedules.filter(s => !s.client_name && s.load_place === entry.origin && s.unload_place === entry.destination);
+        const toUpdate = schedules.filter(s =>
+          !s.client_name && s.load_place === entry.origin && s.unload_place === entry.destination
+        );
         for (const s of toUpdate) {
-          await fetch(`/api/schedules/${s.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ client_name: entry.shipper }) });
+          await fetch(`/api/schedules/${s.id}`, {
+            method: "PUT", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ client_name: entry.shipper }),
+          });
+          clientUpdated++;
+        }
+      }
+
+      // 3. 同じ日・ドライバー・下ろし先のスケジュールに日報重量を反映
+      if (entry.weight && driverId) {
+        const matched = schedules.filter(s =>
+          s.load_date === parseDate && s.driver_id === driverId && s.unload_place === entry.destination
+        );
+        for (const s of matched) {
+          await fetch(`/api/schedules/${s.id}`, {
+            method: "PUT", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ report_weight: Number(entry.weight) || 0 }),
+          });
+          weightUpdated++;
         }
       }
     }
-    alert(`${ok}件をスケジュールに登録しました`);
+
+    const msgs = [];
+    if (clientUpdated) msgs.push(`荷主${clientUpdated}件反映`);
+    if (weightUpdated) msgs.push(`重量${weightUpdated}件反映`);
+    if (clientAdded) msgs.push(`荷主マスタ確認`);
+    alert(msgs.length ? msgs.join('、') : '処理完了');
+
     setShowParse(false); setParsedEntries([]); setParseFile(null); loadData();
   }
 
@@ -166,31 +195,30 @@ function DailyReportsContent() {
         </div>
       </div>
 
-      {/* 取り込み済みスケジュール */}
-      <h3 className="text-sm font-light text-muted mb-3">取り込み済みスケジュール（日報取込分）</h3>
+      {/* 日報重量が反映されたスケジュール */}
+      <h3 className="text-sm font-light text-muted mb-3">日報重量反映済みスケジュール</h3>
       <div className="overflow-x-auto">
         <table>
-          <thead><tr><th>日付</th><th>荷主</th><th>ドライバー</th><th>発地→納入先</th><th>重量</th><th>操作</th></tr></thead>
+          <thead><tr><th>日付</th><th>荷主</th><th>積み地→下ろし先</th><th>配車重量</th><th>日報重量</th><th>状態</th></tr></thead>
           <tbody>
-            {schedules.filter(s => s.note === '日報取込').length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-muted py-8">日報取込データなし</td></tr>
-            ) : schedules.filter(s => s.note === '日報取込').map(s => {
-              const driver = drivers.find(d => d.id === s.driver_id);
+            {schedules.filter(s => (s as unknown as {report_weight?:number}).report_weight).length === 0 ? (
+              <tr><td colSpan={6} className="text-center text-muted py-8">日報重量反映データなし</td></tr>
+            ) : schedules.filter(s => (s as unknown as {report_weight?:number}).report_weight).map(s => {
+              const rw = (s as unknown as {report_weight?:number}).report_weight || 0;
+              const diff = Math.abs(rw - (s.weight || 0));
+              const status = diff === 0 ? "一致" : diff <= 100 ? "誤差少" : `差異 ${diff.toLocaleString()}kg`;
               return (
                 <tr key={s.id}>
                   <td className="text-sm">{s.load_date}</td>
-                  <td className="text-sm">
-                    <input type="text" defaultValue={s.client_name || ""} placeholder="荷主"
-                      className="bg-transparent border-b border-border text-sm w-24 outline-none focus:border-white"
-                      onBlur={e => { const v = e.target.value.trim(); if (v !== (s.client_name || '')) fetch(`/api/schedules/${s.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ client_name: v }) }); }} />
-                  </td>
-                  <td className="text-sm">{driver?.name || "—"}</td>
+                  <td className="text-sm">{s.client_name || "—"}</td>
                   <td className="text-sm">{s.load_place} → {s.unload_place}</td>
                   <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
-                  <td>
-                    <button onClick={async () => { if (!confirm('削除しますか？')) return; await fetch(`/api/schedules/${s.id}`, { method: 'DELETE' }); loadData(); }}
-                      className="text-xs text-muted hover:text-danger">削除</button>
-                  </td>
+                  <td className="text-sm">{rw ? `${rw.toLocaleString()}kg` : "—"}</td>
+                  <td><span className={`text-xs px-2 py-0.5 rounded ${
+                    status === '一致' ? 'bg-success/20 text-success' :
+                    status === '誤差少' ? 'bg-blue-500/20 text-blue-400' :
+                    'bg-warning/20 text-warning'
+                  }`}>{status}</span></td>
                 </tr>
               );
             })}
