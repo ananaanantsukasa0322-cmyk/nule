@@ -114,6 +114,15 @@ function DailyReportsContent() {
 
   return (
     <div>
+      {parsing && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-10 h-10 border-2 border-muted border-t-white rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-white text-lg font-light">AI解析中...</p>
+            <p className="text-muted text-sm mt-2">手書き日報を読み取っています</p>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">日報管理</h2>
         <button onClick={() => setShowParse(true)}

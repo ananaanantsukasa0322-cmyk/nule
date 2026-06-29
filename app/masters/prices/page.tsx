@@ -13,6 +13,7 @@ function PricesContent() {
   const [prices, setPrices] = useState<PriceEntry[]>([]);
   const [schedules, setSchedules] = useState<{load_place:string;unload_place:string;client_name?:string}[]>([]);
   const [loading, setLoading] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -118,6 +119,15 @@ function PricesContent() {
 
   return (
     <div>
+      {aiLoading && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-10 h-10 border-2 border-muted border-t-white rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-white text-lg font-light">AI解析中...</p>
+            <p className="text-muted text-sm mt-2">しばらくお待ちください</p>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">単価マスタ</h2>
         <div className="flex items-center gap-3">
@@ -126,7 +136,7 @@ function PricesContent() {
             <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={async (ev) => {
               const f = ev.target.files?.[0]; if (!f) return;
               try {
-                alert("AI解析中...しばらくお待ちください");
+                setAiLoading(true);
                 const fd = new FormData(); fd.append("file", f); fd.append("type", "price_sheet");
                 const res = await fetch("/api/ai-parse", { method: "POST", body: fd });
                 const data = await res.json();
@@ -148,6 +158,7 @@ function PricesContent() {
                   alert(`${ok}件の単価を取り込みました`); loadData();
                 } else { alert("解析結果: " + (data.error || JSON.stringify(data))); }
               } catch(err) { alert("エラー: " + (err instanceof Error ? err.message : String(err))); }
+              setAiLoading(false);
               ev.target.value = "";
             }} />
           </label>
