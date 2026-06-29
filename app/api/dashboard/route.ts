@@ -35,13 +35,40 @@ export async function GET() {
       .map(([id, v]) => ({ id, ...v }))
       .sort((a, b) => b.total - a.total)
 
+    // 荷主別集計
+    const clientCounts: Record<string, { name: string; total: number }> = {}
+    for (const s of schedules) {
+      const cn = s.client_name || '未設定'
+      if (!clientCounts[cn]) clientCounts[cn] = { name: cn, total: 0 }
+      clientCounts[cn].total += 1
+    }
+    const clientRanking = Object.entries(clientCounts)
+      .map(([id, v]) => ({ id, ...v }))
+      .sort((a, b) => b.total - a.total)
+
+    // 直近の配車（最新10件）
+    const recentScheds = schedules
+      .filter(s => !s.done)
+      .sort((a, b) => (b.load_date || '') > (a.load_date || '') ? 1 : -1)
+      .slice(0, 10)
+      .map(s => ({
+        id: s.id,
+        load_date: s.load_date,
+        load_place: s.load_place || '',
+        unload_place: s.unload_place || '',
+        client_name: s.client_name || '',
+        driver_name: driverMap[s.driver_id] || '',
+        weight: s.weight || 0,
+      }))
+
     return Response.json({
       total_sales: 0,
-      client_ranking: [],
+      client_ranking: clientRanking,
       driver_sales: driverSalesList,
       pending_reports_count: pendingReports.length,
       total_dispatches: schedules.length,
       total_drivers: drivers.length,
+      recent_schedules: recentScheds,
     })
   } catch (e) {
     const message = e instanceof Error ? e.message : ''
