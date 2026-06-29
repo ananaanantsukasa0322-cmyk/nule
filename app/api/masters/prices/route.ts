@@ -41,6 +41,13 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabase.from('prices').insert(rows).select()
     if (error) throw error
+
+    // 荷主マスタに自動登録
+    if (body.client_name) {
+      await supabase.from('clients').upsert({ company_name: body.client_name }, { onConflict: 'company_name' }).select()
+        .catch(() => supabase.from('clients').insert({ company_name: body.client_name }).catch(() => {}))
+    }
+
     return Response.json({ price: data }, { status: 201 })
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
