@@ -41,28 +41,34 @@ export async function GET() {
     const prevMonthCount = prevSchedules.length
     const prevMonthWeight = prevSchedules.reduce((sum, s) => sum + (s.weight || 0), 0)
 
-    // 売上計算
-    function calcRevenue(scheds: typeof schedules) {
-      let total = 0
-      for (const s of scheds) {
-        const vt = (s.weight || 0) >= 15000 ? 'トレーラー' : '大型'
-        const p = prices.find(p =>
-          p.client_name === s.client_name &&
-          (p.load_place === s.load_place || (s.load_place && p.load_place && s.load_place.includes(p.load_place))) &&
-          (p.unload_place === s.unload_place || (s.unload_place && p.unload_place && s.unload_place.includes(p.unload_place))) &&
-          (!p.vehicle_type || p.vehicle_type === vt)
-        ) || prices.find(p =>
-          p.client_name === s.client_name &&
-          (p.load_place === s.load_place || (s.load_place && p.load_place && s.load_place.includes(p.load_place))) &&
-          (p.unload_place === s.unload_place || (s.unload_place && p.unload_place && s.unload_place.includes(p.unload_place))) &&
-          !p.vehicle_type
-        )
-        if (p) {
-          if (p.price_type === 'per_ton' && p.per_ton_rate) total += Math.round(p.per_ton_rate * (s.weight || 0) / 1000)
-          else if (p.fixed_amount) total += p.fixed_amount
-        }
+    function matchPlace(pp: string, sp: string): boolean {
+      if (!pp || !sp) return !pp
+      if (pp === sp) return true
+      if (sp.includes(pp) || pp.includes(sp)) return true
+      return false
+    }
+
+    function findPrice(s: { client_name?: string; load_place?: string; unload_place?: string; weight?: number }) {
+      const vt = (s.weight || 0) >= 15000 ? 'トレーラー' : '大型'
+      function search(matchFn: (p: typeof prices[0]) => boolean) {
+        return prices.find(p => matchFn(p) && p.vehicle_type === vt)
+          || prices.find(p => matchFn(p) && !p.vehicle_type)
       }
-      return total
+      let p = search(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place)
+      if (!p) p = search(p => p.client_name === s.client_name && matchPlace(p.load_place, s.load_place || '') && matchPlace(p.unload_place, s.unload_place || ''))
+      if (!p) p = search(p => p.client_name === s.client_name && !p.load_place && !p.unload_place)
+      return p
+    }
+
+    function calcAmount(s: { weight?: number }, p: typeof prices[0] | undefined) {
+      if (!p) return 0
+      if (p.price_type === 'per_ton' && p.per_ton_rate) return Math.round(p.per_ton_rate * (s.weight || 0) / 1000)
+      if (p.fixed_amount) return p.fixed_amount
+      return 0
+    }
+
+    function calcRevenue(scheds: typeof schedules) {
+      return scheds.reduce((sum, s) => sum + calcAmount(s, findPrice(s)), 0)
     }
     const thisMonthRevenue = calcRevenue(schedules)
     const prevMonthRevenue = calcRevenue(prevSchedules)
@@ -74,12 +80,7 @@ export async function GET() {
       if (!clientRevenue[cn]) clientRevenue[cn] = { name: cn, count: 0, revenue: 0, weight: 0 }
       clientRevenue[cn].count += 1
       clientRevenue[cn].weight += s.weight || 0
-      const vt = (s.weight || 0) >= 15000 ? 'トレーラー' : '大型'
-      const p = prices.find(p => p.client_name === s.client_name && (!p.vehicle_type || p.vehicle_type === vt))
-      if (p) {
-        if (p.price_type === 'per_ton' && p.per_ton_rate) clientRevenue[cn].revenue += Math.round(p.per_ton_rate * (s.weight || 0) / 1000)
-        else if (p.fixed_amount) clientRevenue[cn].revenue += p.fixed_amount
-      }
+      clientRevenue[cn].revenue += calcAmount(s, findPrice(s))
     }
     const clientRanking = Object.values(clientRevenue).sort((a, b) => b.revenue - a.revenue || b.count - a.count)
 
