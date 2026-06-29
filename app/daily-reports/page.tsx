@@ -23,6 +23,11 @@ function DailyReportsContent() {
   const [parsing, setParsing] = useState(false);
   const [rawText, setRawText] = useState("");
 
+  // 候補リスト（スケジュールから自動生成）
+  const knownShippers = [...new Set(schedules.map(s => (s as unknown as {client_name?:string}).client_name).filter(Boolean) as string[])].sort();
+  const knownOrigins = [...new Set(schedules.map(s => s.load_place).filter(Boolean))].sort();
+  const knownDestinations = [...new Set(schedules.map(s => s.unload_place).filter(Boolean))].sort();
+
   const loadData = useCallback(async () => {
     const [r, d, s] = await Promise.all([
       fetch("/api/daily-reports").then(r => r.json()),
@@ -78,6 +83,19 @@ function DailyReportsContent() {
         }),
       });
       if (res.ok) ok++;
+      // 荷主を同じルートの未設定スケジュールにも自動反映
+      if (entry.shipper && entry.origin && entry.destination) {
+        const toUpdate = schedules.filter(s =>
+          !(s as unknown as {client_name?:string}).client_name &&
+          s.load_place === entry.origin && s.unload_place === entry.destination
+        );
+        for (const s of toUpdate) {
+          await fetch(`/api/schedules/${s.id}`, {
+            method: "PUT", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ client_name: entry.shipper }),
+          });
+        }
+      }
     }
     alert(`${ok}件をスケジュールに登録しました`);
     setShowParse(false); setParsedEntries([]); setParseFile(null); loadData();
@@ -139,6 +157,9 @@ function DailyReportsContent() {
       </div>
 
       <Modal open={showParse} onClose={() => setShowParse(false)} title="日報取り込み">
+        <datalist id="dl-shippers">{knownShippers.map(s => <option key={s} value={s} />)}</datalist>
+        <datalist id="dl-origins">{knownOrigins.map(s => <option key={s} value={s} />)}</datalist>
+        <datalist id="dl-dests">{knownDestinations.map(s => <option key={s} value={s} />)}</datalist>
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div><label className="block text-xs text-muted mb-1">日付</label>
@@ -188,13 +209,13 @@ function DailyReportsContent() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div><label className="block text-[10px] text-muted">荷主</label>
-                        <input type="text" value={entry.shipper} onChange={e => updateEntry(idx, "shipper", e.target.value)} className="w-full text-sm" placeholder="荷主名" /></div>
+                        <input type="text" list="dl-shippers" value={entry.shipper} onChange={e => updateEntry(idx, "shipper", e.target.value)} className="w-full text-sm" placeholder="荷主名" /></div>
                       <div><label className="block text-[10px] text-muted">品名</label>
                         <input type="text" value={entry.product} onChange={e => updateEntry(idx, "product", e.target.value)} className="w-full text-sm" placeholder="品名" /></div>
                       <div><label className="block text-[10px] text-muted">発地（積み地）</label>
-                        <input type="text" value={entry.origin} onChange={e => updateEntry(idx, "origin", e.target.value)} className="w-full text-sm" placeholder="発地" /></div>
+                        <input type="text" list="dl-origins" value={entry.origin} onChange={e => updateEntry(idx, "origin", e.target.value)} className="w-full text-sm" placeholder="発地" /></div>
                       <div><label className="block text-[10px] text-muted">納入先（下ろし先）</label>
-                        <input type="text" value={entry.destination} onChange={e => updateEntry(idx, "destination", e.target.value)} className="w-full text-sm" placeholder="納入先" /></div>
+                        <input type="text" list="dl-dests" value={entry.destination} onChange={e => updateEntry(idx, "destination", e.target.value)} className="w-full text-sm" placeholder="納入先" /></div>
                       <div><label className="block text-[10px] text-muted">重量 (kg)</label>
                         <input type="text" value={entry.weight} onChange={e => updateEntry(idx, "weight", e.target.value)} className="w-full text-sm" placeholder="kg" /></div>
                     </div>
