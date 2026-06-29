@@ -82,7 +82,7 @@ function SalesContent() {
       const p = findPrice(s);
       const amount = calcAmount(s);
       grandTotal += amount;
-      const weightT = s.weight ? (s.weight / 1000).toFixed(2) : "-";
+      const weightT = s.weight ? s.weight.toLocaleString() : "-";
       const priceStr = p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-";
       return `<tr>
         <td>${s.load_date}</td><td>${s.load_place || ""}</td><td>${s.unload_place || ""}</td>
@@ -122,7 +122,7 @@ function SalesContent() {
         </div>
       </div>
       <table>
-        <thead><tr><th>日付</th><th>積み地</th><th>下ろし先</th><th style="text-align:right">重量(t)</th><th style="text-align:right">単価</th><th style="text-align:right">金額</th></tr></thead>
+        <thead><tr><th>日付</th><th>積み地</th><th>下ろし先</th><th style="text-align:right">重量(kg)</th><th style="text-align:right">単価</th><th style="text-align:right">金額</th></tr></thead>
         <tbody>${rows}</tbody>
         <tfoot><tr class="total-row"><td colspan="5" style="text-align:right">合計金額</td><td style="text-align:right">¥${grandTotal.toLocaleString()}</td></tr></tfoot>
       </table>
@@ -181,7 +181,7 @@ function SalesContent() {
       <h3 className="text-sm font-light text-muted mb-3">明細一覧</h3>
       <div className="overflow-x-auto">
         <table>
-          <thead><tr><th>日付</th><th>荷主</th><th>積み地</th><th>下ろし先</th><th>重量</th><th>単価</th><th>金額</th></tr></thead>
+          <thead><tr><th>日付</th><th>荷主</th><th>積み地</th><th>下ろし先</th><th>重量(kg)</th><th>単価</th><th>金額</th></tr></thead>
           <tbody>
             {filtered.map(s => {
               const p = findPrice(s);
@@ -192,7 +192,7 @@ function SalesContent() {
                   <td className="text-sm">{s.client_name || "—"}</td>
                   <td className="text-sm">{s.load_place}</td>
                   <td className="text-sm">{s.unload_place}</td>
-                  <td className="text-sm">{s.weight ? `${(s.weight / 1000).toFixed(2)}t` : "—"}</td>
+                  <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
                   <td className="text-sm text-muted">{p.rate ? (p.type === "per_ton" ? `¥${p.rate}/t` : formatCurrency(p.rate)) : "—"}</td>
                   <td className="text-sm font-medium">{amount ? formatCurrency(amount) : "—"}</td>
                 </tr>
