@@ -72,57 +72,63 @@ function SalesContent() {
     return { name: c, count: cs.length, total };
   }).sort((a, b) => b.total - a.total);
 
-  async function generateInvoice(clientName: string) {
+  function generateInvoice(clientName: string) {
     const items = schedules.filter(s => s.client_name === clientName);
     if (!items.length) { alert("データがありません"); return; }
 
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF();
-
-    doc.setFontSize(20);
-    doc.text("請 求 書", 105, 25, { align: "center" });
-
-    doc.setFontSize(10);
-    doc.text(`${clientName} 御中`, 20, 45);
-    doc.text(`期間: ${dateFrom} ～ ${dateTo}`, 20, 55);
-    doc.text(`発行日: ${new Date().toISOString().split("T")[0]}`, 140, 45);
-    doc.text("株式会社 仲山商事", 140, 55);
-
-    let y = 75;
-    doc.setFontSize(8);
-    doc.text("日付", 20, y);
-    doc.text("積み地", 45, y);
-    doc.text("下ろし先", 85, y);
-    doc.text("重量(kg)", 125, y);
-    doc.text("単価", 150, y);
-    doc.text("金額", 175, y);
-    y += 2;
-    doc.line(20, y, 195, y);
-    y += 6;
-
     let grandTotal = 0;
-    for (const s of items) {
-      if (y > 270) { doc.addPage(); y = 20; }
+    const rows = items.map(s => {
       const p = findPrice(s);
       const amount = calcAmount(s);
       grandTotal += amount;
+      const weightT = s.weight ? (s.weight / 1000).toFixed(2) : "-";
+      const priceStr = p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-";
+      return `<tr>
+        <td>${s.load_date}</td><td>${s.load_place || ""}</td><td>${s.unload_place || ""}</td>
+        <td style="text-align:right">${weightT}</td><td style="text-align:right">${priceStr}</td>
+        <td style="text-align:right">${amount ? `¥${amount.toLocaleString()}` : "-"}</td>
+      </tr>`;
+    }).join("");
 
-      doc.text(s.load_date, 20, y);
-      doc.text((s.load_place || "").substring(0, 12), 45, y);
-      doc.text((s.unload_place || "").substring(0, 12), 85, y);
-      doc.text(s.weight ? s.weight.toLocaleString() : "-", 125, y);
-      doc.text(p.rate ? (p.type === "per_ton" ? `${p.rate}/t` : `${p.rate.toLocaleString()}`) : "-", 150, y);
-      doc.text(amount ? amount.toLocaleString() : "-", 175, y);
-      y += 6;
-    }
+    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+      <title>請求書 - ${clientName}</title>
+      <style>
+        @media print { body { margin: 0; } @page { margin: 15mm; } }
+        body { font-family: "Hiragino Kaku Gothic Pro", "Yu Gothic", "Meiryo", sans-serif; color: #111; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; font-size: 28px; letter-spacing: 0.5em; margin-bottom: 40px; border-bottom: 3px double #333; padding-bottom: 15px; }
+        .header { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        .header-left { font-size: 14px; }
+        .header-right { text-align: right; font-size: 13px; }
+        .client-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 20px; }
+        th { background: #f5f5f5; border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold; }
+        td { border: 1px solid #ccc; padding: 6px 8px; }
+        .total-row { background: #f0f0f0; font-weight: bold; font-size: 14px; }
+        .print-btn { position: fixed; top: 10px; right: 10px; padding: 10px 20px; background: #333; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+        @media print { .print-btn { display: none; } }
+      </style>
+    </head><body>
+      <button class="print-btn" onclick="window.print()">印刷 / PDF保存</button>
+      <h1>請 求 書</h1>
+      <div class="header">
+        <div class="header-left">
+          <div class="client-name">${clientName} 御中</div>
+          <div>期間: ${dateFrom} ～ ${dateTo}</div>
+        </div>
+        <div class="header-right">
+          <div>発行日: ${new Date().toLocaleDateString('ja-JP')}</div>
+          <div style="margin-top:10px;font-weight:bold">株式会社 仲山商事</div>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>日付</th><th>積み地</th><th>下ろし先</th><th style="text-align:right">重量(t)</th><th style="text-align:right">単価</th><th style="text-align:right">金額</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr class="total-row"><td colspan="5" style="text-align:right">合計金額</td><td style="text-align:right">¥${grandTotal.toLocaleString()}</td></tr></tfoot>
+      </table>
+    </body></html>`;
 
-    y += 4;
-    doc.line(20, y, 195, y);
-    y += 8;
-    doc.setFontSize(12);
-    doc.text(`合計金額: ${grandTotal.toLocaleString()} 円`, 195, y, { align: "right" });
-
-    doc.save(`請求書_${clientName}_${dateFrom}_${dateTo}.pdf`);
+    const w = window.open("", "_blank");
+    if (w) { w.document.write(html); w.document.close(); }
   }
 
   if (loading) return <div className="text-muted text-sm">読み込み中...</div>;
