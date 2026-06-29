@@ -44,8 +44,8 @@ export async function POST(request: NextRequest) {
 
     // 荷主マスタに自動登録
     if (body.client_name) {
-      await supabase.from('clients').upsert({ company_name: body.client_name }, { onConflict: 'company_name' }).select()
-        .catch(() => supabase.from('clients').insert({ company_name: body.client_name }).catch(() => {}))
+      const { error: cErr } = await supabase.from('clients').insert({ company_name: body.client_name })
+      if (cErr) { /* 重複は無視 */ }
     }
 
     return Response.json({ price: data }, { status: 201 })
