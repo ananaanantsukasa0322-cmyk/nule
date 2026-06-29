@@ -73,7 +73,7 @@ function DailyReportsContent() {
     const driverId = parseDriver;
     let ok = 0;
     for (const entry of parsedEntries) {
-      if (!entry.origin && !entry.destination) continue;
+      if (!entry.destination || !entry.destination.trim()) continue;
       const res = await fetch("/api/schedules", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

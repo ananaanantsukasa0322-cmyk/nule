@@ -164,6 +164,17 @@ function PricesContent() {
           <button onClick={() => editSelectedField("client_name")} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">荷主変更</button>
           <button onClick={() => editSelectedField("load_place")} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">積み地変更</button>
           <button onClick={() => editSelectedField("unload_place")} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">下ろし先変更</button>
+          <button onClick={async () => {
+            if (!selected.size) return;
+            const t = prompt("単価タイプを入力\n1: t単価\n2: 固定");
+            if (!t) return;
+            const pt = t === "1" ? "per_ton" : t === "2" ? "fixed" : null;
+            if (!pt) { alert("1か2を入力してください"); return; }
+            for (const id of selected) {
+              await fetch("/api/masters/prices", { method: "PUT", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ id, price_type: pt }) });
+            }
+            loadData();
+          }} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">タイプ変更</button>
           <button onClick={deleteSelected} className="text-xs px-3 py-1 bg-danger text-white rounded hover:bg-red-600">まとめて削除</button>
           <button onClick={() => setSelected(new Set())} className="text-xs text-muted hover:text-white ml-auto">選択解除</button>
         </div>
