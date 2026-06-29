@@ -10,7 +10,8 @@ function UserManagementContent() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState({ email: "", password: "", name: "", role: "dispatcher" });
+  const [inviteUrl, setInviteUrl] = useState("");
+  const [form, setForm] = useState({ email: "", name: "", role: "dispatcher" });
 
   const loadData = useCallback(async () => {
     const res = await fetch("/api/users");
@@ -21,16 +22,16 @@ function UserManagementContent() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  async function handleCreate(e: React.FormEvent) {
+  async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
-    const res = await fetch("/api/auth/signup", {
+    const res = await fetch("/api/users/invite", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
     const data = await res.json();
-    if (!res.ok) { alert(data.error || "作成に失敗しました"); return; }
-    setShowModal(false);
-    setForm({ email: "", password: "", name: "", role: "dispatcher" });
+    if (!res.ok) { alert(data.error || "招待に失敗しました"); return; }
+    setInviteUrl(data.invite_url);
+    setForm({ email: "", name: "", role: "dispatcher" });
     loadData();
   }
 
@@ -80,7 +81,7 @@ function UserManagementContent() {
         <h2 className="text-xl font-light">ユーザー管理</h2>
         <button onClick={() => setShowModal(true)}
           className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200">
-          + ユーザー追加
+          + ユーザー招待
         </button>
       </div>
 
@@ -106,22 +107,30 @@ function UserManagementContent() {
         </table>
       </div>
 
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="ユーザー追加">
-        <form onSubmit={handleCreate} className="space-y-3">
-          <div><label className="block text-xs text-muted mb-1">名前</label>
-            <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full" required /></div>
-          <div><label className="block text-xs text-muted mb-1">メールアドレス</label>
-            <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full" required /></div>
-          <div><label className="block text-xs text-muted mb-1">パスワード</label>
-            <input type="password" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} className="w-full" required /></div>
-          <div><label className="block text-xs text-muted mb-1">権限</label>
-            <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="w-full">
-              <option value="admin">管理者</option>
-              <option value="office">事務所</option>
-              <option value="dispatcher">配車係</option>
-            </select></div>
-          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-4">作成</button>
-        </form>
+      <Modal open={showModal} onClose={() => { setShowModal(false); setInviteUrl(""); }} title="ユーザー招待">
+        {inviteUrl ? (
+          <div className="space-y-4">
+            <p className="text-sm text-success">招待リンクが生成されました</p>
+            <div className="bg-accent p-3 rounded text-xs break-all select-all">{inviteUrl}</div>
+            <p className="text-xs text-muted">このリンクを相手に送ってください。リンクからパスワードを設定してログインできます。</p>
+            <button onClick={() => { navigator.clipboard.writeText(inviteUrl); alert("コピーしました"); }}
+              className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200">リンクをコピー</button>
+          </div>
+        ) : (
+          <form onSubmit={handleInvite} className="space-y-3">
+            <div><label className="block text-xs text-muted mb-1">メールアドレス</label>
+              <input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} className="w-full" required /></div>
+            <div><label className="block text-xs text-muted mb-1">名前（任意）</label>
+              <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className="w-full" placeholder="未入力ならメールから自動生成" /></div>
+            <div><label className="block text-xs text-muted mb-1">権限</label>
+              <select value={form.role} onChange={e => setForm({ ...form, role: e.target.value })} className="w-full">
+                <option value="admin">管理者</option>
+                <option value="office">事務所</option>
+                <option value="dispatcher">配車係</option>
+              </select></div>
+            <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-4">招待リンク生成</button>
+          </form>
+        )}
       </Modal>
 
       <Modal open={showEdit} onClose={() => setShowEdit(false)} title="ユーザー編集">
