@@ -55,9 +55,9 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
   if (!user) return null;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar userRole={user.role} userName={user.name} userEmail={user.email} />
-      <main className="flex-1 p-6 md:p-8 overflow-y-auto min-h-screen">
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto">
         {children}
       </main>
     </div>
