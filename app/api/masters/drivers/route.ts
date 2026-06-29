@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    await requireAuth(['admin'])
+    await requireAuth(['admin', 'office'])
     const body = await request.json()
 
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
