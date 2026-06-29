@@ -43,16 +43,24 @@ function SalesContent() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  function matchPlace(pricePlace: string, schedPlace: string): boolean {
+    if (!pricePlace || !schedPlace) return !pricePlace;
+    if (pricePlace === schedPlace) return true;
+    if (schedPlace.includes(pricePlace) || pricePlace.includes(schedPlace)) return true;
+    return false;
+  }
+
   function findPrice(s: Schedule): { rate: number; type: string } {
-    const p = prices.find(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place);
+    // 1. 完全一致
+    let p = prices.find(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place);
+    // 2. 部分一致（積み地・下ろし先）
+    if (!p) p = prices.find(p => p.client_name === s.client_name && matchPlace(p.load_place, s.load_place) && matchPlace(p.unload_place, s.unload_place));
+    // 3. 荷主のみ一致（積み地・下ろし先なし）
+    if (!p) p = prices.find(p => p.client_name === s.client_name && !p.load_place && !p.unload_place);
+
     if (p) {
       if (p.price_type === "per_ton" && p.per_ton_rate) return { rate: p.per_ton_rate, type: "per_ton" };
       if (p.fixed_amount) return { rate: p.fixed_amount, type: "fixed" };
-    }
-    const p2 = prices.find(p => p.client_name === s.client_name && !p.load_place && !p.unload_place);
-    if (p2) {
-      if (p2.price_type === "per_ton" && p2.per_ton_rate) return { rate: p2.per_ton_rate, type: "per_ton" };
-      if (p2.fixed_amount) return { rate: p2.fixed_amount, type: "fixed" };
     }
     return { rate: 0, type: "none" };
   }
