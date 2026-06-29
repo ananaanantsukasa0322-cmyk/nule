@@ -19,14 +19,26 @@ export async function POST(request: NextRequest) {
   try {
     await requireAuth(['admin', 'office'])
     const body = await request.json()
-    const { data, error } = await supabase.from('prices').insert({
-      client_name: body.client_name || null,
-      load_place: body.load_place || null,
-      unload_place: body.unload_place || null,
-      price_type: body.price_type,
-      per_ton_rate: body.per_ton_rate || null,
-      fixed_amount: body.fixed_amount || null,
-    }).select().single()
+    const unloadPlaces = (body.unload_place || '').split(/[・／\/]/).map((s: string) => s.trim()).filter(Boolean)
+    const loadPlaces = (body.load_place || '').split(/[・／\/]/).map((s: string) => s.trim()).filter(Boolean)
+    if (!unloadPlaces.length) unloadPlaces.push(body.unload_place || '')
+    if (!loadPlaces.length) loadPlaces.push(body.load_place || '')
+
+    const rows = []
+    for (const lp of loadPlaces) {
+      for (const up of unloadPlaces) {
+        rows.push({
+          client_name: body.client_name || null,
+          load_place: lp || null,
+          unload_place: up || null,
+          price_type: body.price_type,
+          per_ton_rate: body.per_ton_rate || null,
+          fixed_amount: body.fixed_amount || null,
+        })
+      }
+    }
+
+    const { data, error } = await supabase.from('prices').insert(rows).select()
     if (error) throw error
     return Response.json({ price: data }, { status: 201 })
   } catch (e) {
