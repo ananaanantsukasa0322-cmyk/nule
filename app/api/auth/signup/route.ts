@@ -4,6 +4,12 @@ import { hashPassword, createSession } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
   try {
+    const { getCurrentUser } = await import('@/lib/auth')
+    const currentUser = await getCurrentUser()
+    if (!currentUser || currentUser.role !== 'admin') {
+      return Response.json({ error: '管理者のみユーザー作成可能です' }, { status: 403 })
+    }
+
     const { email, password, name, role } = await request.json()
 
     if (!email || !password || !name) {
@@ -30,8 +36,6 @@ export async function POST(request: NextRequest) {
       }
       return Response.json({ error: '登録に失敗しました: ' + error.message }, { status: 500 })
     }
-
-    await createSession(user.id)
 
     return Response.json({ user })
   } catch {

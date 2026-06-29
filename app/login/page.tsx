@@ -8,9 +8,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [isSignup, setIsSignup] = useState(false);
-  const [name, setName] = useState("");
-  const [role, setRole] = useState<"admin" | "office" | "dispatcher">("dispatcher");
+  const [name] = useState("");
+  const [role] = useState<"admin" | "office" | "dispatcher">("dispatcher");
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -19,10 +18,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const endpoint = isSignup ? "/api/auth/signup" : "/api/auth/login";
-      const body = isSignup
-        ? { email, password, name, role }
-        : { email, password };
+      const endpoint = "/api/auth/login";
+      const body = { email, password };
+      void name; void role;
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -62,37 +60,6 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isSignup && (
-            <>
-              <div>
-                <label className="block text-xs text-muted mb-1.5 font-light">
-                  名前
-                </label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full"
-                  required={isSignup}
-                />
-              </div>
-              <div>
-                <label className="block text-xs text-muted mb-1.5 font-light">
-                  権限
-                </label>
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value as "admin" | "office" | "dispatcher")}
-                  className="w-full"
-                >
-                  <option value="admin">管理者</option>
-                  <option value="office">事務所</option>
-                  <option value="dispatcher">配車係</option>
-                </select>
-              </div>
-            </>
-          )}
-
           <div>
             <label className="block text-xs text-muted mb-1.5 font-light">
               メールアドレス
@@ -128,25 +95,10 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full py-2.5 bg-white text-black text-sm font-light rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 mt-6"
           >
-            {loading
-              ? "..."
-              : isSignup
-              ? "アカウント作成"
-              : "ログイン"}
+            {loading ? "..." : "ログイン"}
           </button>
         </form>
 
-        <button
-          onClick={() => {
-            setIsSignup(!isSignup);
-            setError("");
-          }}
-          className="w-full text-center text-xs text-muted hover:text-white transition-colors mt-6"
-        >
-          {isSignup
-            ? "既にアカウントをお持ちの方はこちら"
-            : "新規アカウント作成"}
-        </button>
       </div>
     </div>
   );

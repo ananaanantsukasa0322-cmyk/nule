@@ -19,6 +19,7 @@ const adminLinks = [
   { href: "/driver-management", label: "ドライバー支払い", icon: "◎" },
   { href: "/masters/clients", label: "荷主マスタ", icon: "─" },
   { href: "/masters/prices", label: "単価マスタ", icon: "─" },
+  { href: "/user-management", label: "ユーザー管理", icon: "─" },
 ];
 
 const officeLinks = [
