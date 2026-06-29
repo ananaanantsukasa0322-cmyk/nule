@@ -90,6 +90,28 @@ function PricesContent() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">単価マスタ</h2>
         <div className="flex items-center gap-3">
+          <label className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded cursor-pointer hover:bg-blue-700">
+            AI単価取込
+            <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={async (e) => {
+              const f = e.target.files?.[0]; if (!f) return;
+              const fd = new FormData(); fd.append("file", f); fd.append("type", "price_sheet");
+              const res = await fetch("/api/ai-parse", { method: "POST", body: fd });
+              const data = await res.json();
+              if (res.ok && data.entries) {
+                let ok = 0;
+                for (const ent of data.entries) {
+                  if (!ent.rate) continue;
+                  await fetch("/api/masters/prices", {
+                    method: "POST", headers: {"Content-Type":"application/json"},
+                    body: JSON.stringify({ price_type: ent.price_type || "fixed", fixed_amount: Number(ent.rate) || 0, per_ton_rate: ent.price_type === "per_ton" ? Number(ent.rate) : null })
+                  });
+                  ok++;
+                }
+                alert(`${ok}件の単価を取り込みました`); loadData();
+              } else { alert(data.error || "解析失敗"); }
+              e.target.value = "";
+            }} />
+          </label>
           <FileImport target="prices" label="CSV/Excel" onComplete={loadData} />
           <button
             onClick={() => { resetForm(); setShowModal(true); }}

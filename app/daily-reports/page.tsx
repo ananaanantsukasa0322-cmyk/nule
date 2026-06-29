@@ -42,15 +42,14 @@ function DailyReportsContent() {
     setParsing(true);
     const formData = new FormData();
     formData.append("file", parseFile);
-    formData.append("report_date", parseDate);
-    formData.append("driver_name", parseDriver);
+    formData.append("type", "daily_report");
     try {
-      const res = await fetch("/api/daily-reports/parse", { method: "POST", body: formData });
+      const res = await fetch("/api/ai-parse", { method: "POST", body: formData });
       const data = await res.json();
       if (res.ok) {
         setParsedEntries(data.entries || []);
-        setRawText(data.raw_text || "");
-      } else { alert(data.error || "解析に失敗しました"); }
+        setRawText(data.raw || "");
+      } else { alert(data.error || "AI解析に失敗しました"); }
     } catch { alert("通信エラー"); }
     setParsing(false);
   }
@@ -161,7 +160,7 @@ function DailyReportsContent() {
           <div className="flex gap-2">
             <button onClick={handleParse} disabled={!parseFile || parsing}
               className="flex-1 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50">
-              {parsing ? "解析中..." : "PDF解析"}
+              {parsing ? "AI解析中..." : "AI解析（手書き対応）"}
             </button>
             <button onClick={() => { if (parsedEntries.length === 0) { for(let i=0;i<5;i++) addEntry(); } }}
               className="px-4 py-2 bg-accent text-white text-sm rounded-md hover:bg-border">
