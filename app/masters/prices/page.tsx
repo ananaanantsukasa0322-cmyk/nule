@@ -15,6 +15,7 @@ function PricesContent() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({
     client_name: "", load_place: "", unload_place: "",
     price_type: "per_ton", per_ton_rate: "", fixed_amount: "",
@@ -26,11 +27,12 @@ function PricesContent() {
       fetch("/api/schedules").then(r => r.json()).catch(() => []),
     ]);
     setPrices((p.prices || []).map((x: Record<string, unknown>) => ({
-      id: x.id, client_name: x.client_name || '', load_place: x.load_place || '',
-      unload_place: x.unload_place || '', price_type: x.price_type || 'fixed',
-      per_ton_rate: x.per_ton_rate, fixed_amount: x.fixed_amount,
+      id: x.id as string, client_name: (x.client_name || '') as string, load_place: (x.load_place || '') as string,
+      unload_place: (x.unload_place || '') as string, price_type: (x.price_type || 'fixed') as string,
+      per_ton_rate: x.per_ton_rate as number | null, fixed_amount: x.fixed_amount as number | null,
     })));
     setSchedules(Array.isArray(s) ? s : []);
+    setSelected(new Set());
     setLoading(false);
   }, []);
 
@@ -71,6 +73,49 @@ function PricesContent() {
   async function handleDelete(id: string) {
     if (!confirm("この単価を削除しますか？")) return;
     await fetch("/api/masters/prices", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    loadData();
+  }
+
+  function toggleSelect(id: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    if (selected.size === prices.length) setSelected(new Set());
+    else setSelected(new Set(prices.map(p => p.id)));
+  }
+
+  async function deleteSelected() {
+    if (!selected.size) return;
+    if (!confirm(`${selected.size}件の単価を削除しますか？`)) return;
+    for (const id of selected) {
+      await fetch("/api/masters/prices", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    }
+    loadData();
+  }
+
+  async function editSelectedRate() {
+    if (!selected.size) return;
+    const rate = prompt("新しい単価/金額を入力してください（円）");
+    if (rate === null || rate === "") return;
+    const num = Number(rate);
+    if (isNaN(num)) { alert("数値を入力してください"); return; }
+    for (const id of selected) {
+      const p = prices.find(x => x.id === id);
+      if (!p) continue;
+      await fetch("/api/masters/prices", {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id, price_type: p.price_type,
+          per_ton_rate: p.price_type === "per_ton" ? num : null,
+          fixed_amount: p.price_type === "fixed" ? num : null,
+        }),
+      });
+    }
     loadData();
   }
 
@@ -120,14 +165,27 @@ function PricesContent() {
         </div>
       </div>
 
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 mb-4 p-3 bg-accent/30 rounded">
+          <span className="text-sm">{selected.size}件選択中</span>
+          <button onClick={editSelectedRate} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">まとめて単価変更</button>
+          <button onClick={deleteSelected} className="text-xs px-3 py-1 bg-danger text-white rounded hover:bg-red-600">まとめて削除</button>
+          <button onClick={() => setSelected(new Set())} className="text-xs text-muted hover:text-white ml-auto">選択解除</button>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table>
-          <thead><tr><th>荷主</th><th>積み地</th><th>下ろし先</th><th>タイプ</th><th>単価/金額</th><th>操作</th></tr></thead>
+          <thead><tr>
+            <th><input type="checkbox" checked={selected.size === prices.length && prices.length > 0} onChange={toggleAll} /></th>
+            <th>荷主</th><th>積み地</th><th>下ろし先</th><th>タイプ</th><th>単価/金額</th><th>操作</th>
+          </tr></thead>
           <tbody>
             {prices.length === 0 ? (
-              <tr><td colSpan={6} className="text-center text-muted py-8">単価データがありません</td></tr>
+              <tr><td colSpan={7} className="text-center text-muted py-8">単価データがありません</td></tr>
             ) : prices.map(p => (
-              <tr key={p.id}>
+              <tr key={p.id} className={selected.has(p.id) ? "bg-accent/20" : ""}>
+                <td><input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)} /></td>
                 <td className="text-sm">{p.client_name || "—"}</td>
                 <td className="text-sm">{p.load_place || "—"}</td>
                 <td className="text-sm">{p.unload_place || "—"}</td>
