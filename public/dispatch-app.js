@@ -3037,14 +3037,18 @@ function checkVehicleViolations(sched, vehicle) {
   if (!isNaN(weight) && !isNaN(payload) && weight > payload) {
     msgs.push(`積載量オーバー: 荷物 ${weight.toLocaleString()}kg > 車両上限 ${payload.toLocaleString()}kg`);
   }
-  // 既存の配達合計+この荷物で車両上限を超える場合
-  if (!isNaN(weight) && !isNaN(payload) && sched._targetDriverId) {
+  // 同一スロット（相積み＝同時に積む荷物同士）の合計のみチェック。配達①②③等の別スロットは合計しない
+  if (!isNaN(weight) && !isNaN(payload) && sched._targetDriverId && sched._targetSlotIndex != null) {
     const did = sched._targetDriverId;
     const date = haishaDateVal;
-    const existing = schedules.filter(s => String(s.driver_id) === did && s.load_date === date && s.id !== sched.id);
+    const slotIdx = sched._targetSlotIndex;
+    const existing = schedules.filter(s =>
+      String(s.driver_id) === did && s.load_date === date && s.id !== sched.id &&
+      s.slot_index === slotIdx
+    );
     const existTotal = existing.reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
     if (existTotal + weight > payload) {
-      msgs.push(`合計積載量オーバー: 既存${existTotal.toLocaleString()}kg + 追加${weight.toLocaleString()}kg = ${(existTotal+weight).toLocaleString()}kg > 上限${payload.toLocaleString()}kg`);
+      msgs.push(`合計積載量オーバー（相積み）: 既存${existTotal.toLocaleString()}kg + 追加${weight.toLocaleString()}kg = ${(existTotal+weight).toLocaleString()}kg > 上限${payload.toLocaleString()}kg`);
     }
   }
 
@@ -3121,10 +3125,12 @@ async function hDrop(event, driverId, slotIndex) {
   const sched = schedules.find(s => s.id === dragSchedId);
   if (!sched) return;
 
-  // 制限チェック（単体カード + 既存合計）
+  // 制限チェック（単体カード + 同一スロット合計）
   sched._targetDriverId = String(driverId);
+  sched._targetSlotIndex = slotIndex;
   const singleMsgs = checkVehicleViolations(sched, vehicle);
   delete sched._targetDriverId;
+  delete sched._targetSlotIndex;
   if (singleMsgs.length) {
     const ok = confirm('⚠️ 制限違反があります：\n' + singleMsgs.join('\n') + '\n\nこのまま割り当てますか？');
     if (!ok) return;
