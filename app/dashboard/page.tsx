@@ -20,6 +20,8 @@ function diff(curr: number, prev: number) {
   return pct > 0 ? `+${pct}%` : `${pct}%`;
 }
 
+const BAR_COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#ef4444"];
+
 function DashboardContent() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,6 +40,7 @@ function DashboardContent() {
   const countDiff = diff(data.thisMonth.count, data.prevMonth.count);
   const weightDiff = diff(data.thisMonth.weight, data.prevMonth.weight);
   const revenueDiff = diff(data.thisMonth.revenue, data.prevMonth.revenue);
+  const todayIdx = data.weekly.length - 1;
 
   return (
     <div>
@@ -48,66 +51,93 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* 今日の状況 */}
-      <div className="bg-gradient-to-r from-[#0f1a2e] to-[#111] border border-border rounded-xl p-5 mb-6">
-        <h3 className="text-xs text-muted uppercase tracking-wider mb-3">本日の状況</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div>
-            <p className="text-2xl font-light">{data.today.count}<span className="text-sm text-muted ml-1">件</span></p>
-            <p className="text-xs text-muted">配車</p>
+      {/* 今日の状況 - ヒーローバナー */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-[#0f1a2e] to-[#0a0a0a] border border-blue-900/50 rounded-2xl p-6 mb-6">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-20 -mt-20" />
+        <div className="relative flex items-center justify-between mb-5">
+          <h3 className="text-xs text-blue-300 uppercase tracking-[0.2em] font-semibold">本日の状況</h3>
+          <span className="text-[10px] text-muted">{now.getMonth()+1}/{now.getDate()}</span>
+        </div>
+        <div className="relative grid grid-cols-2 sm:grid-cols-4 gap-6">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-blue-500/20 flex items-center justify-center text-xl">🚚</div>
+            <div>
+              <p className="text-3xl font-light leading-none">{data.today.count}<span className="text-sm text-muted ml-1">件</span></p>
+              <p className="text-xs text-muted mt-1">配車</p>
+            </div>
           </div>
-          <div>
-            <p className="text-2xl font-light">{data.today.drivers}<span className="text-sm text-muted ml-1">名</span></p>
-            <p className="text-xs text-muted">稼働ドライバー</p>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-emerald-500/20 flex items-center justify-center text-xl">👤</div>
+            <div>
+              <p className="text-3xl font-light leading-none">{data.today.drivers}<span className="text-sm text-muted ml-1">名</span></p>
+              <p className="text-xs text-muted mt-1">稼働ドライバー</p>
+            </div>
           </div>
-          <div>
-            <p className="text-2xl font-light">{ton(data.today.weight)}</p>
-            <p className="text-xs text-muted">総積載量</p>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-purple-500/20 flex items-center justify-center text-xl">⚖️</div>
+            <div>
+              <p className="text-3xl font-light leading-none">{ton(data.today.weight)}</p>
+              <p className="text-xs text-muted mt-1">総積載量</p>
+            </div>
           </div>
-          <div>
-            <p className={`text-2xl font-light ${data.today.unassigned > 0 ? 'text-warning' : ''}`}>{data.today.unassigned}<span className="text-sm text-muted ml-1">件</span></p>
-            <p className="text-xs text-muted">未割当</p>
+          <div className="flex items-center gap-3">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl ${data.today.unassigned > 0 ? 'bg-amber-500/20' : 'bg-gray-500/10'}`}>
+              {data.today.unassigned > 0 ? '⚠️' : '✓'}
+            </div>
+            <div>
+              <p className={`text-3xl font-light leading-none ${data.today.unassigned > 0 ? 'text-amber-400' : ''}`}>{data.today.unassigned}<span className="text-sm text-muted ml-1">件</span></p>
+              <p className="text-xs text-muted mt-1">未割当</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* 今月の実績 + 前月比 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-[#111] border border-border rounded-xl p-5">
-          <p className="text-xs text-muted mb-1">配車件数</p>
+        <div className="relative overflow-hidden bg-[#0d0d0d] border border-border rounded-xl p-5">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500" />
+          <p className="text-xs text-muted mb-2 flex items-center gap-1.5"><span>📦</span>配車件数</p>
           <div className="flex items-end gap-2">
-            <p className="text-3xl font-light">{data.thisMonth.count}</p>
-            {countDiff && <span className={`text-xs mb-1 ${countDiff.startsWith('+') ? 'text-success' : 'text-danger'}`}>{countDiff}</span>}
+            <p className="text-4xl font-light tracking-tight">{data.thisMonth.count}</p>
+            {countDiff && <span className={`text-xs mb-1.5 px-1.5 py-0.5 rounded ${countDiff.startsWith('+') ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{countDiff}</span>}
           </div>
-          <p className="text-xs text-muted mt-1">前月 {data.prevMonth.count}件</p>
+          <p className="text-xs text-muted mt-2">前月 {data.prevMonth.count}件</p>
         </div>
-        <div className="bg-[#111] border border-border rounded-xl p-5">
-          <p className="text-xs text-muted mb-1">総重量</p>
+        <div className="relative overflow-hidden bg-[#0d0d0d] border border-border rounded-xl p-5">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500" />
+          <p className="text-xs text-muted mb-2 flex items-center gap-1.5"><span>⚖️</span>総重量</p>
           <div className="flex items-end gap-2">
-            <p className="text-3xl font-light">{ton(data.thisMonth.weight)}</p>
-            {weightDiff && <span className={`text-xs mb-1 ${weightDiff.startsWith('+') ? 'text-success' : 'text-danger'}`}>{weightDiff}</span>}
+            <p className="text-4xl font-light tracking-tight">{ton(data.thisMonth.weight)}</p>
+            {weightDiff && <span className={`text-xs mb-1.5 px-1.5 py-0.5 rounded ${weightDiff.startsWith('+') ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{weightDiff}</span>}
           </div>
-          <p className="text-xs text-muted mt-1">前月 {ton(data.prevMonth.weight)}</p>
+          <p className="text-xs text-muted mt-2">前月 {ton(data.prevMonth.weight)}</p>
         </div>
-        <div className="bg-[#111] border border-border rounded-xl p-5">
-          <p className="text-xs text-muted mb-1">売上</p>
+        <div className="relative overflow-hidden bg-[#0d0d0d] border border-border rounded-xl p-5">
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500" />
+          <p className="text-xs text-muted mb-2 flex items-center gap-1.5"><span>💰</span>売上</p>
           <div className="flex items-end gap-2">
-            <p className="text-3xl font-light">{fmt(data.thisMonth.revenue)}</p>
-            {revenueDiff && <span className={`text-xs mb-1 ${revenueDiff.startsWith('+') ? 'text-success' : 'text-danger'}`}>{revenueDiff}</span>}
+            <p className="text-4xl font-light tracking-tight">{fmt(data.thisMonth.revenue)}</p>
+            {revenueDiff && <span className={`text-xs mb-1.5 px-1.5 py-0.5 rounded ${revenueDiff.startsWith('+') ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>{revenueDiff}</span>}
           </div>
-          <p className="text-xs text-muted mt-1">前月 {fmt(data.prevMonth.revenue)}</p>
+          <p className="text-xs text-muted mt-2">前月 {fmt(data.prevMonth.revenue)}</p>
         </div>
       </div>
 
       {/* 週間推移 */}
-      <div className="bg-[#111] border border-border rounded-xl p-5 mb-6">
-        <h3 className="text-xs text-muted uppercase tracking-wider mb-4">直近7日間の配車数</h3>
-        <div className="flex items-end gap-2 h-24">
+      <div className="bg-[#0d0d0d] border border-border rounded-xl p-5 mb-6">
+        <h3 className="text-xs text-muted uppercase tracking-wider mb-5 flex items-center gap-1.5"><span>📈</span>直近7日間の配車数</h3>
+        <div className="flex items-end gap-3 h-28">
           {data.weekly.map((w, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1">
-              <span className="text-[10px] text-muted">{w.count}</span>
-              <div className="w-full bg-blue-600 rounded-t" style={{ height: `${Math.max((w.count / maxWeekly) * 80, 4)}px` }} />
-              <span className="text-[10px] text-muted">{w.date}</span>
+            <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
+              <span className={`text-xs font-medium ${i === todayIdx ? 'text-white' : 'text-muted'}`}>{w.count}</span>
+              <div className="w-full rounded-t-md transition-all group-hover:opacity-80"
+                style={{
+                  height: `${Math.max((w.count / maxWeekly) * 85, 4)}px`,
+                  background: i === todayIdx
+                    ? 'linear-gradient(180deg, #60a5fa, #2563eb)'
+                    : 'linear-gradient(180deg, #3730a3aa, #1e1b4baa)',
+                }} />
+              <span className={`text-[10px] ${i === todayIdx ? 'text-blue-400 font-medium' : 'text-muted'}`}>{w.date}</span>
             </div>
           ))}
         </div>
@@ -115,20 +145,20 @@ function DashboardContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 荷主別売上ランキング */}
-        <div className="bg-[#111] border border-border rounded-xl p-5">
-          <h3 className="text-xs text-muted uppercase tracking-wider mb-4">荷主別売上</h3>
+        <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+          <h3 className="text-xs text-muted uppercase tracking-wider mb-4 flex items-center gap-1.5"><span>🏆</span>荷主別売上</h3>
           {data.client_ranking.length === 0 ? <p className="text-xs text-muted">データなし</p> : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {data.client_ranking.filter(c => c.name !== '未設定').slice(0, 8).map((c, i) => (
-                <div key={i} className="flex items-center justify-between py-1.5 border-b border-border/30 last:border-0">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center ${
-                      i === 0 ? 'bg-yellow-500/20 text-yellow-400' : i === 1 ? 'bg-gray-400/20 text-gray-300' : i === 2 ? 'bg-orange-500/20 text-orange-400' : 'text-muted'
+                <div key={i} className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-white/[0.03] transition-colors">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${
+                      i === 0 ? 'bg-yellow-500/20 text-yellow-400' : i === 1 ? 'bg-gray-400/20 text-gray-300' : i === 2 ? 'bg-orange-500/20 text-orange-400' : 'bg-white/5 text-muted'
                     }`}>{i + 1}</span>
                     <span className="text-sm">{c.name}</span>
-                    <span className="text-xs text-muted">{c.count}件</span>
+                    <span className="text-[10px] text-muted bg-white/5 px-1.5 py-0.5 rounded">{c.count}件</span>
                   </div>
-                  <span className="text-sm font-medium">{c.revenue ? fmt(c.revenue) : '—'}</span>
+                  <span className={`text-sm font-medium ${c.revenue ? '' : 'text-muted'}`}>{c.revenue ? fmt(c.revenue) : '—'}</span>
                 </div>
               ))}
             </div>
@@ -136,19 +166,22 @@ function DashboardContent() {
         </div>
 
         {/* ドライバー別稼働 */}
-        <div className="bg-[#111] border border-border rounded-xl p-5">
-          <h3 className="text-xs text-muted uppercase tracking-wider mb-4">ドライバー別稼働</h3>
+        <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+          <h3 className="text-xs text-muted uppercase tracking-wider mb-4 flex items-center gap-1.5"><span>🚛</span>ドライバー別稼働</h3>
           {data.driver_stats.length === 0 ? <p className="text-xs text-muted">データなし</p> : (
-            <div className="space-y-2">
+            <div className="space-y-2.5">
               {data.driver_stats.map((d, i) => (
                 <div key={i} className="flex items-center gap-3">
-                  <span className="text-xs w-16 truncate">{d.name}</span>
-                  <div className="flex-1 bg-[#1a1a1a] rounded-full h-4 overflow-hidden">
-                    <div className="h-full rounded-full bg-gradient-to-r from-blue-600 to-blue-400"
-                      style={{ width: `${Math.max((d.count / maxDriver) * 100, 5)}%` }} />
+                  <span className="text-xs w-16 truncate text-muted">{d.name}</span>
+                  <div className="flex-1 bg-white/5 rounded-full h-5 overflow-hidden relative">
+                    <div className="h-full rounded-full transition-all"
+                      style={{
+                        width: `${Math.max((d.count / maxDriver) * 100, 6)}%`,
+                        background: `linear-gradient(90deg, ${BAR_COLORS[i % BAR_COLORS.length]}99, ${BAR_COLORS[i % BAR_COLORS.length]})`,
+                      }} />
                   </div>
-                  <span className="text-xs text-muted w-12 text-right">{d.count}件</span>
-                  <span className="text-xs text-muted w-14 text-right">{ton(d.weight)}</span>
+                  <span className="text-xs text-muted w-10 text-right">{d.count}件</span>
+                  <span className="text-xs text-muted w-12 text-right">{ton(d.weight)}</span>
                 </div>
               ))}
             </div>

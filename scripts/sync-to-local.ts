@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const LOCAL_API = 'http://localhost:5001/api'
 const SUPABASE_URL = 'https://sboudgqqipcdynplkwqq.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNib3VkZ3FxaXBjZHlucGxrd3FxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyOTc3NDYsImV4cCI6MjA5Nzg3Mzc0Nn0.xbDxJp6NoJAibTQRm2e3taciJ7NXwNTCsiF-QSwzXJE'
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNib3VkZ3FxaXBjZHlucGxrd3FxIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjI5Nzc0NiwiZXhwIjoyMDk3ODczNzQ2fQ.O2zk1tn0geNLr2s42mI3kkdRd5z9_1UnMUWMqYLrv7w'
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
 async function localGet(ep: string) { return fetch(`${LOCAL_API}/${ep}`).then(r => r.json()) }
