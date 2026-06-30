@@ -22,13 +22,22 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth(['admin'])
+    await requireAuth(['admin', 'office'])
     const body = await request.json()
+    if (!body.company_name?.trim()) return Response.json({ error: '荷主名は必須です' }, { status: 400 })
+
+    const { data: existing } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('company_name', body.company_name.trim())
+      .maybeSingle()
+
+    if (existing) return Response.json({ client: existing }, { status: 200 })
 
     const { data, error } = await supabase
       .from('clients')
       .insert({
-        company_name: body.company_name,
+        company_name: body.company_name.trim(),
         address: body.address || null,
         contact: body.contact || null,
       })
