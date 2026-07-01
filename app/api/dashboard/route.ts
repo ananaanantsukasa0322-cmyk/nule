@@ -15,17 +15,22 @@ export async function GET() {
     const prevFirstDay = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth()+1).padStart(2,'0')}-01`
     const prevLastDay = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth()+1).padStart(2,'0')}-${new Date(prevMonth.getFullYear(), prevMonth.getMonth()+1, 0).getDate()}`
 
-    const [thisMonthRes, prevMonthRes, todayRes, pricesRes, driversRes] = await Promise.all([
+    const week7ago = new Date(now); week7ago.setDate(week7ago.getDate() - 6);
+    const week7agoStr = `${week7ago.getFullYear()}-${String(week7ago.getMonth()+1).padStart(2,'0')}-${String(week7ago.getDate()).padStart(2,'0')}`
+
+    const [thisMonthRes, prevMonthRes, todayRes, pricesRes, driversRes, weeklyRes] = await Promise.all([
       supabase.from('schedules').select('*').gte('unload_date', firstDay).lte('unload_date', lastDay),
       supabase.from('schedules').select('*').gte('unload_date', prevFirstDay).lte('unload_date', prevLastDay),
       supabase.from('schedules').select('*').eq('unload_date', today),
       supabase.from('prices').select('*').eq('is_active', true),
       supabase.from('drivers').select('id,name').eq('is_active', true),
+      supabase.from('schedules').select('id,unload_date').gte('unload_date', week7agoStr).lte('unload_date', today),
     ])
 
     const schedules = thisMonthRes.data || []
     const prevSchedules = prevMonthRes.data || []
     const todaySchedules = todayRes.data || []
+    const weeklySchedules = weeklyRes.data || []
     const prices = pricesRes.data || []
     const driverMap = await buildDriverNameMap()
 
@@ -102,7 +107,7 @@ export async function GET() {
       const d = new Date(now)
       d.setDate(d.getDate() - i)
       const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-      const count = schedules.filter(s => s.unload_date === ds).length
+      const count = weeklySchedules.filter(s => s.unload_date === ds).length
       weeklyData.push({ date: `${d.getMonth()+1}/${d.getDate()}`, count })
     }
 
