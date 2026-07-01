@@ -54,8 +54,10 @@ function DriverManagementContent() {
     loadData();
   }
 
-  const entries = Object.entries(summary);
+  const entries = Object.entries(summary).sort((a, b) => b[1].count - a[1].count);
   const totalCount = entries.reduce((s, [, d]) => s + d.count, 0);
+  const totalSales = entries.reduce((s, [, d]) => s + d.total_sales, 0);
+  const totalPayment = entries.reduce((s, [, d]) => s + d.payment_amount, 0);
 
   if (loading) return <div className="text-muted text-sm">読み込み中...</div>;
 
@@ -70,29 +72,43 @@ function DriverManagementContent() {
           <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></div>
       </div>
 
-      <div className="bg-[#111] border border-border rounded-lg p-5 mb-6">
-        <p className="text-xs text-muted mb-1">期間内配車件数</p>
-        <p className="text-2xl font-extralight">{totalCount}件</p>
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="bg-[#111] border border-border rounded-lg p-5">
+          <p className="text-xs text-muted mb-1">期間内配車件数</p>
+          <p className="text-2xl font-extralight">{totalCount}件</p>
+        </div>
+        <div className="bg-[#111] border border-border rounded-lg p-5">
+          <p className="text-xs text-muted mb-1">期間内売上合計</p>
+          <p className="text-2xl font-extralight">{formatCurrency(totalSales)}</p>
+        </div>
+        <div className="bg-[#111] border border-border rounded-lg p-5">
+          <p className="text-xs text-muted mb-1">支払合計</p>
+          <p className="text-2xl font-extralight">{formatCurrency(totalPayment)}</p>
+        </div>
       </div>
 
       <div className="overflow-x-auto">
         <table>
-          <thead><tr><th>ドライバー名</th><th>種別</th><th>配車件数</th><th>支払い率 (%)</th><th></th></tr></thead>
+          <thead><tr><th>ドライバー名</th><th>種別</th><th>配車件数</th><th>売上</th><th>支払い率</th><th>支払金額</th></tr></thead>
           <tbody>
             {entries.length === 0 ? (
-              <tr><td colSpan={5} className="text-center text-muted py-8">データなし</td></tr>
+              <tr><td colSpan={6} className="text-center text-muted py-8">データなし</td></tr>
             ) : entries.map(([id, d]) => (
               <tr key={id}>
                 <td className="text-sm font-medium">{d.driver_name}</td>
                 <td className="text-xs text-muted">{id.startsWith("y_") ? "傭車" : "自社"}</td>
                 <td className="text-sm">{d.count}件</td>
+                <td className="text-sm">{d.total_sales ? formatCurrency(d.total_sales) : <span className="text-muted">—</span>}</td>
                 <td>
-                  <input type="number" step="0.1" min="0" max="100"
-                    defaultValue={d.payment_percentage}
-                    className="bg-transparent border-b border-border text-sm w-20 outline-none focus:border-white text-right"
-                    onBlur={e => updatePaymentRate(id, e.target.value)} />
+                  <div className="flex items-center gap-1">
+                    <input type="number" step="0.1" min="0" max="100"
+                      defaultValue={d.payment_percentage}
+                      className="bg-transparent border-b border-border text-sm w-16 outline-none focus:border-white text-right"
+                      onBlur={e => updatePaymentRate(id, e.target.value)} />
+                    <span className="text-xs text-muted">%</span>
+                  </div>
                 </td>
-                <td className="text-xs text-muted">%</td>
+                <td className="text-sm font-medium">{d.payment_amount ? formatCurrency(d.payment_amount) : <span className="text-muted">—</span>}</td>
               </tr>
             ))}
           </tbody>
