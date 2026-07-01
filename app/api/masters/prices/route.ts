@@ -35,6 +35,7 @@ export async function POST(request: NextRequest) {
           per_ton_rate: body.per_ton_rate || null,
           fixed_amount: body.fixed_amount || null,
           vehicle_type: body.vehicle_type || null,
+          is_active: true,
         })
       }
     }
