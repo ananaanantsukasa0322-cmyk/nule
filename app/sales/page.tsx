@@ -8,7 +8,7 @@ function formatCurrency(n: number) {
 }
 
 interface Schedule {
-  id: string; load_date: string; load_place: string; unload_place: string;
+  id: string; load_date: string; unload_date: string; load_place: string; unload_place: string;
   weight: number; client_name?: string; driver_id?: string; done: boolean;
 }
 interface PriceEntry {
@@ -109,7 +109,7 @@ function SalesContent() {
       const weightT = s.weight ? s.weight.toLocaleString() : "-";
       const priceStr = p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-";
       return `<tr>
-        <td>${s.load_date}</td><td>${s.load_place || ""}</td><td>${s.unload_place || ""}</td>
+        <td>${s.unload_date || s.load_date}</td><td>${s.load_place || ""}</td><td>${s.unload_place || ""}</td>
         <td style="text-align:right">${weightT}</td><td style="text-align:right">${priceStr}</td>
         <td style="text-align:right">${amount ? `¥${amount.toLocaleString()}` : "-"}</td>
       </tr>`;
@@ -212,7 +212,7 @@ function SalesContent() {
               const amount = calcAmount(s);
               return (
                 <tr key={s.id}>
-                  <td className="text-sm">{s.load_date}</td>
+                  <td className="text-sm">{s.unload_date || s.load_date}</td>
                   <td className="text-sm">{s.client_name || "—"}</td>
                   <td className="text-sm">{s.load_place}</td>
                   <td className="text-sm">{s.unload_place}</td>

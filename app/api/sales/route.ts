@@ -10,10 +10,10 @@ export async function GET(request: NextRequest) {
     const dateTo = request.nextUrl.searchParams.get('date_to')
 
     let query = supabase.from('schedules').select('*')
-    if (dateFrom) query = query.gte('load_date', dateFrom)
-    if (dateTo) query = query.lte('load_date', dateTo)
+    if (dateFrom) query = query.gte('unload_date', dateFrom)
+    if (dateTo) query = query.lte('unload_date', dateTo)
 
-    const { data, error } = await query.order('load_date', { ascending: false })
+    const { data, error } = await query.order('unload_date', { ascending: false })
     if (error) throw error
 
     const driverMap = await buildDriverNameMap()
