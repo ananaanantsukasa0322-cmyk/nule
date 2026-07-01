@@ -46,10 +46,10 @@ async function main() {
     if (ly) youshaToLocal[ny.id] = String(ly.id)
   }
 
-  // 既存サイトのスケジュールをキーでインデックス
+  // 既存サイトのスケジュールをキーでインデックス（driver_idは除外してweight含む）
   const localKeys = new Set(
-    localSchedules.map((s: { load_date: string; unload_date: string; load_place: string; unload_place: string; driver_id: string }) =>
-      `${s.load_date}|${s.unload_date}|${s.load_place}|${s.unload_place}|${s.driver_id || ''}`
+    localSchedules.map((s: { load_date: string; unload_date: string; load_place: string; unload_place: string; weight?: string | number }) =>
+      `${s.load_date}|${s.unload_date}|${s.load_place}|${s.unload_place}|${s.weight || ''}`
     )
   )
 
@@ -66,7 +66,7 @@ async function main() {
       localDriverId = driverToLocal[did]
     }
 
-    const key = `${ns.load_date}|${ns.unload_date}|${ns.load_place}|${ns.unload_place}|${localDriverId}`
+    const key = `${ns.load_date}|${ns.unload_date}|${ns.load_place}|${ns.unload_place}|${ns.weight || ''}`
     if (localKeys.has(key)) continue
 
     await localPost('schedules', {
