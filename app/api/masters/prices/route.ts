@@ -19,8 +19,8 @@ export async function POST(request: NextRequest) {
   try {
     await requireAuth(['admin', 'office'])
     const body = await request.json()
-    const unloadPlaces = (body.unload_place || '').split(/[・／\/]/).map((s: string) => s.trim()).filter(Boolean)
-    const loadPlaces = (body.load_place || '').split(/[・／\/]/).map((s: string) => s.trim()).filter(Boolean)
+    const unloadPlaces = (body.unload_place || '').split(/[・／]/).map((s: string) => s.trim()).filter(Boolean)
+    const loadPlaces = (body.load_place || '').split(/[・／]/).map((s: string) => s.trim()).filter(Boolean)
     if (!unloadPlaces.length) unloadPlaces.push(body.unload_place || '')
     if (!loadPlaces.length) loadPlaces.push(body.load_place || '')
 
