@@ -98,7 +98,7 @@ export default function Sidebar({ userRole, userName, userEmail }: SidebarProps)
 
         <div className="p-4 border-t border-border">
           <p className="text-xs text-muted mb-1">{userName}</p>
-          <p className="text-xs text-muted/60 mb-3">{roleLabel[userRole]}</p>
+          <p className="text-xs text-muted mb-3">{roleLabel[userRole]}</p>
           <button
             onClick={handleLogout}
             className="text-xs text-muted hover:text-danger transition-colors"

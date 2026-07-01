@@ -90,7 +90,7 @@ function YoushaContent() {
     return schedules.filter(s => {
       const did = s.driver_id || "";
       return did === `y_${youshaId}` || did === youshaId;
-    }).filter(s => s.load_date >= dateFrom && s.load_date <= dateTo);
+    }).filter(s => (s.unload_date || s.load_date) >= dateFrom && (s.unload_date || s.load_date) <= dateTo);
   }
 
   if (loading) return <div className="text-muted text-sm">読み込み中...</div>;

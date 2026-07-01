@@ -11,12 +11,12 @@ export async function GET(request: NextRequest) {
 
     let query = supabase.from('schedules').select('*, vehicle:vehicles(*)')
 
-    if (dateFrom) query = query.gte('load_date', dateFrom)
-    if (dateTo) query = query.lte('load_date', dateTo)
+    if (dateFrom) query = query.gte('unload_date', dateFrom)
+    if (dateTo) query = query.lte('unload_date', dateTo)
     if (done === 'true') query = query.eq('done', true)
     if (done === 'false') query = query.eq('done', false)
 
-    const { data, error } = await query.order('load_date', { ascending: false })
+    const { data, error } = await query.order('unload_date', { ascending: false })
     if (error) throw error
     return Response.json(data)
   } catch (e) {

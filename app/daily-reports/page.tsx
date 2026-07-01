@@ -9,7 +9,7 @@ interface ParsedEntry {
 }
 
 interface Schedule {
-  id: string; load_date: string; load_place: string; unload_place: string;
+  id: string; load_date: string; unload_date: string; load_place: string; unload_place: string;
   weight: number; client_name?: string; driver_id?: string; note?: string;
 }
 
@@ -105,7 +105,7 @@ function DailyReportsContent() {
       // 3. 同じ日・ドライバー・下ろし先のスケジュールに日報重量を反映
       if (entry.weight && driverId) {
         const matched = schedules.filter(s =>
-          s.load_date === parseDate && s.driver_id === driverId && s.unload_place === entry.destination
+          s.unload_date === parseDate && s.driver_id === driverId && s.unload_place === entry.destination
         );
         for (const s of matched) {
           await fetch(`/api/schedules/${s.id}`, {
@@ -134,7 +134,7 @@ function DailyReportsContent() {
 
   function loadVerifyData(date: string, driverId: string) {
     if (!date || !driverId) { setMatchedSchedules([]); return; }
-    const matched = schedules.filter(s => s.load_date === date && s.driver_id === driverId);
+    const matched = schedules.filter(s => s.unload_date === date && s.driver_id === driverId);
     setMatchedSchedules(matched.map(s => ({ ...s, report_weight: "", status: s.weight ? "未確認" : "重量未入力" })));
   }
 
@@ -209,7 +209,7 @@ function DailyReportsContent() {
               const status = diff === 0 ? "一致" : diff <= 100 ? "誤差少" : `差異 ${diff.toLocaleString()}kg`;
               return (
                 <tr key={s.id}>
-                  <td className="text-sm">{s.load_date}</td>
+                  <td className="text-sm">{s.unload_date || s.load_date}</td>
                   <td className="text-sm">{s.client_name || "—"}</td>
                   <td className="text-sm">{s.load_place} → {s.unload_place}</td>
                   <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
