@@ -17,7 +17,7 @@ export async function GET() {
 
     const [thisMonthRes, prevMonthRes, todayRes, pricesRes, driversRes] = await Promise.all([
       supabase.from('schedules').select('*').gte('load_date', firstDay).lte('load_date', lastDay),
-      supabase.from('schedules').select('id,weight,client_name').gte('load_date', prevFirstDay).lte('load_date', prevLastDay),
+      supabase.from('schedules').select('*').gte('load_date', prevFirstDay).lte('load_date', prevLastDay),
       supabase.from('schedules').select('*').eq('load_date', today),
       supabase.from('prices').select('*').eq('is_active', true),
       supabase.from('drivers').select('id,name').eq('is_active', true),
