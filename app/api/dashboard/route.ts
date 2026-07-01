@@ -16,9 +16,9 @@ export async function GET() {
     const prevLastDay = `${prevMonth.getFullYear()}-${String(prevMonth.getMonth()+1).padStart(2,'0')}-${new Date(prevMonth.getFullYear(), prevMonth.getMonth()+1, 0).getDate()}`
 
     const [thisMonthRes, prevMonthRes, todayRes, pricesRes, driversRes] = await Promise.all([
-      supabase.from('schedules').select('*').gte('load_date', firstDay).lte('load_date', lastDay),
-      supabase.from('schedules').select('*').gte('load_date', prevFirstDay).lte('load_date', prevLastDay),
-      supabase.from('schedules').select('*').eq('load_date', today),
+      supabase.from('schedules').select('*').gte('unload_date', firstDay).lte('unload_date', lastDay),
+      supabase.from('schedules').select('*').gte('unload_date', prevFirstDay).lte('unload_date', prevLastDay),
+      supabase.from('schedules').select('*').eq('unload_date', today),
       supabase.from('prices').select('*').eq('is_active', true),
       supabase.from('drivers').select('id,name').eq('is_active', true),
     ])
@@ -102,7 +102,7 @@ export async function GET() {
       const d = new Date(now)
       d.setDate(d.getDate() - i)
       const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-      const count = schedules.filter(s => s.load_date === ds).length
+      const count = schedules.filter(s => s.unload_date === ds).length
       weeklyData.push({ date: `${d.getMonth()+1}/${d.getDate()}`, count })
     }
 
