@@ -9,7 +9,7 @@ function formatCurrency(n: number) {
 
 interface Schedule {
   id: string; load_date: string; unload_date: string; load_place: string; unload_place: string;
-  weight: number; client_name?: string; driver_id?: string; done: boolean;
+  weight: number; client_name?: string; driver_id?: string; done: boolean; manual_amount?: number;
 }
 interface PriceEntry {
   client_name: string; load_place: string; unload_place: string;
@@ -81,10 +81,20 @@ function SalesContent() {
   }
 
   function calcAmount(s: Schedule): number {
+    if ((s.manual_amount ?? 0) > 0) return s.manual_amount!;
     const p = findPrice(s);
     if (p.type === "per_ton") return Math.round(p.rate * (s.weight || 0) / 1000);
     if (p.type === "fixed") return p.rate;
     return 0;
+  }
+
+  async function updateManualAmount(id: string, value: string) {
+    const amount = value === "" ? null : Number(value);
+    await fetch(`/api/schedules/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ manual_amount: amount }),
+    });
+    loadData();
   }
 
   const clients = [...new Set(schedules.map(s => s.client_name).filter(Boolean) as string[])].sort();
@@ -205,19 +215,29 @@ function SalesContent() {
       <h3 className="text-sm font-light text-muted mb-3">明細一覧</h3>
       <div className="overflow-x-auto">
         <table>
-          <thead><tr><th>日付</th><th>荷主</th><th>積み地</th><th>下ろし先</th><th>重量(kg)</th><th>単価</th><th>金額</th></tr></thead>
+          <thead><tr><th>日付</th><th>荷主</th><th>積み地</th><th>下ろし先</th><th>重量(kg)</th><th>単価</th><th>スポット金額</th><th>確定金額</th></tr></thead>
           <tbody>
             {filtered.map(s => {
               const p = findPrice(s);
               const amount = calcAmount(s);
+              const isSpot = (s.manual_amount ?? 0) > 0;
               return (
-                <tr key={s.id}>
+                <tr key={s.id} className={isSpot ? "bg-amber-500/5" : ""}>
                   <td className="text-sm">{s.unload_date || s.load_date}</td>
                   <td className="text-sm">{s.client_name || "—"}</td>
                   <td className="text-sm">{s.load_place}</td>
                   <td className="text-sm">{s.unload_place}</td>
                   <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
-                  <td className="text-sm text-muted">{p.rate ? (p.type === "per_ton" ? `¥${p.rate}/t` : formatCurrency(p.rate)) : "—"}</td>
+                  <td className="text-sm text-muted">{isSpot ? <span className="text-xs text-amber-400">スポット</span> : (p.rate ? (p.type === "per_ton" ? `¥${p.rate}/t` : formatCurrency(p.rate)) : "—")}</td>
+                  <td>
+                    <input
+                      type="number"
+                      defaultValue={s.manual_amount ?? ""}
+                      placeholder="直接入力"
+                      className="bg-transparent border-b border-border text-sm w-28 outline-none focus:border-amber-400 text-right"
+                      onBlur={e => updateManualAmount(s.id, e.target.value)}
+                    />
+                  </td>
                   <td className="text-sm font-medium">{amount ? formatCurrency(amount) : "—"}</td>
                 </tr>
               );

@@ -54,7 +54,8 @@ export async function GET(request: NextRequest) {
       return p
     }
 
-    function calcAmount(s: { weight?: number }, p: typeof prices[0] | undefined): number {
+    function calcAmount(s: { weight?: number; manual_amount?: number }, p: typeof prices[0] | undefined): number {
+      if ((s.manual_amount ?? 0) > 0) return s.manual_amount!
       if (!p) return 0
       if (p.price_type === 'per_ton' && p.per_ton_rate) return Math.round(p.per_ton_rate * (s.weight || 0) / 1000)
       if (p.fixed_amount) return p.fixed_amount
