@@ -12,6 +12,7 @@ export interface User {
 export interface Client {
   id: string
   company_name: string
+  formal_name: string | null
   address: string | null
   contact: string | null
   is_active: boolean

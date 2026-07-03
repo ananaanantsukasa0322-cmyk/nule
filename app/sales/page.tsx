@@ -17,9 +17,14 @@ interface PriceEntry {
   vehicle_type: string | null;
 }
 
+interface ClientEntry {
+  company_name: string; formal_name: string | null;
+}
+
 function SalesContent() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [prices, setPrices] = useState<PriceEntry[]>([]);
+  const [clientMap, setClientMap] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
   const now = new Date();
@@ -30,9 +35,10 @@ function SalesContent() {
   const [issuerName, setIssuerName] = useState("サンテツ運輸株式会社");
 
   const loadData = useCallback(async () => {
-    const [s, p] = await Promise.all([
+    const [s, p, c] = await Promise.all([
       fetch(`/api/sales?date_from=${dateFrom}&date_to=${dateTo}`).then(r => r.json()),
       fetch("/api/masters/prices").then(r => r.json()),
+      fetch("/api/masters/clients").then(r => r.json()),
     ]);
     setSchedules((s.dispatches || []) as Schedule[]);
     setPrices((p.prices || []).map((x: Record<string, unknown>) => ({
@@ -40,6 +46,11 @@ function SalesContent() {
       price_type: x.price_type || 'fixed', per_ton_rate: x.per_ton_rate as number | null, fixed_amount: x.fixed_amount as number | null,
       vehicle_type: (x.vehicle_type || null) as string | null,
     })));
+    const map: Record<string, string> = {};
+    for (const cl of (c.clients || []) as ClientEntry[]) {
+      if (cl.formal_name) map[cl.company_name] = cl.formal_name;
+    }
+    setClientMap(map);
     setLoading(false);
   }, [dateFrom, dateTo]);
 
@@ -111,6 +122,8 @@ function SalesContent() {
     const items = schedules.filter(s => s.client_name === clientName);
     if (!items.length) { alert("データがありません"); return; }
 
+    const formalName = clientMap[clientName] || clientName;
+
     let grandTotal = 0;
     const rows = items.map(s => {
       const p = findPrice(s);
@@ -126,7 +139,7 @@ function SalesContent() {
     }).join("");
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
-      <title>請求書 - ${clientName}</title>
+      <title>請求書 - ${formalName}</title>
       <style>
         @media print { body { margin: 0; } @page { margin: 15mm; } }
         body { font-family: "Hiragino Kaku Gothic Pro", "Yu Gothic", "Meiryo", sans-serif; color: #111; padding: 20px; max-width: 800px; margin: 0 auto; }
@@ -147,7 +160,7 @@ function SalesContent() {
       <h1>請 求 書</h1>
       <div class="header">
         <div class="header-left">
-          <div class="client-name">${clientName} 御中</div>
+          <div class="client-name">${formalName} 御中</div>
           <div>期間: ${dateFrom} ～ ${dateTo}</div>
         </div>
         <div class="header-right">

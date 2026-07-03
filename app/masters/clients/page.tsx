@@ -11,7 +11,7 @@ function ClientsContent() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ company_name: "", address: "", contact: "" });
+  const [form, setForm] = useState({ company_name: "", formal_name: "", address: "", contact: "" });
 
   const loadData = useCallback(async () => {
     const res = await fetch("/api/masters/clients");
@@ -23,7 +23,7 @@ function ClientsContent() {
   useEffect(() => { loadData(); }, [loadData]);
 
   function resetForm() {
-    setForm({ company_name: "", address: "", contact: "" });
+    setForm({ company_name: "", formal_name: "", address: "", contact: "" });
     setEditingId(null);
   }
 
@@ -46,7 +46,7 @@ function ClientsContent() {
   }
 
   function openEdit(c: Client) {
-    setForm({ company_name: c.company_name, address: c.address || "", contact: c.contact || "" });
+    setForm({ company_name: c.company_name, formal_name: c.formal_name || "", address: c.address || "", contact: c.contact || "" });
     setEditingId(c.id);
     setShowModal(true);
   }
@@ -82,7 +82,8 @@ function ClientsContent() {
         <table>
           <thead>
             <tr>
-              <th>会社名</th>
+              <th>会社名（略称）</th>
+              <th>請求書正式名称</th>
               <th>住所</th>
               <th>連絡先</th>
               <th>操作</th>
@@ -90,11 +91,12 @@ function ClientsContent() {
           </thead>
           <tbody>
             {clients.length === 0 ? (
-              <tr><td colSpan={4} className="text-center text-muted py-8">荷主データがありません</td></tr>
+              <tr><td colSpan={5} className="text-center text-muted py-8">荷主データがありません</td></tr>
             ) : (
               clients.map((c) => (
                 <tr key={c.id}>
                   <td>{c.company_name}</td>
+                  <td className="text-sm">{c.formal_name ? <span className="text-white">{c.formal_name}</span> : <span className="text-muted text-xs">未設定</span>}</td>
                   <td className="text-muted">{c.address || "—"}</td>
                   <td className="text-muted">{c.contact || "—"}</td>
                   <td>
@@ -113,8 +115,12 @@ function ClientsContent() {
       <Modal open={showModal} onClose={() => { setShowModal(false); resetForm(); }} title={editingId ? "荷主編集" : "新規荷主"}>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-xs text-muted mb-1">会社名</label>
+            <label className="block text-xs text-muted mb-1">会社名（略称・配車入力で使う名前）</label>
             <input type="text" value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} className="w-full" required />
+          </div>
+          <div>
+            <label className="block text-xs text-muted mb-1">請求書正式名称 <span className="text-muted">(例: 株式会社○○、○○株式会社)</span></label>
+            <input type="text" value={form.formal_name} onChange={(e) => setForm({ ...form, formal_name: e.target.value })} className="w-full" placeholder="未入力の場合は会社名をそのまま使用" />
           </div>
           <div>
             <label className="block text-xs text-muted mb-1">住所</label>

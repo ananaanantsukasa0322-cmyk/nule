@@ -63,6 +63,7 @@ export async function PUT(request: NextRequest) {
       .from('clients')
       .update({
         company_name: body.company_name,
+        formal_name: body.formal_name || null,
         address: body.address,
         contact: body.contact,
         updated_at: new Date().toISOString(),
