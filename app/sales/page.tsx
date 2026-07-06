@@ -125,10 +125,12 @@ function SalesContent() {
     const formalName = clientMap[clientName] || clientName;
 
     let grandTotal = 0;
+    let grandWeight = 0;
     const rows = items.map(s => {
       const p = findPrice(s);
       const amount = calcAmount(s);
       grandTotal += amount;
+      grandWeight += s.weight || 0;
       const weightT = s.weight ? s.weight.toLocaleString() : "-";
       const priceStr = p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-";
       return `<tr>
@@ -151,7 +153,9 @@ function SalesContent() {
         table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 20px; }
         th { background: #f5f5f5; border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold; }
         td { border: 1px solid #ccc; padding: 6px 8px; }
-        .total-row { background: #f0f0f0; font-weight: bold; font-size: 14px; }
+        .summary { margin-top: 16px; border-top: 2px solid #333; page-break-inside: avoid; }
+        .summary-row { display: flex; justify-content: flex-end; gap: 40px; padding: 8px 4px; font-size: 13px; }
+        .summary-total { font-size: 16px; font-weight: bold; border-top: 1px solid #ccc; padding-top: 8px; margin-top: 4px; }
         .print-btn { position: fixed; top: 10px; right: 10px; padding: 10px 20px; background: #333; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
         @media print { .print-btn { display: none; } }
       </style>
@@ -171,8 +175,11 @@ function SalesContent() {
       <table>
         <thead><tr><th>日付</th><th>積み地</th><th>下ろし先</th><th style="text-align:right">重量(kg)</th><th style="text-align:right">単価</th><th style="text-align:right">金額</th></tr></thead>
         <tbody>${rows}</tbody>
-        <tfoot><tr class="total-row"><td colspan="5" style="text-align:right">合計金額</td><td style="text-align:right">¥${grandTotal.toLocaleString()}</td></tr></tfoot>
       </table>
+      <div class="summary">
+        <div class="summary-row"><span>合計重量</span><span>${grandWeight.toLocaleString()} kg</span></div>
+        <div class="summary-row summary-total"><span>合計金額</span><span>¥${grandTotal.toLocaleString()}</span></div>
+      </div>
     </body></html>`;
 
     const w = window.open("", "_blank");
