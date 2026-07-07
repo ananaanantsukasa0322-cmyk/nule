@@ -4,9 +4,11 @@ import { useEffect, useState, useCallback } from "react";
 import AuthGuard from "@/components/AuthGuard";
 import Modal from "@/components/Modal";
 import FileImport from "@/components/FileImport";
+import { useToast } from "@/components/Toast";
 import type { Client } from "@/types/database";
 
 function ClientsContent() {
+  const { show, node: toastNode } = useToast();
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -29,6 +31,12 @@ function ClientsContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const name = form.company_name.trim();
+    if (!name) { show("会社名を入力してください", "error"); return; }
+    if (!editingId && clients.some(c => c.company_name === name)) {
+      show("同じ会社名の荷主が既に登録されています", "error");
+      return;
+    }
     const method = editingId ? "PUT" : "POST";
     const body = editingId ? { ...form, id: editingId } : form;
 
@@ -42,6 +50,10 @@ function ClientsContent() {
       setShowModal(false);
       resetForm();
       loadData();
+      show(editingId ? "荷主を更新しました" : "荷主を登録しました");
+    } else {
+      const data = await res.json().catch(() => ({}));
+      show(data.error || "保存に失敗しました", "error");
     }
   }
 
@@ -53,11 +65,13 @@ function ClientsContent() {
 
   async function handleDelete(id: string) {
     if (!confirm("この荷主を削除しますか？")) return;
-    await fetch("/api/masters/clients", {
+    const res = await fetch("/api/masters/clients", {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     });
+    if (res.ok) show("荷主を削除しました");
+    else show("削除に失敗しました", "error");
     loadData();
   }
 
@@ -65,6 +79,7 @@ function ClientsContent() {
 
   return (
     <div>
+      {toastNode}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">荷主マスタ</h2>
         <div className="flex items-center gap-3">

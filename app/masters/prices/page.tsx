@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import AuthGuard from "@/components/AuthGuard";
 import Modal from "@/components/Modal";
+import { useToast } from "@/components/Toast";
 
 interface PriceEntry {
   id: string; client_name: string; load_place: string; unload_place: string;
@@ -11,6 +12,7 @@ interface PriceEntry {
 }
 
 function PricesContent() {
+  const { show, node: toastNode } = useToast();
   const [prices, setPrices] = useState<PriceEntry[]>([]);
   const [schedules, setSchedules] = useState<{load_place:string;unload_place:string;client_name?:string}[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,21 +64,34 @@ function PricesContent() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const rate = form.price_type === "per_ton" ? Number(form.per_ton_rate) : Number(form.fixed_amount);
+    if (!Number.isFinite(rate) || rate <= 0) {
+      show("単価は1円以上の数値を入力してください", "error");
+      return;
+    }
     const body = {
       ...form,
-      per_ton_rate: form.price_type === "per_ton" ? Number(form.per_ton_rate) || 0 : null,
-      fixed_amount: form.price_type === "fixed" ? Number(form.fixed_amount) || 0 : null,
+      per_ton_rate: form.price_type === "per_ton" ? rate : null,
+      fixed_amount: form.price_type === "fixed" ? rate : null,
       vehicle_type: form.vehicle_type || null,
     };
     const method = editingId ? "PUT" : "POST";
     const payload = editingId ? { ...body, id: editingId } : body;
-    await fetch("/api/masters/prices", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const res = await fetch("/api/masters/prices", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    if (res.ok) {
+      show(editingId ? "単価を更新しました" : "単価を登録しました");
+    } else {
+      const data = await res.json().catch(() => ({}));
+      show(data.error || "保存に失敗しました", "error");
+    }
     setShowModal(false); resetForm(); loadData();
   }
 
   async function handleDelete(id: string) {
     if (!confirm("この単価を削除しますか？")) return;
-    await fetch("/api/masters/prices", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    const res = await fetch("/api/masters/prices", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    if (res.ok) show("単価を削除しました");
+    else show("削除に失敗しました", "error");
     loadData();
   }
 
@@ -122,6 +137,7 @@ function PricesContent() {
 
   return (
     <div>
+      {toastNode}
       {aiLoading && (
         <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center">
           <div className="text-center">

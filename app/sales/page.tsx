@@ -2,9 +2,25 @@
 
 import { useEffect, useState, useCallback } from "react";
 import AuthGuard from "@/components/AuthGuard";
+import Modal from "@/components/Modal";
+import { useToast } from "@/components/Toast";
 
 function formatCurrency(n: number) {
   return `¥${n.toLocaleString()}`;
+}
+
+interface IssuerInfo {
+  address: string; tel: string; invoiceNo: string; bank: string; dueText: string;
+}
+const EMPTY_ISSUER: IssuerInfo = { address: "", tel: "", invoiceNo: "", bank: "", dueText: "翌月末日" };
+
+function loadIssuerInfo(name: string): IssuerInfo {
+  if (typeof window === "undefined") return { ...EMPTY_ISSUER };
+  try {
+    const raw = localStorage.getItem(`nule-issuer-${name}`);
+    if (raw) return { ...EMPTY_ISSUER, ...JSON.parse(raw) };
+  } catch { /* 破損データは無視してデフォルトを使う */ }
+  return { ...EMPTY_ISSUER };
 }
 
 interface Schedule {
@@ -22,6 +38,7 @@ interface ClientEntry {
 }
 
 function SalesContent() {
+  const { show, node: toastNode } = useToast();
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [prices, setPrices] = useState<PriceEntry[]>([]);
   const [clientMap, setClientMap] = useState<Record<string, string>>({});
@@ -33,6 +50,21 @@ function SalesContent() {
   const [dateTo, setDateTo] = useState(`${y}-${String(m).padStart(2,"0")}-${new Date(y, m, 0).getDate()}`);
   const [clientFilter, setClientFilter] = useState("");
   const [issuerName, setIssuerName] = useState("サンテツ運輸株式会社");
+  const [taxEnabled, setTaxEnabled] = useState(true);
+  const [showIssuerModal, setShowIssuerModal] = useState(false);
+  const [issuerForm, setIssuerForm] = useState<IssuerInfo>({ ...EMPTY_ISSUER });
+
+  function openIssuerModal() {
+    setIssuerForm(loadIssuerInfo(issuerName));
+    setShowIssuerModal(true);
+  }
+
+  function saveIssuerInfo(e: React.FormEvent) {
+    e.preventDefault();
+    localStorage.setItem(`nule-issuer-${issuerName}`, JSON.stringify(issuerForm));
+    setShowIssuerModal(false);
+    show("発行者情報を保存しました");
+  }
 
   const loadData = useCallback(async () => {
     const [s, p, c] = await Promise.all([
@@ -101,10 +133,18 @@ function SalesContent() {
 
   async function updateManualAmount(id: string, value: string) {
     const amount = value === "" ? null : Number(value);
-    await fetch(`/api/schedules/${id}`, {
+    if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+      show("スポット金額は0以上の数値を入力してください", "error");
+      return;
+    }
+    const before = schedules.find(s => s.id === id)?.manual_amount ?? null;
+    if ((before ?? null) === (amount ?? null)) return;
+    const res = await fetch(`/api/schedules/${id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ manual_amount: amount }),
     });
+    if (res.ok) show(amount === null ? "スポット金額を解除しました" : `スポット金額 ${formatCurrency(amount)} を保存しました`);
+    else show("スポット金額の保存に失敗しました", "error");
     loadData();
   }
 
@@ -120,19 +160,21 @@ function SalesContent() {
 
   function generateInvoice(clientName: string) {
     const items = schedules.filter(s => s.client_name === clientName);
-    if (!items.length) { alert("データがありません"); return; }
+    if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
 
     const formalName = clientMap[clientName] || clientName;
+    const issuer = loadIssuerInfo(issuerName);
+    const invoiceNo = `${dateTo.replaceAll("-", "").slice(0, 6)}-${String(clients.indexOf(clientName) + 1).padStart(3, "0")}`;
 
-    let grandTotal = 0;
+    let subtotal = 0;
     let grandWeight = 0;
     const rows = items.map(s => {
       const p = findPrice(s);
       const amount = calcAmount(s);
-      grandTotal += amount;
+      subtotal += amount;
       grandWeight += s.weight || 0;
       const weightT = s.weight ? s.weight.toLocaleString() : "-";
-      const priceStr = p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-";
+      const priceStr = (s.manual_amount ?? 0) > 0 ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-");
       return `<tr>
         <td>${s.unload_date || s.load_date}</td><td>${s.load_place || ""}</td><td>${s.unload_place || ""}</td>
         <td style="text-align:right">${weightT}</td><td style="text-align:right">${priceStr}</td>
@@ -140,36 +182,60 @@ function SalesContent() {
       </tr>`;
     }).join("");
 
+    const tax = taxEnabled ? Math.floor(subtotal * 0.1) : 0;
+    const total = subtotal + tax;
+
+    const taxRows = taxEnabled
+      ? `<div class="summary-row"><span>小計（税抜）</span><span>¥${subtotal.toLocaleString()}</span></div>
+         <div class="summary-row"><span>消費税（10%）</span><span>¥${tax.toLocaleString()}</span></div>
+         <div class="summary-row summary-total"><span>合計金額（税込）</span><span>¥${total.toLocaleString()}</span></div>`
+      : `<div class="summary-row summary-total"><span>合計金額</span><span>¥${total.toLocaleString()}</span></div>`;
+
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>請求書 - ${formalName}</title>
       <style>
         @media print { body { margin: 0; } @page { margin: 15mm; } }
         body { font-family: "Hiragino Kaku Gothic Pro", "Yu Gothic", "Meiryo", sans-serif; color: #111; padding: 20px; max-width: 800px; margin: 0 auto; }
-        h1 { text-align: center; font-size: 28px; letter-spacing: 0.5em; margin-bottom: 40px; border-bottom: 3px double #333; padding-bottom: 15px; }
-        .header { display: flex; justify-content: space-between; margin-bottom: 30px; }
+        h1 { text-align: center; font-size: 28px; letter-spacing: 0.5em; margin-bottom: 28px; border-bottom: 3px double #333; padding-bottom: 15px; }
+        .meta { text-align: right; font-size: 12px; color: #555; margin-bottom: 12px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
         .header-left { font-size: 14px; }
-        .header-right { text-align: right; font-size: 13px; }
-        .client-name { font-size: 18px; font-weight: bold; margin-bottom: 5px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 20px; }
+        .header-right { text-align: right; font-size: 12px; line-height: 1.7; }
+        .client-name { font-size: 19px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 8px; }
+        .issuer-name { font-size: 15px; font-weight: bold; }
+        .amount-box { display: inline-block; border: 2px solid #333; padding: 10px 28px; margin: 8px 0 4px; }
+        .amount-box .label { font-size: 12px; color: #555; margin-bottom: 2px; }
+        .amount-box .value { font-size: 24px; font-weight: bold; letter-spacing: 1px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 16px; }
         th { background: #f5f5f5; border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold; }
         td { border: 1px solid #ccc; padding: 6px 8px; }
         .summary { margin-top: 16px; border-top: 2px solid #333; page-break-inside: avoid; }
-        .summary-row { display: flex; justify-content: flex-end; gap: 40px; padding: 8px 4px; font-size: 13px; }
+        .summary-row { display: flex; justify-content: flex-end; gap: 40px; padding: 6px 4px; font-size: 13px; }
         .summary-total { font-size: 16px; font-weight: bold; border-top: 1px solid #ccc; padding-top: 8px; margin-top: 4px; }
+        .footer { margin-top: 24px; padding: 12px 16px; background: #f8f8f8; border: 1px solid #ddd; font-size: 12px; line-height: 1.9; page-break-inside: avoid; }
+        .footer b { display: inline-block; min-width: 5em; }
         .print-btn { position: fixed; top: 10px; right: 10px; padding: 10px 20px; background: #333; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
         @media print { .print-btn { display: none; } }
       </style>
     </head><body>
       <button class="print-btn" onclick="window.print()">印刷 / PDF保存</button>
       <h1>請 求 書</h1>
+      <div class="meta">請求書番号: ${invoiceNo}　発行日: ${new Date().toLocaleDateString('ja-JP')}</div>
       <div class="header">
         <div class="header-left">
           <div class="client-name">${formalName} 御中</div>
-          <div>期間: ${dateFrom} ～ ${dateTo}</div>
+          <div style="font-size:12px;color:#555">下記の通りご請求申し上げます。</div>
+          <div style="font-size:12px;color:#555">対象期間: ${dateFrom} ～ ${dateTo}</div>
+          <div class="amount-box">
+            <div class="label">御請求金額${taxEnabled ? "（税込）" : ""}</div>
+            <div class="value">¥${total.toLocaleString()}</div>
+          </div>
         </div>
         <div class="header-right">
-          <div>発行日: ${new Date().toLocaleDateString('ja-JP')}</div>
-          <div style="margin-top:10px;font-weight:bold">${issuerName}</div>
+          <div class="issuer-name">${issuerName}</div>
+          ${issuer.address ? `<div>${issuer.address}</div>` : ""}
+          ${issuer.tel ? `<div>TEL: ${issuer.tel}</div>` : ""}
+          ${issuer.invoiceNo ? `<div>登録番号: ${issuer.invoiceNo}</div>` : ""}
         </div>
       </div>
       <table>
@@ -178,7 +244,12 @@ function SalesContent() {
       </table>
       <div class="summary">
         <div class="summary-row"><span>合計重量</span><span>${grandWeight.toLocaleString()} kg</span></div>
-        <div class="summary-row summary-total"><span>合計金額</span><span>¥${grandTotal.toLocaleString()}</span></div>
+        ${taxRows}
+      </div>
+      <div class="footer">
+        ${issuer.bank ? `<div><b>お振込先</b>${issuer.bank}</div>` : ""}
+        ${issuer.dueText ? `<div><b>お支払期限</b>${issuer.dueText}</div>` : ""}
+        <div style="color:#777">恐れ入りますが、振込手数料は貴社にてご負担願います。</div>
       </div>
     </body></html>`;
 
@@ -190,9 +261,10 @@ function SalesContent() {
 
   return (
     <div>
+      {toastNode}
       <h2 className="text-xl font-light mb-6">売上・請求管理</h2>
 
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="flex flex-wrap items-end gap-3 mb-6">
         <div><label className="block text-xs text-muted mb-1">開始日</label>
           <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></div>
         <div><label className="block text-xs text-muted mb-1">終了日</label>
@@ -207,6 +279,12 @@ function SalesContent() {
             <option value="サンテツ運輸株式会社">サンテツ運輸株式会社</option>
             <option value="株式会社仲山商事">株式会社仲山商事</option>
           </select></div>
+        <button onClick={openIssuerModal}
+          className="text-xs px-3 py-2 bg-accent rounded hover:bg-border">発行者情報を編集</button>
+        <label className="flex items-center gap-2 text-xs text-muted cursor-pointer py-2">
+          <input type="checkbox" checked={taxEnabled} onChange={e => setTaxEnabled(e.target.checked)} />
+          請求書に消費税10%を加算
+        </label>
       </div>
 
       <div className="bg-[#111] border border-border rounded-lg p-5 mb-6">
@@ -265,6 +343,23 @@ function SalesContent() {
           </tbody>
         </table>
       </div>
+
+      <Modal open={showIssuerModal} onClose={() => setShowIssuerModal(false)} title={`発行者情報（${issuerName}）`}>
+        <form onSubmit={saveIssuerInfo} className="space-y-3">
+          <div><label className="block text-xs text-muted mb-1">住所</label>
+            <input type="text" value={issuerForm.address} onChange={e => setIssuerForm({ ...issuerForm, address: e.target.value })} className="w-full" placeholder="例: 愛知県名古屋市○○区○○ 1-2-3" /></div>
+          <div><label className="block text-xs text-muted mb-1">電話番号</label>
+            <input type="text" value={issuerForm.tel} onChange={e => setIssuerForm({ ...issuerForm, tel: e.target.value })} className="w-full" placeholder="例: 052-000-0000" /></div>
+          <div><label className="block text-xs text-muted mb-1">インボイス登録番号</label>
+            <input type="text" value={issuerForm.invoiceNo} onChange={e => setIssuerForm({ ...issuerForm, invoiceNo: e.target.value })} className="w-full" placeholder="例: T1234567890123" /></div>
+          <div><label className="block text-xs text-muted mb-1">振込先</label>
+            <input type="text" value={issuerForm.bank} onChange={e => setIssuerForm({ ...issuerForm, bank: e.target.value })} className="w-full" placeholder="例: ○○銀行 ○○支店 普通 1234567 ｶ)ﾅｶﾔﾏｼｮｳｼﾞ" /></div>
+          <div><label className="block text-xs text-muted mb-1">支払期限の表記</label>
+            <input type="text" value={issuerForm.dueText} onChange={e => setIssuerForm({ ...issuerForm, dueText: e.target.value })} className="w-full" placeholder="例: 翌月末日" /></div>
+          <p className="text-xs text-muted">※ 入力した項目だけ請求書に表示されます（このブラウザに保存）</p>
+          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-2">保存</button>
+        </form>
+      </Modal>
     </div>
   );
 }
