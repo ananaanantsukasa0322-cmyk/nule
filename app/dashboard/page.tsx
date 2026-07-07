@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import AuthGuard from "@/components/AuthGuard";
 
 interface DashboardData {
@@ -9,10 +9,16 @@ interface DashboardData {
   prevMonth: { count: number; weight: number; revenue: number };
   client_ranking: { name: string; count: number; revenue: number; weight: number }[];
   driver_stats: { name: string; count: number; weight: number }[];
-  weekly: { date: string; count: number }[];
+  weekly: { date: string; day?: string; count: number }[];
+  monthly?: { month: string; count: number; revenue: number }[];
 }
 
 function fmt(n: number) { return `¥${n.toLocaleString()}`; }
+function fmtCompact(n: number) {
+  if (n >= 100000000) return `${(n / 100000000).toFixed(1)}億`;
+  if (n >= 10000) return `${Math.round(n / 10000)}万`;
+  return `${n}`;
+}
 function ton(kg: number) { return `${(kg / 1000).toFixed(1)}t`; }
 function diff(curr: number, prev: number) {
   if (!prev) return "";
@@ -22,21 +28,58 @@ function diff(curr: number, prev: number) {
 
 const BAR_COLORS = ["#3b82f6", "#8b5cf6", "#ec4899", "#f59e0b", "#10b981", "#06b6d4", "#ef4444"];
 
+function Skeleton() {
+  return (
+    <div className="animate-pulse">
+      <div className="h-8 w-48 bg-white/5 rounded mb-6" />
+      <div className="h-36 bg-white/5 rounded-2xl mb-6" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="h-32 bg-white/5 rounded-xl" />
+        <div className="h-32 bg-white/5 rounded-xl" />
+        <div className="h-32 bg-white/5 rounded-xl" />
+      </div>
+      <div className="h-44 bg-white/5 rounded-xl mb-6" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="h-64 bg-white/5 rounded-xl" />
+        <div className="h-64 bg-white/5 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 function DashboardContent() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
 
-  useEffect(() => {
-    fetch("/api/dashboard").then(r => r.json()).then(setData).finally(() => setLoading(false));
+  const load = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
+    try {
+      const res = await fetch("/api/dashboard");
+      if (res.ok) {
+        setData(await res.json());
+        setUpdatedAt(new Date());
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, []);
 
-  if (loading) return <div className="text-muted text-sm">読み込み中...</div>;
+  useEffect(() => { load(); }, [load]);
+
+  if (loading) return <Skeleton />;
   if (!data) return <div className="text-muted text-sm">データの取得に失敗しました</div>;
 
   const now = new Date();
   const monthLabel = `${now.getFullYear()}年${now.getMonth() + 1}月`;
   const maxWeekly = Math.max(...data.weekly.map(w => w.count), 1);
   const maxDriver = Math.max(...data.driver_stats.map(d => d.count), 1);
+  const monthly = data.monthly || [];
+  const maxMonthly = Math.max(...monthly.map(m => m.revenue), 1);
+  const ranking = data.client_ranking.filter(c => c.name !== "未設定").slice(0, 8);
+  const maxClientRevenue = Math.max(...ranking.map(c => c.revenue), 1);
   const countDiff = diff(data.thisMonth.count, data.prevMonth.count);
   const weightDiff = diff(data.thisMonth.weight, data.prevMonth.weight);
   const revenueDiff = diff(data.thisMonth.revenue, data.prevMonth.revenue);
@@ -49,7 +92,23 @@ function DashboardContent() {
           <h2 className="text-2xl font-extralight tracking-wide">ダッシュボード</h2>
           <p className="text-xs text-muted mt-1">{monthLabel}</p>
         </div>
+        <div className="flex items-center gap-3">
+          {updatedAt && <span className="text-[10px] text-muted">更新 {updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}</span>}
+          <button onClick={() => load(true)} disabled={refreshing}
+            className="text-xs px-3 py-1.5 bg-accent rounded-md hover:bg-border disabled:opacity-50 transition-colors">
+            {refreshing ? "更新中..." : "↻ 更新"}
+          </button>
+        </div>
       </div>
+
+      {/* 未割当アラート */}
+      {data.today.unassigned > 0 && (
+        <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-amber-500/10 border border-amber-700/50 rounded-lg">
+          <span>⚠️</span>
+          <p className="text-sm text-amber-300">本日 {data.today.unassigned} 件の配車が未割当です</p>
+          <a href="/dispatch" className="ml-auto text-xs px-3 py-1 bg-amber-500/20 text-amber-300 rounded hover:bg-amber-500/30 transition-colors">配車管理へ →</a>
+        </div>
+      )}
 
       {/* 今日の状況 - ヒーローバナー */}
       <div className="relative overflow-hidden bg-gradient-to-br from-blue-950 via-[#0f1a2e] to-[#0a0a0a] border border-blue-900/50 rounded-2xl p-6 mb-6">
@@ -123,23 +182,56 @@ function DashboardContent() {
         </div>
       </div>
 
-      {/* 週間推移 */}
-      <div className="bg-[#0d0d0d] border border-border rounded-xl p-5 mb-6">
-        <h3 className="text-xs text-muted uppercase tracking-wider mb-5 flex items-center gap-1.5"><span>📈</span>直近7日間の配車数</h3>
-        <div className="flex items-end gap-3 h-28">
-          {data.weekly.map((w, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
-              <span className={`text-xs font-medium ${i === todayIdx ? 'text-white' : 'text-muted'}`}>{w.count}</span>
-              <div className="w-full rounded-t-md transition-all group-hover:opacity-80"
-                style={{
-                  height: `${Math.max((w.count / maxWeekly) * 85, 4)}px`,
-                  background: i === todayIdx
-                    ? 'linear-gradient(180deg, #60a5fa, #2563eb)'
-                    : 'linear-gradient(180deg, #3730a3aa, #1e1b4baa)',
-                }} />
-              <span className={`text-[10px] ${i === todayIdx ? 'text-blue-400 font-medium' : 'text-muted'}`}>{w.date}</span>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* 月次売上推移（直近6ヶ月） */}
+        {monthly.length > 0 && (
+          <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+            <h3 className="text-xs text-muted uppercase tracking-wider mb-5 flex items-center gap-1.5"><span>📊</span>月次売上推移（6ヶ月）</h3>
+            <div className="flex items-end gap-3 h-36">
+              {monthly.map((m, i) => {
+                const isCurrent = i === monthly.length - 1;
+                return (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
+                    <span className={`text-[11px] font-medium ${isCurrent ? 'text-emerald-300' : 'text-muted'}`}>¥{fmtCompact(m.revenue)}</span>
+                    <div className="w-full rounded-t-md transition-all group-hover:opacity-80"
+                      style={{
+                        height: `${Math.max((m.revenue / maxMonthly) * 96, 4)}px`,
+                        background: isCurrent
+                          ? 'linear-gradient(180deg, #34d399, #059669)'
+                          : 'linear-gradient(180deg, #065f4699, #064e3b99)',
+                      }} />
+                    <span className={`text-[10px] ${isCurrent ? 'text-emerald-400 font-medium' : 'text-muted'}`}>{m.month}</span>
+                    <span className="text-[9px] text-muted">{m.count}件</span>
+                  </div>
+                );
+              })}
             </div>
-          ))}
+          </div>
+        )}
+
+        {/* 週間推移 */}
+        <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+          <h3 className="text-xs text-muted uppercase tracking-wider mb-5 flex items-center gap-1.5"><span>📈</span>直近7日間の配車数</h3>
+          <div className="flex items-end gap-3 h-36">
+            {data.weekly.map((w, i) => {
+              const isToday = i === todayIdx;
+              const isWeekend = w.day === "土" || w.day === "日";
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
+                  <span className={`text-xs font-medium ${isToday ? 'text-white' : 'text-muted'}`}>{w.count}</span>
+                  <div className="w-full rounded-t-md transition-all group-hover:opacity-80"
+                    style={{
+                      height: `${Math.max((w.count / maxWeekly) * 96, 4)}px`,
+                      background: isToday
+                        ? 'linear-gradient(180deg, #60a5fa, #2563eb)'
+                        : 'linear-gradient(180deg, #3730a3aa, #1e1b4baa)',
+                    }} />
+                  <span className={`text-[10px] ${isToday ? 'text-blue-400 font-medium' : 'text-muted'}`}>{w.date}</span>
+                  {w.day && <span className={`text-[9px] ${isWeekend ? 'text-red-400/70' : 'text-muted'}`}>{w.day}</span>}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -147,18 +239,21 @@ function DashboardContent() {
         {/* 荷主別売上ランキング */}
         <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
           <h3 className="text-xs text-muted uppercase tracking-wider mb-4 flex items-center gap-1.5"><span>🏆</span>荷主別売上</h3>
-          {data.client_ranking.length === 0 ? <p className="text-xs text-muted">データなし</p> : (
+          {ranking.length === 0 ? <p className="text-xs text-muted">データなし</p> : (
             <div className="space-y-1">
-              {data.client_ranking.filter(c => c.name !== '未設定').slice(0, 8).map((c, i) => (
-                <div key={i} className="flex items-center justify-between py-2 px-2 rounded-lg hover:bg-white/[0.03] transition-colors">
-                  <div className="flex items-center gap-2.5">
+              {ranking.map((c, i) => (
+                <div key={i} className="relative flex items-center justify-between py-2 px-2 rounded-lg hover:bg-white/[0.03] transition-colors overflow-hidden">
+                  <div className="absolute inset-y-0 left-0 bg-blue-500/[0.07] rounded-lg"
+                    style={{ width: `${(c.revenue / maxClientRevenue) * 100}%` }} />
+                  <div className="relative flex items-center gap-2.5">
                     <span className={`text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center ${
                       i === 0 ? 'bg-yellow-500/20 text-yellow-400' : i === 1 ? 'bg-gray-400/20 text-gray-300' : i === 2 ? 'bg-orange-500/20 text-orange-400' : 'bg-white/5 text-muted'
                     }`}>{i + 1}</span>
                     <span className="text-sm">{c.name}</span>
                     <span className="text-[10px] text-muted bg-white/5 px-1.5 py-0.5 rounded">{c.count}件</span>
+                    <span className="text-[10px] text-muted">{ton(c.weight)}</span>
                   </div>
-                  <span className={`text-sm font-medium ${c.revenue ? '' : 'text-muted'}`}>{c.revenue ? fmt(c.revenue) : '—'}</span>
+                  <span className={`relative text-sm font-medium ${c.revenue ? '' : 'text-muted'}`}>{c.revenue ? fmt(c.revenue) : '—'}</span>
                 </div>
               ))}
             </div>
