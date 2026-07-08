@@ -159,7 +159,9 @@ function SalesContent() {
   }).sort((a, b) => b.total - a.total);
 
   function generateInvoice(clientName: string) {
-    const items = schedules.filter(s => s.client_name === clientName);
+    const items = schedules
+      .filter(s => s.client_name === clientName)
+      .sort((a, b) => (a.unload_date || a.load_date).localeCompare(b.unload_date || b.load_date));
     if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
 
     const formalName = clientMap[clientName] || clientName;
