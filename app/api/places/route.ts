@@ -5,7 +5,12 @@ import { requireAuth } from '@/lib/auth'
 export async function GET() {
   try {
     await requireAuth()
-    const { data, error } = await supabase.from('places').select('*').order('name')
+    // 積み地(load)と非表示化された場所は下ろし先一覧に含めない（place_type未設定の行は含める）
+    const { data, error } = await supabase
+      .from('places')
+      .select('*')
+      .or('place_type.is.null,place_type.not.in.("load","hidden_load","hidden_unload")')
+      .order('name')
     if (error) throw error
     return Response.json(data)
   } catch (e) {
