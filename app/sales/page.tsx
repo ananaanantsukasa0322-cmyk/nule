@@ -53,6 +53,16 @@ function SalesContent() {
   const [taxEnabled, setTaxEnabled] = useState(true);
   const [showIssuerModal, setShowIssuerModal] = useState(false);
   const [issuerForm, setIssuerForm] = useState<IssuerInfo>({ ...EMPTY_ISSUER });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [invoiceSuffix, setInvoiceSuffix] = useState("");
+
+  function toggleSelect(id: string) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
 
   function openIssuerModal() {
     setIssuerForm(loadIssuerInfo(issuerName));
@@ -151,6 +161,28 @@ function SalesContent() {
   const clients = [...new Set(schedules.map(s => s.client_name).filter(Boolean) as string[])].sort();
   const filtered = clientFilter ? schedules.filter(s => s.client_name === clientFilter) : schedules;
   const totalAmount = filtered.reduce((sum, s) => sum + calcAmount(s), 0);
+  const selectedRows = schedules.filter(s => selectedIds.has(s.id));
+  const selectedTotal = selectedRows.reduce((sum, s) => sum + calcAmount(s), 0);
+
+  function generateSelectedInvoice() {
+    if (!selectedRows.length) return;
+    const clientNames = [...new Set(selectedRows.map(s => s.client_name || ""))];
+    if (clientNames.length > 1) {
+      show("複数の荷主が混ざっています。同じ荷主の明細だけ選択してください", "error");
+      return;
+    }
+    if (!clientNames[0]) {
+      show("荷主が未設定の明細は請求書にできません", "error");
+      return;
+    }
+    generateInvoice(clientNames[0], selectedIds);
+  }
+
+  function toggleSelectAllFiltered() {
+    const filteredIds = filtered.map(s => s.id);
+    const allSelected = filteredIds.length > 0 && filteredIds.every(id => selectedIds.has(id));
+    setSelectedIds(allSelected ? new Set() : new Set(filteredIds));
+  }
 
   const clientSummary = clients.map(c => {
     const cs = schedules.filter(s => s.client_name === c);
@@ -158,15 +190,16 @@ function SalesContent() {
     return { name: c, count: cs.length, total };
   }).sort((a, b) => b.total - a.total);
 
-  function generateInvoice(clientName: string) {
+  function generateInvoice(clientName: string, onlyIds?: Set<string>) {
     const items = schedules
-      .filter(s => s.client_name === clientName)
+      .filter(s => s.client_name === clientName && (!onlyIds || onlyIds.has(s.id)))
       .sort((a, b) => (a.unload_date || a.load_date).localeCompare(b.unload_date || b.load_date));
     if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
 
     const formalName = clientMap[clientName] || clientName;
     const issuer = loadIssuerInfo(issuerName);
-    const invoiceNo = `${dateTo.replaceAll("-", "").slice(0, 6)}-${String(clients.indexOf(clientName) + 1).padStart(3, "0")}`;
+    const suffix = invoiceSuffix.trim() ? `-${invoiceSuffix.trim()}` : "";
+    const invoiceNo = `${dateTo.replaceAll("-", "").slice(0, 6)}-${String(clients.indexOf(clientName) + 1).padStart(3, "0")}${suffix}`;
 
     let subtotal = 0;
     let grandWeight = 0;
@@ -312,17 +345,43 @@ function SalesContent() {
         </div>
       </div>
 
-      <h3 className="text-sm font-light text-muted mb-3">明細一覧</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-light text-muted">明細一覧</h3>
+        <p className="text-xs text-muted">チェックした明細だけで請求書を分けて発行できます（税込分・税別分など）</p>
+      </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-3 mb-3 p-3 bg-blue-500/10 border border-blue-800/50 rounded-lg">
+          <span className="text-sm">{selectedIds.size}件選択中</span>
+          <span className="text-sm font-medium">{formatCurrency(selectedTotal)}{taxEnabled ? `（税込 ${formatCurrency(selectedTotal + Math.floor(selectedTotal * 0.1))}）` : ""}</span>
+          <div className="flex items-center gap-1">
+            <label className="text-xs text-muted">枝番</label>
+            <input type="text" value={invoiceSuffix} onChange={e => setInvoiceSuffix(e.target.value)}
+              placeholder="例: 2" className="w-14 text-sm bg-transparent border border-border rounded px-2 py-1" />
+          </div>
+          <button onClick={generateSelectedInvoice}
+            className="text-xs px-3 py-1.5 bg-white text-black rounded hover:bg-gray-200">選択分で請求書発行</button>
+          <button onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-muted hover:text-white ml-auto">選択解除</button>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <table>
-          <thead><tr><th>日付</th><th>荷主</th><th>積み地</th><th>下ろし先</th><th>重量(kg)</th><th>単価</th><th>スポット金額</th><th>確定金額</th></tr></thead>
+          <thead><tr>
+            <th><input type="checkbox"
+              checked={filtered.length > 0 && filtered.every(s => selectedIds.has(s.id))}
+              onChange={toggleSelectAllFiltered} /></th>
+            <th>日付</th><th>荷主</th><th>積み地</th><th>下ろし先</th><th>重量(kg)</th><th>単価</th><th>スポット金額</th><th>確定金額</th>
+          </tr></thead>
           <tbody>
             {filtered.map(s => {
               const p = findPrice(s);
               const amount = calcAmount(s);
               const isSpot = (s.manual_amount ?? 0) > 0;
               return (
-                <tr key={s.id} className={isSpot ? "bg-amber-500/5" : ""}>
+                <tr key={s.id} className={selectedIds.has(s.id) ? "bg-blue-500/10" : isSpot ? "bg-amber-500/5" : ""}>
+                  <td><input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSelect(s.id)} /></td>
                   <td className="text-sm">{s.unload_date || s.load_date}</td>
                   <td className="text-sm">{s.client_name || "—"}</td>
                   <td className="text-sm">{s.load_place}</td>
