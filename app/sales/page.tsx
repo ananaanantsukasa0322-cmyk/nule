@@ -25,7 +25,7 @@ function loadIssuerInfo(name: string): IssuerInfo {
 
 interface Schedule {
   id: string; load_date: string; unload_date: string; load_place: string; unload_place: string;
-  weight: number; client_name?: string; driver_id?: string; done: boolean; manual_amount?: number;
+  weight: number; client_name?: string; driver_id?: string; vehicle_id?: string; done: boolean; manual_amount?: number;
   tax_included?: boolean;
 }
 interface PriceEntry {
@@ -56,6 +56,8 @@ function SalesContent() {
   const [issuerForm, setIssuerForm] = useState<IssuerInfo>({ ...EMPTY_ISSUER });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [invoiceSuffix, setInvoiceSuffix] = useState("");
+  const [showVehicleNo, setShowVehicleNo] = useState(false);
+  const [vehicleMap, setVehicleMap] = useState<Record<string, string>>({});
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
@@ -78,11 +80,18 @@ function SalesContent() {
   }
 
   const loadData = useCallback(async () => {
-    const [s, p, c] = await Promise.all([
+    const [s, p, c, v] = await Promise.all([
       fetch(`/api/sales?date_from=${dateFrom}&date_to=${dateTo}`).then(r => r.json()),
       fetch("/api/masters/prices").then(r => r.json()),
       fetch("/api/masters/clients").then(r => r.json()),
+      fetch("/api/vehicles").then(r => r.json()).catch(() => []),
     ]);
+    const vmap: Record<string, string> = {};
+    for (const veh of (Array.isArray(v) ? v : []) as { id: string; number?: string; head_number?: string; trailer_number?: string }[]) {
+      const num = veh.number || veh.head_number || veh.trailer_number || "";
+      if (num) vmap[veh.id] = num;
+    }
+    setVehicleMap(vmap);
     setSchedules((s.dispatches || []) as Schedule[]);
     setPrices((p.prices || []).map((x: Record<string, unknown>) => ({
       client_name: x.client_name || '', load_place: x.load_place || '', unload_place: x.unload_place || '',
@@ -230,8 +239,11 @@ function SalesContent() {
       const taxCell = hasTaxIncludedRows
         ? `<td style="text-align:center;font-size:11px">${s.tax_included ? "税込" : "税別"}</td>`
         : "";
+      const vehicleCell = showVehicleNo
+        ? `<td style="font-size:11px;white-space:nowrap">${(s.vehicle_id && vehicleMap[s.vehicle_id]) || "-"}</td>`
+        : "";
       return `<tr>
-        <td>${s.unload_date || s.load_date}</td><td>${s.load_place || ""}</td><td>${s.unload_place || ""}</td>
+        <td>${s.unload_date || s.load_date}</td>${vehicleCell}<td>${s.load_place || ""}</td><td>${s.unload_place || ""}</td>
         <td style="text-align:right">${weightT}</td><td style="text-align:right">${priceStr}</td>
         ${taxCell}
         <td style="text-align:right">${amount ? `¥${amount.toLocaleString()}` : "-"}</td>
@@ -255,6 +267,7 @@ function SalesContent() {
       taxRows = `<div class="summary-row summary-total"><span>合計金額</span><span>¥${total.toLocaleString()}</span></div>`;
     }
     const taxHeaderCell = hasTaxIncludedRows ? `<th style="text-align:center">税区分</th>` : "";
+    const vehicleHeaderCell = showVehicleNo ? `<th>車番</th>` : "";
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>請求書 - ${formalName}</title>
@@ -304,7 +317,7 @@ function SalesContent() {
         </div>
       </div>
       <table>
-        <thead><tr><th>日付</th><th>積み地</th><th>下ろし先</th><th style="text-align:right">重量(kg)</th><th style="text-align:right">単価</th>${taxHeaderCell}<th style="text-align:right">金額</th></tr></thead>
+        <thead><tr><th>日付</th>${vehicleHeaderCell}<th>積み地</th><th>下ろし先</th><th style="text-align:right">重量(kg)</th><th style="text-align:right">単価</th>${taxHeaderCell}<th style="text-align:right">金額</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <div class="summary">
@@ -349,6 +362,10 @@ function SalesContent() {
         <label className="flex items-center gap-2 text-xs text-muted cursor-pointer py-2">
           <input type="checkbox" checked={taxEnabled} onChange={e => setTaxEnabled(e.target.checked)} />
           請求書に消費税10%を加算
+        </label>
+        <label className="flex items-center gap-2 text-xs text-muted cursor-pointer py-2">
+          <input type="checkbox" checked={showVehicleNo} onChange={e => setShowVehicleNo(e.target.checked)} />
+          請求書に車番を表示
         </label>
       </div>
 
