@@ -37,29 +37,70 @@ export async function POST(request: NextRequest) {
     let inserted = 0
     let errors = 0
 
+    // 日付らしき値をYYYY-MM-DDに正規化（Excelシリアル値・スラッシュ区切り対応）
+    function normDate(v: unknown): string | null {
+      if (v == null || v === '') return null
+      if (typeof v === 'number') {
+        // Excelシリアル値
+        const d = new Date(Math.round((v - 25569) * 86400 * 1000))
+        if (isNaN(d.getTime())) return null
+        return d.toISOString().slice(0, 10)
+      }
+      const s = String(v).trim().replace(/[年月]/g, '-').replace(/日/g, '').replace(/\//g, '-')
+      const m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+      if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
+      return null
+    }
+
     if (target === 'drivers') {
+      const { data: existing } = await supabase.from('drivers').select('id,name')
       for (const row of rows) {
-        const name = String(row['名前'] || row['name'] || '').trim()
+        const name = String(row['名前'] || row['氏名'] || row['name'] || '').trim()
         if (!name) { errors++; continue }
-        const { error } = await supabase.from('drivers').insert({
+        const values: Record<string, unknown> = {
           name,
-          phone: String(row['連絡先'] || row['phone'] || ''),
-          payment_percentage: Number(row['支払率'] || row['payment_percentage'] || 0),
+          phone: String(row['連絡先'] || row['電話番号'] || row['phone'] || ''),
           status: String(row['状態'] || row['status'] || '稼働中'),
-        })
+        }
+        const pay = row['支払率'] ?? row['payment_percentage']
+        if (pay != null && pay !== '') values.payment_percentage = Number(pay) || 0
+        // 名前一致（空白無視）で既存を更新、なければ新規
+        const norm = (n: string) => n.replace(/[\s　]/g, '')
+        const match = (existing || []).find(d => norm(d.name) === norm(name))
+        const { error } = match
+          ? await supabase.from('drivers').update(values).eq('id', match.id)
+          : await supabase.from('drivers').insert(values)
         if (error) errors++; else inserted++
       }
     } else if (target === 'vehicles') {
+      const { data: existing } = await supabase.from('vehicles').select('id,number,head_number')
       for (const row of rows) {
-        const kind = String(row['種別'] || row['kind'] || 'トラック')
-        const { error } = await supabase.from('vehicles').insert({
-          kind,
-          number: String(row['ナンバー'] || row['number'] || ''),
-          head_number: String(row['ヘッド'] || row['head_number'] || ''),
-          trailer_number: String(row['台車'] || row['trailer_number'] || ''),
-          payload: Number(row['積載量'] || row['payload'] || 0),
-          note: String(row['メモ'] || row['note'] || ''),
-        })
+        const number = String(row['ナンバー'] || row['車番'] || row['number'] || '').trim()
+        const headNumber = String(row['ヘッド'] || row['ヘッド車番'] || row['head_number'] || '').trim()
+        const values: Record<string, unknown> = {}
+        if (row['種別'] || row['kind']) values.kind = String(row['種別'] || row['kind'])
+        if (number) values.number = number
+        if (headNumber) values.head_number = headNumber
+        if (row['台車'] || row['シャーシ'] || row['trailer_number']) values.trailer_number = String(row['台車'] || row['シャーシ'] || row['trailer_number'])
+        const payload = row['積載量'] ?? row['payload']
+        if (payload != null && payload !== '') values.payload = Number(String(payload).replace(/[,kg]/g, '')) || 0
+        if (row['メモ'] || row['note']) values.note = String(row['メモ'] || row['note'])
+        const shaken = normDate(row['車検日'] ?? row['車検'] ?? row['shaken_date'])
+        if (shaken) values.shaken_date = shaken
+        const insp = normDate(row['3ヶ月点検'] ?? row['3ヶ月点検日'] ?? row['点検日'] ?? row['inspection_3m_date'])
+        if (insp) values.inspection_3m_date = insp
+        if (row['修理情報'] || row['repair_note']) values.repair_note = String(row['修理情報'] || row['repair_note'])
+        if (row['注意事項'] || row['caution']) values.caution = String(row['注意事項'] || row['caution'])
+
+        if (!number && !headNumber) { errors++; continue }
+        // 車番またはヘッド車番一致で既存を更新、なければ新規
+        const match = (existing || []).find(v =>
+          (number && (v.number === number || v.head_number === number)) ||
+          (headNumber && (v.head_number === headNumber || v.number === headNumber))
+        )
+        const { error } = match
+          ? await supabase.from('vehicles').update(values).eq('id', match.id)
+          : await supabase.from('vehicles').insert({ kind: 'トラック', ...values })
         if (error) errors++; else inserted++
       }
     } else if (target === 'clients') {

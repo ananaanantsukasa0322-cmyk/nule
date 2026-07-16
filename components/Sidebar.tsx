@@ -15,6 +15,7 @@ const adminLinks = [
   { href: "/dashboard", label: "ダッシュボード", icon: "◆" },
   { href: "/dispatch", label: "配車管理", icon: "◇" },
   { href: "/yousha-management", label: "傭車管理", icon: "◇" },
+  { href: "/maintenance", label: "整備管理", icon: "◈" },
   { href: "/daily-reports", label: "日報管理", icon: "◈" },
   { href: "/sales", label: "売上・請求", icon: "◉" },
   { href: "/driver-management", label: "ドライバー支払い", icon: "◎" },
@@ -26,6 +27,7 @@ const adminLinks = [
 const officeLinks = [
   { href: "/dashboard", label: "ダッシュボード", icon: "◆" },
   { href: "/yousha-management", label: "傭車管理", icon: "◇" },
+  { href: "/maintenance", label: "整備管理", icon: "◈" },
   { href: "/daily-reports", label: "日報管理", icon: "◈" },
   { href: "/sales", label: "売上・請求", icon: "◉" },
   { href: "/driver-management", label: "ドライバー支払い", icon: "◎" },

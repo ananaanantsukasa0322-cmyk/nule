@@ -47,8 +47,14 @@ function Skeleton() {
   );
 }
 
+interface Notice {
+  id: string; title: string; body: string; target: string; department: string;
+  due_date?: string | null;
+}
+
 function DashboardContent() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
@@ -56,10 +62,17 @@ function DashboardContent() {
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
-      const res = await fetch("/api/dashboard");
+      const [res, nRes] = await Promise.all([
+        fetch("/api/dashboard"),
+        fetch("/api/notices").catch(() => null),
+      ]);
       if (res.ok) {
         setData(await res.json());
         setUpdatedAt(new Date());
+      }
+      if (nRes?.ok) {
+        const n = await nRes.json();
+        setNotices((Array.isArray(n) ? n : []).filter((x: Notice) => x.target !== "dispatch"));
       }
     } finally {
       setLoading(false);
@@ -100,6 +113,18 @@ function DashboardContent() {
           </button>
         </div>
       </div>
+
+      {/* 共有注意事項（整備管理などから） */}
+      {notices.length > 0 && (
+        <div className="mb-4 px-4 py-3 bg-blue-500/10 border border-blue-800/50 rounded-lg space-y-1">
+          {notices.map(n => (
+            <p key={n.id} className="text-sm text-blue-300" title={n.body}>
+              📢 {n.department ? `[${n.department}] ` : ""}{n.title}
+              {n.due_date ? <span className="text-xs text-muted ml-2">期限 {n.due_date}</span> : null}
+            </p>
+          ))}
+        </div>
+      )}
 
       {/* 未割当アラート */}
       {data.today.unassigned > 0 && (

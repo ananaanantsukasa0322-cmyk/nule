@@ -50,6 +50,33 @@ export async function POST(request: NextRequest) {
 
 以下のJSON形式で返してください。JSON以外のテキストは含めないでください:
 {"entries":[{"shipper":"","origin":"","destination":"","price_type":"","rate":""}]}`
+    } else if (parseType === 'vehicles') {
+      prompt = `この画像/PDFは運送会社の車両一覧・車検証・点検記録などです。車両情報を読み取ってJSON形式で返してください。
+
+読み取る項目（entries配列、車両ごと）:
+- kind: 種別（トレーラー/大型/トラックなど、不明なら空）
+- number: 車番・ナンバー（例: 名古屋101あ1234）
+- head_number: ヘッド車番（トレーラーの場合）
+- trailer_number: シャーシ・台車番号
+- payload: 最大積載量kg（数字のみ）
+- shaken_date: 車検満了日（YYYY-MM-DD形式）
+- inspection_3m_date: 3ヶ月点検実施日（YYYY-MM-DD形式）
+- repair_note: 修理・整備内容
+- caution: 注意事項
+
+読み取れない項目は空文字にしてください。
+以下のJSON形式で返してください。JSON以外のテキストは含めないでください:
+{"entries":[{"kind":"","number":"","head_number":"","trailer_number":"","payload":"","shaken_date":"","inspection_3m_date":"","repair_note":"","caution":""}]}`
+    } else if (parseType === 'drivers') {
+      prompt = `この画像/PDFは運送会社のドライバー名簿・免許一覧などです。ドライバー情報を読み取ってJSON形式で返してください。
+
+読み取る項目（entries配列、1名ごと）:
+- name: 氏名
+- phone: 電話番号
+- status: 状態（稼働中/休職中など、不明なら空）
+
+以下のJSON形式で返してください。JSON以外のテキストは含めないでください:
+{"entries":[{"name":"","phone":"","status":""}]}`
     }
 
     const contentBlock = mediaType === 'application/pdf'
@@ -75,7 +102,7 @@ export async function POST(request: NextRequest) {
       parsed = { entries: [], raw: text }
     }
 
-    if (parsed.entries) {
+    if (parsed.entries && (parseType === 'daily_report' || parseType === 'price_sheet')) {
       parsed.entries = parsed.entries.filter((e: Record<string, string>) => e.destination && e.destination.trim())
     }
     return Response.json(parsed)
