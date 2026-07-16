@@ -26,6 +26,7 @@ function loadIssuerInfo(name: string): IssuerInfo {
 interface Schedule {
   id: string; load_date: string; unload_date: string; load_place: string; unload_place: string;
   weight: number; client_name?: string; driver_id?: string; done: boolean; manual_amount?: number;
+  tax_included?: boolean;
 }
 interface PriceEntry {
   client_name: string; load_place: string; unload_place: string;
@@ -141,6 +142,17 @@ function SalesContent() {
     return 0;
   }
 
+  async function toggleTaxIncluded(s: Schedule) {
+    const next = !s.tax_included;
+    const res = await fetch(`/api/schedules/${s.id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tax_included: next }),
+    });
+    if (res.ok) show(next ? "税込に変更しました" : "税別に変更しました");
+    else show("税区分の変更に失敗しました（DBにtax_included列が必要です）", "error");
+    loadData();
+  }
+
   async function updateManualAmount(id: string, value: string) {
     const amount = value === "" ? null : Number(value);
     if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
@@ -163,6 +175,8 @@ function SalesContent() {
   const totalAmount = filtered.reduce((sum, s) => sum + calcAmount(s), 0);
   const selectedRows = schedules.filter(s => selectedIds.has(s.id));
   const selectedTotal = selectedRows.reduce((sum, s) => sum + calcAmount(s), 0);
+  const selectedTaxable = selectedRows.filter(s => !s.tax_included).reduce((sum, s) => sum + calcAmount(s), 0);
+  const selectedGrandTotal = selectedTaxable + Math.floor(selectedTaxable * 0.1) + (selectedTotal - selectedTaxable);
 
   function generateSelectedInvoice() {
     if (!selectedRows.length) return;
@@ -201,30 +215,46 @@ function SalesContent() {
     const suffix = invoiceSuffix.trim() ? `-${invoiceSuffix.trim()}` : "";
     const invoiceNo = `${dateTo.replaceAll("-", "").slice(0, 6)}-${String(clients.indexOf(clientName) + 1).padStart(3, "0")}${suffix}`;
 
-    let subtotal = 0;
+    const hasTaxIncludedRows = taxEnabled && items.some(s => s.tax_included);
+    let taxableSubtotal = 0;   // 税別（10%加算対象）
+    let includedSubtotal = 0;  // 税込（そのまま）
     let grandWeight = 0;
     const rows = items.map(s => {
       const p = findPrice(s);
       const amount = calcAmount(s);
-      subtotal += amount;
+      if (taxEnabled && s.tax_included) includedSubtotal += amount;
+      else taxableSubtotal += amount;
       grandWeight += s.weight || 0;
       const weightT = s.weight ? s.weight.toLocaleString() : "-";
       const priceStr = (s.manual_amount ?? 0) > 0 ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-");
+      const taxCell = hasTaxIncludedRows
+        ? `<td style="text-align:center;font-size:11px">${s.tax_included ? "税込" : "税別"}</td>`
+        : "";
       return `<tr>
         <td>${s.unload_date || s.load_date}</td><td>${s.load_place || ""}</td><td>${s.unload_place || ""}</td>
         <td style="text-align:right">${weightT}</td><td style="text-align:right">${priceStr}</td>
+        ${taxCell}
         <td style="text-align:right">${amount ? `¥${amount.toLocaleString()}` : "-"}</td>
       </tr>`;
     }).join("");
 
-    const tax = taxEnabled ? Math.floor(subtotal * 0.1) : 0;
-    const total = subtotal + tax;
+    const tax = taxEnabled ? Math.floor(taxableSubtotal * 0.1) : 0;
+    const total = taxableSubtotal + tax + includedSubtotal;
 
-    const taxRows = taxEnabled
-      ? `<div class="summary-row"><span>小計（税抜）</span><span>¥${subtotal.toLocaleString()}</span></div>
+    let taxRows: string;
+    if (taxEnabled && hasTaxIncludedRows) {
+      taxRows = `<div class="summary-row"><span>課税分 小計（税抜）</span><span>¥${taxableSubtotal.toLocaleString()}</span></div>
          <div class="summary-row"><span>消費税（10%）</span><span>¥${tax.toLocaleString()}</span></div>
-         <div class="summary-row summary-total"><span>合計金額（税込）</span><span>¥${total.toLocaleString()}</span></div>`
-      : `<div class="summary-row summary-total"><span>合計金額</span><span>¥${total.toLocaleString()}</span></div>`;
+         <div class="summary-row"><span>税込分 小計</span><span>¥${includedSubtotal.toLocaleString()}</span></div>
+         <div class="summary-row summary-total"><span>合計金額（税込）</span><span>¥${total.toLocaleString()}</span></div>`;
+    } else if (taxEnabled) {
+      taxRows = `<div class="summary-row"><span>小計（税抜）</span><span>¥${taxableSubtotal.toLocaleString()}</span></div>
+         <div class="summary-row"><span>消費税（10%）</span><span>¥${tax.toLocaleString()}</span></div>
+         <div class="summary-row summary-total"><span>合計金額（税込）</span><span>¥${total.toLocaleString()}</span></div>`;
+    } else {
+      taxRows = `<div class="summary-row summary-total"><span>合計金額</span><span>¥${total.toLocaleString()}</span></div>`;
+    }
+    const taxHeaderCell = hasTaxIncludedRows ? `<th style="text-align:center">税区分</th>` : "";
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>請求書 - ${formalName}</title>
@@ -274,7 +304,7 @@ function SalesContent() {
         </div>
       </div>
       <table>
-        <thead><tr><th>日付</th><th>積み地</th><th>下ろし先</th><th style="text-align:right">重量(kg)</th><th style="text-align:right">単価</th><th style="text-align:right">金額</th></tr></thead>
+        <thead><tr><th>日付</th><th>積み地</th><th>下ろし先</th><th style="text-align:right">重量(kg)</th><th style="text-align:right">単価</th>${taxHeaderCell}<th style="text-align:right">金額</th></tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <div class="summary">
@@ -353,7 +383,7 @@ function SalesContent() {
       {selectedIds.size > 0 && (
         <div className="flex flex-wrap items-center gap-3 mb-3 p-3 bg-blue-500/10 border border-blue-800/50 rounded-lg">
           <span className="text-sm">{selectedIds.size}件選択中</span>
-          <span className="text-sm font-medium">{formatCurrency(selectedTotal)}{taxEnabled ? `（税込 ${formatCurrency(selectedTotal + Math.floor(selectedTotal * 0.1))}）` : ""}</span>
+          <span className="text-sm font-medium">{formatCurrency(selectedTotal)}{taxEnabled ? `（請求額 ${formatCurrency(selectedGrandTotal)}）` : ""}</span>
           <div className="flex items-center gap-1">
             <label className="text-xs text-muted">枝番</label>
             <input type="text" value={invoiceSuffix} onChange={e => setInvoiceSuffix(e.target.value)}
@@ -372,7 +402,7 @@ function SalesContent() {
             <th><input type="checkbox"
               checked={filtered.length > 0 && filtered.every(s => selectedIds.has(s.id))}
               onChange={toggleSelectAllFiltered} /></th>
-            <th>日付</th><th>荷主</th><th>積み地</th><th>下ろし先</th><th>重量(kg)</th><th>単価</th><th>スポット金額</th><th>確定金額</th>
+            <th>日付</th><th>荷主</th><th>積み地</th><th>下ろし先</th><th>重量(kg)</th><th>単価</th><th>スポット金額</th><th>税区分</th><th>確定金額</th>
           </tr></thead>
           <tbody>
             {filtered.map(s => {
@@ -396,6 +426,13 @@ function SalesContent() {
                       className="bg-transparent border-b border-border text-sm w-28 outline-none focus:border-amber-400 text-right"
                       onBlur={e => updateManualAmount(s.id, e.target.value)}
                     />
+                  </td>
+                  <td>
+                    <button onClick={() => toggleTaxIncluded(s)}
+                      title="クリックで税別⇄税込を切替"
+                      className={`text-xs px-2 py-0.5 rounded transition-colors ${s.tax_included ? "bg-emerald-500/15 text-emerald-400" : "bg-white/5 text-muted hover:text-white"}`}>
+                      {s.tax_included ? "税込" : "税別"}
+                    </button>
                   </td>
                   <td className="text-sm font-medium">{amount ? formatCurrency(amount) : "—"}</td>
                 </tr>

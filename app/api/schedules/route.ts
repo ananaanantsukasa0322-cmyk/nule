@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
   try {
     await requireAuth()
     const body = await request.json()
-    const allowed = ['client_name','load_date','load_place','unload_date','unload_place','weight','vehicle_id','driver_id','note','done','load_status','cargo_type','cargo_items','ai_tsumi','ai_tsumi_group','cargo_note','items','slot_index','report_weight','manual_amount']
+    const allowed = ['client_name','load_date','load_place','unload_date','unload_place','weight','vehicle_id','driver_id','note','done','load_status','cargo_type','cargo_items','ai_tsumi','ai_tsumi_group','cargo_note','items','slot_index','report_weight','manual_amount','tax_included']
 
     function clean(obj: Record<string, unknown>) {
       const out: Record<string, unknown> = {}
@@ -72,7 +72,7 @@ export async function PUT(request: NextRequest) {
     await requireAuth()
     const body = await request.json()
     const id = body.id
-    const allowed = ['client_name','load_date','load_place','unload_date','unload_place','weight','vehicle_id','driver_id','note','done','load_status','cargo_type','cargo_items','ai_tsumi','ai_tsumi_group','cargo_note','items','slot_index','report_weight','manual_amount']
+    const allowed = ['client_name','load_date','load_place','unload_date','unload_place','weight','vehicle_id','driver_id','note','done','load_status','cargo_type','cargo_items','ai_tsumi','ai_tsumi_group','cargo_note','items','slot_index','report_weight','manual_amount','tax_included']
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
     for (const key of allowed) { if (key in body) { let v = body[key]; if (key === 'vehicle_id' && (!v || v === '')) v = null; updateData[key] = v; } }
     const { data, error } = await supabase.from('schedules').update(updateData).eq('id', id).select('*').single()
