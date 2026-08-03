@@ -291,12 +291,12 @@ function SalesContent() {
     const rowCount = lines.length;
     const scale = rowCount <= 15 ? "normal" : rowCount <= 25 ? "compact" : rowCount <= 40 ? "tight" : "min";
     const S = {
-      normal: { body: 12, h1: 26, h1mb: 20, headmb: 16, td: "5px 7px", th: "6px 7px", tblFs: 12, sumFs: 12, sumTotalFs: 15, footFs: 11, amtVal: 22, cname: 17 },
-      compact:{ body: 11, h1: 22, h1mb: 14, headmb: 12, td: "3px 6px", th: "4px 6px", tblFs: 11, sumFs: 11, sumTotalFs: 14, footFs: 10, amtVal: 20, cname: 16 },
-      tight:  { body: 10, h1: 19, h1mb: 10, headmb: 9,  td: "2px 5px", th: "3px 5px", tblFs: 10, sumFs: 10, sumTotalFs: 13, footFs: 9,  amtVal: 18, cname: 15 },
-      min:    { body: 9,  h1: 17, h1mb: 8,  headmb: 7,  td: "1px 4px", th: "2px 4px", tblFs: 9,  sumFs: 9,  sumTotalFs: 12, footFs: 8,  amtVal: 16, cname: 14 },
+      normal: { body: 12, h1: 26, h1mb: 20, headmb: 16, td: "5px 7px", th: "6px 7px", tblFs: 12, sumFs: 12, sumTotalFs: 15, footFs: 11, amtVal: 22, cname: 17, bodyPad: 14, tableMt: 8, summaryMt: 8, sumPad: 2, footMt: 10 },
+      compact:{ body: 11, h1: 22, h1mb: 14, headmb: 12, td: "3px 6px", th: "4px 6px", tblFs: 11, sumFs: 11, sumTotalFs: 14, footFs: 10, amtVal: 20, cname: 16, bodyPad: 12, tableMt: 6, summaryMt: 6, sumPad: 1, footMt: 8 },
+      tight:  { body: 9,  h1: 16, h1mb: 6,  headmb: 6,  td: "1px 4px", th: "1px 4px", tblFs: 9,  sumFs: 9,  sumTotalFs: 12, footFs: 8,  amtVal: 15, cname: 13, bodyPad: 8,  tableMt: 4, summaryMt: 4, sumPad: 0, footMt: 5 },
+      min:    { body: 8,  h1: 14, h1mb: 5,  headmb: 5,  td: "0px 3px", th: "1px 3px", tblFs: 8,  sumFs: 8,  sumTotalFs: 11, footFs: 7,  amtVal: 13, cname: 12, bodyPad: 6,  tableMt: 3, summaryMt: 3, sumPad: 0, footMt: 4 },
     }[scale];
-    const cellFs = Math.max(8, S.tblFs - 1);
+    const cellFs = Math.max(7, S.tblFs - 1);
 
     let taxableSubtotal = 0;   // 税別（10%加算対象）
     let includedSubtotal = 0;  // 税込（そのまま）
@@ -357,25 +357,25 @@ function SalesContent() {
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>請求書 - ${formalName}</title>
       <style>
-        @media print { body { margin: 0; } @page { margin: 10mm; size: A4; } }
-        body { font-family: "Hiragino Kaku Gothic Pro", "Yu Gothic", "Meiryo", sans-serif; color: #111; padding: 14px; max-width: 800px; margin: 0 auto; font-size: ${S.body}px; }
-        h1 { text-align: center; font-size: ${S.h1}px; letter-spacing: 0.4em; margin-bottom: ${S.h1mb}px; border-bottom: 3px double #333; padding-bottom: 8px; }
-        .meta { text-align: right; font-size: ${S.footFs}px; color: #555; margin-bottom: 6px; }
+        @media print { body { margin: 0; } @page { margin: 8mm; size: A4; } }
+        body { font-family: "Hiragino Kaku Gothic Pro", "Yu Gothic", "Meiryo", sans-serif; color: #111; padding: ${S.bodyPad}px; max-width: 800px; margin: 0 auto; font-size: ${S.body}px; line-height: 1.3; }
+        h1 { text-align: center; font-size: ${S.h1}px; letter-spacing: 0.4em; margin-bottom: ${S.h1mb}px; border-bottom: 3px double #333; padding-bottom: ${Math.min(8, S.h1mb)}px; }
+        .meta { text-align: right; font-size: ${S.footFs}px; color: #555; margin-bottom: ${Math.min(6, S.headmb)}px; }
         .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: ${S.headmb}px; }
         .header-left { font-size: ${S.body}px; }
-        .header-right { text-align: right; font-size: ${S.footFs}px; line-height: 1.5; }
-        .client-name { font-size: ${S.cname}px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 3px; margin-bottom: 5px; }
+        .header-right { text-align: right; font-size: ${S.footFs}px; line-height: 1.4; }
+        .client-name { font-size: ${S.cname}px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 2px; margin-bottom: 3px; }
         .issuer-name { font-size: ${S.cname - 3}px; font-weight: bold; }
-        .amount-box { display: inline-block; border: 2px solid #333; padding: 6px 20px; margin: 5px 0 3px; }
+        .amount-box { display: inline-block; border: 2px solid #333; padding: 4px 16px; margin: 3px 0 2px; }
         .amount-box .label { font-size: ${S.footFs}px; color: #555; margin-bottom: 1px; }
         .amount-box .value { font-size: ${S.amtVal}px; font-weight: bold; letter-spacing: 1px; }
-        table { width: 100%; border-collapse: collapse; font-size: ${S.tblFs}px; margin-top: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: ${S.tblFs}px; margin-top: ${S.tableMt}px; }
         th { background: #f5f5f5; border: 1px solid #ccc; padding: ${S.th}; text-align: left; font-weight: bold; }
         td { border: 1px solid #ccc; padding: ${S.td}; }
-        .summary { margin-top: 8px; border-top: 2px solid #333; page-break-inside: avoid; }
-        .summary-row { display: flex; justify-content: flex-end; gap: 30px; padding: 2px 4px; font-size: ${S.sumFs}px; }
-        .summary-total { font-size: ${S.sumTotalFs}px; font-weight: bold; border-top: 1px solid #ccc; padding-top: 4px; margin-top: 2px; }
-        .footer { margin-top: 10px; padding: 6px 10px; background: #f8f8f8; border: 1px solid #ddd; font-size: ${S.footFs}px; line-height: 1.5; page-break-inside: avoid; }
+        .summary { margin-top: ${S.summaryMt}px; border-top: 2px solid #333; page-break-inside: avoid; }
+        .summary-row { display: flex; justify-content: flex-end; gap: 24px; padding: ${S.sumPad}px 4px; font-size: ${S.sumFs}px; }
+        .summary-total { font-size: ${S.sumTotalFs}px; font-weight: bold; border-top: 1px solid #ccc; padding-top: 3px; margin-top: 1px; }
+        .footer { margin-top: ${S.footMt}px; padding: 4px 8px; background: #f8f8f8; border: 1px solid #ddd; font-size: ${S.footFs}px; line-height: 1.4; page-break-inside: avoid; }
         .footer b { display: inline-block; min-width: 5em; }
         .print-btn { position: fixed; top: 10px; right: 10px; padding: 10px 20px; background: #333; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
         @media print { .print-btn { display: none; } }
