@@ -286,6 +286,18 @@ function SalesContent() {
 
     const hasTaxIncludedRows = taxEnabled && lines.some(l => l.taxIncluded);
     const hasTollRows = lines.some(l => l.toll > 0);
+
+    // 明細行数に応じてフォント・余白を自動で詰め、1ページに収まりやすくする
+    const rowCount = lines.length;
+    const scale = rowCount <= 15 ? "normal" : rowCount <= 25 ? "compact" : rowCount <= 40 ? "tight" : "min";
+    const S = {
+      normal: { body: 12, h1: 26, h1mb: 20, headmb: 16, td: "5px 7px", th: "6px 7px", tblFs: 12, sumFs: 12, sumTotalFs: 15, footFs: 11, amtVal: 22, cname: 17 },
+      compact:{ body: 11, h1: 22, h1mb: 14, headmb: 12, td: "3px 6px", th: "4px 6px", tblFs: 11, sumFs: 11, sumTotalFs: 14, footFs: 10, amtVal: 20, cname: 16 },
+      tight:  { body: 10, h1: 19, h1mb: 10, headmb: 9,  td: "2px 5px", th: "3px 5px", tblFs: 10, sumFs: 10, sumTotalFs: 13, footFs: 9,  amtVal: 18, cname: 15 },
+      min:    { body: 9,  h1: 17, h1mb: 8,  headmb: 7,  td: "1px 4px", th: "2px 4px", tblFs: 9,  sumFs: 9,  sumTotalFs: 12, footFs: 8,  amtVal: 16, cname: 14 },
+    }[scale];
+    const cellFs = Math.max(8, S.tblFs - 1);
+
     let taxableSubtotal = 0;   // 税別（10%加算対象）
     let includedSubtotal = 0;  // 税込（そのまま）
     let grandWeight = 0;
@@ -297,13 +309,13 @@ function SalesContent() {
       itemTollTotal += l.toll;
       const weightT = l.weight ? l.weight.toLocaleString() : "-";
       const taxCell = hasTaxIncludedRows
-        ? `<td style="text-align:center;font-size:11px">${l.taxIncluded ? "税込" : "税別"}</td>`
+        ? `<td style="text-align:center;font-size:${cellFs}px">${l.taxIncluded ? "税込" : "税別"}</td>`
         : "";
       const vehicleCell = showVehicleNo
-        ? `<td style="font-size:11px;white-space:nowrap">${(l.vehicleId && vehicleMap[l.vehicleId]) || "-"}</td>`
+        ? `<td style="font-size:${cellFs}px;white-space:nowrap">${(l.vehicleId && vehicleMap[l.vehicleId]) || "-"}</td>`
         : "";
       const tollCell = hasTollRows
-        ? `<td style="text-align:right;font-size:11px">${l.toll ? `¥${l.toll.toLocaleString()}` : "-"}</td>`
+        ? `<td style="text-align:right;font-size:${cellFs}px">${l.toll ? `¥${l.toll.toLocaleString()}` : "-"}</td>`
         : "";
       return `<tr>
         <td>${l.date}</td>${vehicleCell}<td>${l.loadPlace}</td><td>${l.unloadPlace}</td>
@@ -345,25 +357,25 @@ function SalesContent() {
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>請求書 - ${formalName}</title>
       <style>
-        @media print { body { margin: 0; } @page { margin: 15mm; } }
-        body { font-family: "Hiragino Kaku Gothic Pro", "Yu Gothic", "Meiryo", sans-serif; color: #111; padding: 20px; max-width: 800px; margin: 0 auto; }
-        h1 { text-align: center; font-size: 28px; letter-spacing: 0.5em; margin-bottom: 28px; border-bottom: 3px double #333; padding-bottom: 15px; }
-        .meta { text-align: right; font-size: 12px; color: #555; margin-bottom: 12px; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
-        .header-left { font-size: 14px; }
-        .header-right { text-align: right; font-size: 12px; line-height: 1.7; }
-        .client-name { font-size: 19px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 4px; margin-bottom: 8px; }
-        .issuer-name { font-size: 15px; font-weight: bold; }
-        .amount-box { display: inline-block; border: 2px solid #333; padding: 10px 28px; margin: 8px 0 4px; }
-        .amount-box .label { font-size: 12px; color: #555; margin-bottom: 2px; }
-        .amount-box .value { font-size: 24px; font-weight: bold; letter-spacing: 1px; }
-        table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 16px; }
-        th { background: #f5f5f5; border: 1px solid #ccc; padding: 8px; text-align: left; font-weight: bold; }
-        td { border: 1px solid #ccc; padding: 6px 8px; }
-        .summary { margin-top: 16px; border-top: 2px solid #333; page-break-inside: avoid; }
-        .summary-row { display: flex; justify-content: flex-end; gap: 40px; padding: 6px 4px; font-size: 13px; }
-        .summary-total { font-size: 16px; font-weight: bold; border-top: 1px solid #ccc; padding-top: 8px; margin-top: 4px; }
-        .footer { margin-top: 24px; padding: 12px 16px; background: #f8f8f8; border: 1px solid #ddd; font-size: 12px; line-height: 1.9; page-break-inside: avoid; }
+        @media print { body { margin: 0; } @page { margin: 10mm; size: A4; } }
+        body { font-family: "Hiragino Kaku Gothic Pro", "Yu Gothic", "Meiryo", sans-serif; color: #111; padding: 14px; max-width: 800px; margin: 0 auto; font-size: ${S.body}px; }
+        h1 { text-align: center; font-size: ${S.h1}px; letter-spacing: 0.4em; margin-bottom: ${S.h1mb}px; border-bottom: 3px double #333; padding-bottom: 8px; }
+        .meta { text-align: right; font-size: ${S.footFs}px; color: #555; margin-bottom: 6px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: ${S.headmb}px; }
+        .header-left { font-size: ${S.body}px; }
+        .header-right { text-align: right; font-size: ${S.footFs}px; line-height: 1.5; }
+        .client-name { font-size: ${S.cname}px; font-weight: bold; border-bottom: 1px solid #333; padding-bottom: 3px; margin-bottom: 5px; }
+        .issuer-name { font-size: ${S.cname - 3}px; font-weight: bold; }
+        .amount-box { display: inline-block; border: 2px solid #333; padding: 6px 20px; margin: 5px 0 3px; }
+        .amount-box .label { font-size: ${S.footFs}px; color: #555; margin-bottom: 1px; }
+        .amount-box .value { font-size: ${S.amtVal}px; font-weight: bold; letter-spacing: 1px; }
+        table { width: 100%; border-collapse: collapse; font-size: ${S.tblFs}px; margin-top: 8px; }
+        th { background: #f5f5f5; border: 1px solid #ccc; padding: ${S.th}; text-align: left; font-weight: bold; }
+        td { border: 1px solid #ccc; padding: ${S.td}; }
+        .summary { margin-top: 8px; border-top: 2px solid #333; page-break-inside: avoid; }
+        .summary-row { display: flex; justify-content: flex-end; gap: 30px; padding: 2px 4px; font-size: ${S.sumFs}px; }
+        .summary-total { font-size: ${S.sumTotalFs}px; font-weight: bold; border-top: 1px solid #ccc; padding-top: 4px; margin-top: 2px; }
+        .footer { margin-top: 10px; padding: 6px 10px; background: #f8f8f8; border: 1px solid #ddd; font-size: ${S.footFs}px; line-height: 1.5; page-break-inside: avoid; }
         .footer b { display: inline-block; min-width: 5em; }
         .print-btn { position: fixed; top: 10px; right: 10px; padding: 10px 20px; background: #333; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
         @media print { .print-btn { display: none; } }
@@ -375,8 +387,8 @@ function SalesContent() {
       <div class="header">
         <div class="header-left">
           <div class="client-name">${formalName} 御中</div>
-          <div style="font-size:12px;color:#555">下記の通りご請求申し上げます。</div>
-          <div style="font-size:12px;color:#555">対象期間: ${dateFrom} ～ ${dateTo}</div>
+          <div style="font-size:${S.footFs}px;color:#555">下記の通りご請求申し上げます。</div>
+          <div style="font-size:${S.footFs}px;color:#555">対象期間: ${dateFrom} ～ ${dateTo}</div>
           <div class="amount-box">
             <div class="label">御請求金額${taxEnabled ? "（税込）" : ""}</div>
             <div class="value">¥${total.toLocaleString()}</div>
