@@ -26,7 +26,7 @@ function loadIssuerInfo(name: string): IssuerInfo {
 interface Schedule {
   id: string; load_date: string; unload_date: string; load_place: string; unload_place: string;
   weight: number; client_name?: string; driver_id?: string; vehicle_id?: string; done: boolean; manual_amount?: number;
-  tax_included?: boolean; toll_amount?: number;
+  tax_included?: boolean; toll_amount?: number; ai_tsumi?: boolean; ai_tsumi_group?: string | null;
 }
 interface PriceEntry {
   client_name: string; load_place: string; unload_place: string;
@@ -242,35 +242,74 @@ function SalesContent() {
     const suffix = invoiceSuffix.trim() ? `-${invoiceSuffix.trim()}` : "";
     const invoiceNo = `${dateTo.replaceAll("-", "").slice(0, 6)}-${String(clients.indexOf(clientName) + 1).padStart(3, "0")}${suffix}`;
 
-    const hasTaxIncludedRows = taxEnabled && items.some(s => s.tax_included);
-    const hasTollRows = items.some(s => (s.toll_amount ?? 0) > 0);
+    // 相積みグループ（ai_tsumi_group）は請求書上1行にまとめる（積み地・下ろし先は「・」で連結）
+    type InvoiceLine = {
+      date: string; loadPlace: string; unloadPlace: string; weight: number;
+      isSpot: boolean; priceStr: string; amount: number; taxIncluded: boolean; toll: number; vehicleId?: string;
+    };
+    const seenGroups = new Set<string>();
+    const lines: InvoiceLine[] = [];
+    for (const s of items) {
+      if (s.ai_tsumi && s.ai_tsumi_group) {
+        if (seenGroups.has(s.ai_tsumi_group)) continue;
+        seenGroups.add(s.ai_tsumi_group);
+        const grp = items.filter(x => x.ai_tsumi_group === s.ai_tsumi_group);
+        const loadPlace = [...new Set(grp.map(x => x.load_place).filter(Boolean))].join("・");
+        const unloadPlace = [...new Set(grp.map(x => x.unload_place).filter(Boolean))].join("・");
+        const weight = grp.reduce((sum, x) => sum + (x.weight || 0), 0);
+        const amount = grp.reduce((sum, x) => sum + calcAmount(x), 0);
+        const isSpot = grp.some(x => (x.manual_amount ?? 0) > 0);
+        const p = findPrice(grp[0]);
+        lines.push({
+          date: grp[0].unload_date || grp[0].load_date,
+          loadPlace, unloadPlace, weight, isSpot,
+          priceStr: isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+          amount,
+          taxIncluded: !!grp[0].tax_included,
+          toll: grp.reduce((sum, x) => sum + (x.toll_amount || 0), 0),
+          vehicleId: grp[0].vehicle_id,
+        });
+      } else {
+        const p = findPrice(s);
+        const isSpot = (s.manual_amount ?? 0) > 0;
+        lines.push({
+          date: s.unload_date || s.load_date,
+          loadPlace: s.load_place || "", unloadPlace: s.unload_place || "", weight: s.weight || 0, isSpot,
+          priceStr: isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+          amount: calcAmount(s),
+          taxIncluded: !!s.tax_included,
+          toll: s.toll_amount || 0,
+          vehicleId: s.vehicle_id,
+        });
+      }
+    }
+
+    const hasTaxIncludedRows = taxEnabled && lines.some(l => l.taxIncluded);
+    const hasTollRows = lines.some(l => l.toll > 0);
     let taxableSubtotal = 0;   // 税別（10%加算対象）
     let includedSubtotal = 0;  // 税込（そのまま）
     let grandWeight = 0;
     let itemTollTotal = 0;     // 配車ごとに記録された高速代の合計
-    const rows = items.map(s => {
-      const p = findPrice(s);
-      const amount = calcAmount(s);
-      if (taxEnabled && s.tax_included) includedSubtotal += amount;
-      else taxableSubtotal += amount;
-      grandWeight += s.weight || 0;
-      itemTollTotal += s.toll_amount || 0;
-      const weightT = s.weight ? s.weight.toLocaleString() : "-";
-      const priceStr = (s.manual_amount ?? 0) > 0 ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-");
+    const rows = lines.map(l => {
+      if (taxEnabled && l.taxIncluded) includedSubtotal += l.amount;
+      else taxableSubtotal += l.amount;
+      grandWeight += l.weight;
+      itemTollTotal += l.toll;
+      const weightT = l.weight ? l.weight.toLocaleString() : "-";
       const taxCell = hasTaxIncludedRows
-        ? `<td style="text-align:center;font-size:11px">${s.tax_included ? "税込" : "税別"}</td>`
+        ? `<td style="text-align:center;font-size:11px">${l.taxIncluded ? "税込" : "税別"}</td>`
         : "";
       const vehicleCell = showVehicleNo
-        ? `<td style="font-size:11px;white-space:nowrap">${(s.vehicle_id && vehicleMap[s.vehicle_id]) || "-"}</td>`
+        ? `<td style="font-size:11px;white-space:nowrap">${(l.vehicleId && vehicleMap[l.vehicleId]) || "-"}</td>`
         : "";
       const tollCell = hasTollRows
-        ? `<td style="text-align:right;font-size:11px">${s.toll_amount ? `¥${s.toll_amount.toLocaleString()}` : "-"}</td>`
+        ? `<td style="text-align:right;font-size:11px">${l.toll ? `¥${l.toll.toLocaleString()}` : "-"}</td>`
         : "";
       return `<tr>
-        <td>${s.unload_date || s.load_date}</td>${vehicleCell}<td>${s.load_place || ""}</td><td>${s.unload_place || ""}</td>
-        <td style="text-align:right">${weightT}</td><td style="text-align:right">${priceStr}</td>
+        <td>${l.date}</td>${vehicleCell}<td>${l.loadPlace}</td><td>${l.unloadPlace}</td>
+        <td style="text-align:right">${weightT}</td><td style="text-align:right">${l.priceStr}</td>
         ${taxCell}
-        <td style="text-align:right">${amount ? `¥${amount.toLocaleString()}` : "-"}</td>
+        <td style="text-align:right">${l.amount ? `¥${l.amount.toLocaleString()}` : "-"}</td>
         ${tollCell}
       </tr>`;
     }).join("");
