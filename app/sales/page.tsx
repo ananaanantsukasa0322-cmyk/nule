@@ -26,7 +26,7 @@ function loadIssuerInfo(name: string): IssuerInfo {
 interface Schedule {
   id: string; load_date: string; unload_date: string; load_place: string; unload_place: string;
   weight: number; client_name?: string; driver_id?: string; vehicle_id?: string; done: boolean; manual_amount?: number;
-  tax_included?: boolean;
+  tax_included?: boolean; toll_amount?: number;
 }
 interface PriceEntry {
   client_name: string; load_place: string; unload_place: string;
@@ -180,6 +180,23 @@ function SalesContent() {
     loadData();
   }
 
+  async function updateTollAmount(id: string, value: string) {
+    const amount = value === "" ? null : Number(value);
+    if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
+      show("高速代は0以上の数値を入力してください", "error");
+      return;
+    }
+    const before = schedules.find(s => s.id === id)?.toll_amount ?? null;
+    if ((before ?? null) === (amount ?? null)) return;
+    const res = await fetch(`/api/schedules/${id}`, {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toll_amount: amount }),
+    });
+    if (res.ok) show(amount === null ? "高速代を解除しました" : `高速代 ${formatCurrency(amount)} を保存しました`);
+    else show("高速代の保存に失敗しました", "error");
+    loadData();
+  }
+
   const clients = [...new Set(schedules.map(s => s.client_name).filter(Boolean) as string[])].sort();
   const filtered = clientFilter ? schedules.filter(s => s.client_name === clientFilter) : schedules;
   const totalAmount = filtered.reduce((sum, s) => sum + calcAmount(s), 0);
@@ -226,15 +243,18 @@ function SalesContent() {
     const invoiceNo = `${dateTo.replaceAll("-", "").slice(0, 6)}-${String(clients.indexOf(clientName) + 1).padStart(3, "0")}${suffix}`;
 
     const hasTaxIncludedRows = taxEnabled && items.some(s => s.tax_included);
+    const hasTollRows = items.some(s => (s.toll_amount ?? 0) > 0);
     let taxableSubtotal = 0;   // 税別（10%加算対象）
     let includedSubtotal = 0;  // 税込（そのまま）
     let grandWeight = 0;
+    let itemTollTotal = 0;     // 配車ごとに記録された高速代の合計
     const rows = items.map(s => {
       const p = findPrice(s);
       const amount = calcAmount(s);
       if (taxEnabled && s.tax_included) includedSubtotal += amount;
       else taxableSubtotal += amount;
       grandWeight += s.weight || 0;
+      itemTollTotal += s.toll_amount || 0;
       const weightT = s.weight ? s.weight.toLocaleString() : "-";
       const priceStr = (s.manual_amount ?? 0) > 0 ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-");
       const taxCell = hasTaxIncludedRows
@@ -243,18 +263,25 @@ function SalesContent() {
       const vehicleCell = showVehicleNo
         ? `<td style="font-size:11px;white-space:nowrap">${(s.vehicle_id && vehicleMap[s.vehicle_id]) || "-"}</td>`
         : "";
+      const tollCell = hasTollRows
+        ? `<td style="text-align:right;font-size:11px">${s.toll_amount ? `¥${s.toll_amount.toLocaleString()}` : "-"}</td>`
+        : "";
       return `<tr>
         <td>${s.unload_date || s.load_date}</td>${vehicleCell}<td>${s.load_place || ""}</td><td>${s.unload_place || ""}</td>
         <td style="text-align:right">${weightT}</td><td style="text-align:right">${priceStr}</td>
         ${taxCell}
         <td style="text-align:right">${amount ? `¥${amount.toLocaleString()}` : "-"}</td>
+        ${tollCell}
       </tr>`;
     }).join("");
 
     const tax = taxEnabled ? Math.floor(taxableSubtotal * 0.1) : 0;
-    const toll = Math.max(0, Number(tollAmount) || 0);
+    const extraToll = Math.max(0, Number(tollAmount) || 0);
+    const toll = itemTollTotal + extraToll;
     const total = taxableSubtotal + tax + includedSubtotal + toll;
-    const tollRow = toll > 0 ? `<div class="summary-row"><span>高速代</span><span>¥${toll.toLocaleString()}</span></div>` : "";
+    const tollRow = toll > 0
+      ? `<div class="summary-row"><span>高速代${itemTollTotal > 0 && extraToll > 0 ? `（配車分¥${itemTollTotal.toLocaleString()}＋追加¥${extraToll.toLocaleString()}）` : ""}</span><span>¥${toll.toLocaleString()}</span></div>`
+      : "";
 
     let taxRows: string;
     if (taxEnabled && hasTaxIncludedRows) {
@@ -274,6 +301,7 @@ function SalesContent() {
     }
     const taxHeaderCell = hasTaxIncludedRows ? `<th style="text-align:center">税区分</th>` : "";
     const vehicleHeaderCell = showVehicleNo ? `<th>車番</th>` : "";
+    const tollHeaderCell = hasTollRows ? `<th style="text-align:right">高速代</th>` : "";
 
     const html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
       <title>請求書 - ${formalName}</title>
@@ -323,7 +351,7 @@ function SalesContent() {
         </div>
       </div>
       <table>
-        <thead><tr><th>日付</th>${vehicleHeaderCell}<th>積み地</th><th>下ろし先</th><th style="text-align:right">重量(kg)</th><th style="text-align:right">単価</th>${taxHeaderCell}<th style="text-align:right">金額</th></tr></thead>
+        <thead><tr><th>日付</th>${vehicleHeaderCell}<th>積み地</th><th>下ろし先</th><th style="text-align:right">重量(kg)</th><th style="text-align:right">単価</th>${taxHeaderCell}<th style="text-align:right">金額</th>${tollHeaderCell}</tr></thead>
         <tbody>${rows}</tbody>
       </table>
       <div class="summary">
@@ -373,7 +401,7 @@ function SalesContent() {
           <input type="checkbox" checked={showVehicleNo} onChange={e => setShowVehicleNo(e.target.checked)} />
           請求書に車番を表示
         </label>
-        <div><label className="block text-xs text-muted mb-1">高速代（任意・今回の請求書に加算）</label>
+        <div><label className="block text-xs text-muted mb-1">追加の高速代（任意・配車ごとの記録に上乗せ）</label>
           <input type="number" min="0" step="1" value={tollAmount} onChange={e => setTollAmount(e.target.value)}
             placeholder="例: 15000" className="w-32" /></div>
       </div>
@@ -428,7 +456,7 @@ function SalesContent() {
             <th><input type="checkbox"
               checked={filtered.length > 0 && filtered.every(s => selectedIds.has(s.id))}
               onChange={toggleSelectAllFiltered} /></th>
-            <th>日付</th><th>荷主</th><th>積み地</th><th>下ろし先</th><th>重量(kg)</th><th>単価</th><th>スポット金額</th><th>税区分</th><th>確定金額</th>
+            <th>日付</th><th>荷主</th><th>積み地</th><th>下ろし先</th><th>重量(kg)</th><th>単価</th><th>スポット金額</th><th>高速代</th><th>税区分</th><th>確定金額</th>
           </tr></thead>
           <tbody>
             {filtered.map(s => {
@@ -451,6 +479,15 @@ function SalesContent() {
                       placeholder="直接入力"
                       className="bg-transparent border-b border-border text-sm w-28 outline-none focus:border-amber-400 text-right"
                       onBlur={e => updateManualAmount(s.id, e.target.value)}
+                    />
+                  </td>
+                  <td>
+                    <input
+                      type="number"
+                      defaultValue={s.toll_amount ?? ""}
+                      placeholder="例: 2500"
+                      className="bg-transparent border-b border-border text-sm w-24 outline-none focus:border-amber-400 text-right"
+                      onBlur={e => updateTollAmount(s.id, e.target.value)}
                     />
                   </td>
                   <td>
