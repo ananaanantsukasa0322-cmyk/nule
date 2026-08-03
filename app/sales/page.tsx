@@ -58,6 +58,7 @@ function SalesContent() {
   const [invoiceSuffix, setInvoiceSuffix] = useState("");
   const [showVehicleNo, setShowVehicleNo] = useState(false);
   const [vehicleMap, setVehicleMap] = useState<Record<string, string>>({});
+  const [tollAmount, setTollAmount] = useState("");
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => {
@@ -251,20 +252,25 @@ function SalesContent() {
     }).join("");
 
     const tax = taxEnabled ? Math.floor(taxableSubtotal * 0.1) : 0;
-    const total = taxableSubtotal + tax + includedSubtotal;
+    const toll = Math.max(0, Number(tollAmount) || 0);
+    const total = taxableSubtotal + tax + includedSubtotal + toll;
+    const tollRow = toll > 0 ? `<div class="summary-row"><span>高速代</span><span>¥${toll.toLocaleString()}</span></div>` : "";
 
     let taxRows: string;
     if (taxEnabled && hasTaxIncludedRows) {
       taxRows = `<div class="summary-row"><span>課税分 小計（税抜）</span><span>¥${taxableSubtotal.toLocaleString()}</span></div>
          <div class="summary-row"><span>消費税（10%）</span><span>¥${tax.toLocaleString()}</span></div>
          <div class="summary-row"><span>税込分 小計</span><span>¥${includedSubtotal.toLocaleString()}</span></div>
+         ${tollRow}
          <div class="summary-row summary-total"><span>合計金額（税込）</span><span>¥${total.toLocaleString()}</span></div>`;
     } else if (taxEnabled) {
       taxRows = `<div class="summary-row"><span>小計（税抜）</span><span>¥${taxableSubtotal.toLocaleString()}</span></div>
          <div class="summary-row"><span>消費税（10%）</span><span>¥${tax.toLocaleString()}</span></div>
+         ${tollRow}
          <div class="summary-row summary-total"><span>合計金額（税込）</span><span>¥${total.toLocaleString()}</span></div>`;
     } else {
-      taxRows = `<div class="summary-row summary-total"><span>合計金額</span><span>¥${total.toLocaleString()}</span></div>`;
+      taxRows = `${tollRow}
+         <div class="summary-row summary-total"><span>合計金額</span><span>¥${total.toLocaleString()}</span></div>`;
     }
     const taxHeaderCell = hasTaxIncludedRows ? `<th style="text-align:center">税区分</th>` : "";
     const vehicleHeaderCell = showVehicleNo ? `<th>車番</th>` : "";
@@ -367,6 +373,9 @@ function SalesContent() {
           <input type="checkbox" checked={showVehicleNo} onChange={e => setShowVehicleNo(e.target.checked)} />
           請求書に車番を表示
         </label>
+        <div><label className="block text-xs text-muted mb-1">高速代（任意・今回の請求書に加算）</label>
+          <input type="number" min="0" step="1" value={tollAmount} onChange={e => setTollAmount(e.target.value)}
+            placeholder="例: 15000" className="w-32" /></div>
       </div>
 
       <div className="bg-[#111] border border-border rounded-lg p-5 mb-6">
