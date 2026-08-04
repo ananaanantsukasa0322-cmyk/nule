@@ -90,7 +90,10 @@ function SalesContent() {
     const vmap: Record<string, string> = {};
     for (const veh of (Array.isArray(v) ? v : []) as { id: string; number?: string; head_number?: string; trailer_number?: string }[]) {
       const num = veh.number || veh.head_number || veh.trailer_number || "";
-      if (num) vmap[veh.id] = num;
+      if (num) {
+        const digits = num.match(/\d+/g)?.join("") || "";
+        vmap[veh.id] = digits ? digits.slice(-4) : num;
+      }
     }
     setVehicleMap(vmap);
     setSchedules((s.dispatches || []) as Schedule[]);
