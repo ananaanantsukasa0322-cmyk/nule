@@ -206,7 +206,7 @@ function SalesContent() {
   const selectedRows = schedules.filter(s => selectedIds.has(s.id));
   const selectedTotal = selectedRows.reduce((sum, s) => sum + calcAmount(s), 0);
   const selectedTaxable = selectedRows.filter(s => !s.tax_included).reduce((sum, s) => sum + calcAmount(s), 0);
-  const selectedGrandTotal = selectedTaxable + Math.floor(selectedTaxable * 0.1) + (selectedTotal - selectedTaxable);
+  const selectedGrandTotal = selectedTaxable + Math.round(selectedTaxable * 0.1) + (selectedTotal - selectedTaxable);
 
   function generateSelectedInvoice() {
     if (!selectedRows.length) return;
@@ -329,7 +329,7 @@ function SalesContent() {
       </tr>`;
     }).join("");
 
-    const tax = taxEnabled ? Math.floor(taxableSubtotal * 0.1) : 0;
+    const tax = taxEnabled ? Math.round(taxableSubtotal * 0.1) : 0;
     const extraToll = Math.max(0, Number(tollAmount) || 0);
     const toll = itemTollTotal + extraToll;
     const total = taxableSubtotal + tax + includedSubtotal + toll;
