@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     if (error) throw error
     return Response.json(data)
   } catch (e) {
-    const msg = e instanceof Error ? e.message : ''
+    const msg = e instanceof Error ? e.message : (typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e))
     if (msg === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
     return Response.json({ error: msg }, { status: 500 })
   }
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (error) { console.error('POST insert error:', error, 'cleaned:', JSON.stringify(cleaned)); throw error }
     return Response.json(data, { status: 201 })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : ''
+    const msg = e instanceof Error ? e.message : (typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e))
     if (msg === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
     console.error('schedules POST error:', e)
     return Response.json({ error: msg }, { status: 500 })
@@ -76,10 +76,10 @@ export async function PUT(request: NextRequest) {
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
     for (const key of allowed) { if (key in body) { let v = body[key]; if (key === 'vehicle_id' && (!v || v === '')) v = null; updateData[key] = v; } }
     const { data, error } = await supabase.from('schedules').update(updateData).eq('id', id).select('*').single()
-    if (error) throw error
+    if (error) { console.error('PUT update error:', error, 'updateData:', JSON.stringify(updateData)); throw error }
     return Response.json(data)
   } catch (e) {
-    const msg = e instanceof Error ? e.message : ''
+    const msg = e instanceof Error ? e.message : (typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e))
     if (msg === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
     return Response.json({ error: msg }, { status: 500 })
   }
@@ -93,7 +93,7 @@ export async function DELETE(request: NextRequest) {
     if (error) throw error
     return Response.json({ success: true })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : ''
+    const msg = e instanceof Error ? e.message : (typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e))
     if (msg === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
     return Response.json({ error: msg }, { status: 500 })
   }

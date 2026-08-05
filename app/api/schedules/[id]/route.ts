@@ -24,7 +24,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (error) throw error
     return Response.json(data)
   } catch (e) {
-    const msg = e instanceof Error ? e.message : ''
+    const msg = e instanceof Error ? e.message : (typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e))
     if (msg === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
     console.error('schedules PUT error:', e)
     return Response.json({ error: msg }, { status: 500 })
@@ -39,7 +39,7 @@ export async function DELETE(_request: NextRequest, { params }: { params: Promis
     if (error) throw error
     return Response.json({ success: true })
   } catch (e) {
-    const msg = e instanceof Error ? e.message : ''
+    const msg = e instanceof Error ? e.message : (typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e))
     if (msg === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
     return Response.json({ error: msg }, { status: 500 })
   }
