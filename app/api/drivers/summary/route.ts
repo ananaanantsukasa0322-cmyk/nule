@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
     function findPrice(s: { client_name?: string; load_place?: string; unload_place?: string; weight?: number }) {
       const vt = (s.weight || 0) >= 15000 ? 'トレーラー' : '大型'
       function search(matchFn: (p: typeof prices[0]) => boolean) {
-        return prices.find(p => matchFn(p) && p.vehicle_type === vt)
-          || prices.find(p => matchFn(p) && !p.vehicle_type)
+        return prices.find(p => p.price_type !== 'daily' && matchFn(p) && p.vehicle_type === vt)
+          || prices.find(p => p.price_type !== 'daily' && matchFn(p) && !p.vehicle_type)
       }
       let p = search(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place)
       if (!p) p = search(p => p.client_name === s.client_name && matchPlace(p.load_place ?? '', s.load_place ?? '') && matchPlace(p.unload_place ?? '', s.unload_place ?? ''))

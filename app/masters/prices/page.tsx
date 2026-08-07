@@ -72,8 +72,10 @@ function PricesContent() {
     const body = {
       ...form,
       per_ton_rate: form.price_type === "per_ton" ? rate : null,
-      fixed_amount: form.price_type === "fixed" ? rate : null,
-      vehicle_type: form.vehicle_type || null,
+      fixed_amount: form.price_type !== "per_ton" ? rate : null,
+      load_place: form.price_type === "daily" ? "" : form.load_place,
+      unload_place: form.price_type === "daily" ? "" : form.unload_place,
+      vehicle_type: form.price_type === "daily" ? null : (form.vehicle_type || null),
     };
     const method = editingId ? "PUT" : "POST";
     const payload = editingId ? { ...body, id: editingId } : body;
@@ -243,9 +245,9 @@ function PricesContent() {
                 <td className="text-sm">{p.client_name || "—"}</td>
                 <td className="text-sm">{p.load_place || "—"}</td>
                 <td className="text-sm">{p.unload_place || "—"}</td>
-                <td className="text-xs text-muted">{p.vehicle_type || "全て"}</td>
-                <td><span className="text-xs px-2 py-0.5 rounded bg-accent">{p.price_type === "per_ton" ? "t単価" : "固定"}</span></td>
-                <td className="text-sm">{p.price_type === "per_ton" ? `${fmt(p.per_ton_rate)}/t` : fmt(p.fixed_amount)}</td>
+                <td className="text-xs text-muted">{p.price_type === "daily" ? "—" : (p.vehicle_type || "全て")}</td>
+                <td><span className={`text-xs px-2 py-0.5 rounded ${p.price_type === "daily" ? "bg-amber-500/20 text-amber-400" : "bg-accent"}`}>{p.price_type === "per_ton" ? "t単価" : p.price_type === "daily" ? "常用(日額)" : "固定"}</span></td>
+                <td className="text-sm">{p.price_type === "per_ton" ? `${fmt(p.per_ton_rate)}/t` : p.price_type === "daily" ? `${fmt(p.fixed_amount)}/日` : fmt(p.fixed_amount)}</td>
                 <td>
                   <div className="flex gap-2">
                     <button onClick={() => openEdit(p)} className="text-xs text-muted hover:text-white">編集</button>
@@ -265,26 +267,39 @@ function PricesContent() {
           <datalist id="dl-pd">{knownDests.map(c => <option key={c} value={c} />)}</datalist>
           <div><label className="block text-xs text-muted mb-1">荷主</label>
             <input type="text" list="dl-pc" value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} className="w-full" required /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="block text-xs text-muted mb-1">積み地</label>
-              <input type="text" list="dl-po" value={form.load_place} onChange={e => setForm({ ...form, load_place: e.target.value })} className="w-full" /></div>
-            <div><label className="block text-xs text-muted mb-1">下ろし先</label>
-              <input type="text" list="dl-pd" value={form.unload_place} onChange={e => setForm({ ...form, unload_place: e.target.value })} className="w-full" /></div>
-          </div>
-          <div><label className="block text-xs text-muted mb-1">車両タイプ</label>
-            <select value={form.vehicle_type} onChange={e => setForm({ ...form, vehicle_type: e.target.value })} className="w-full">
-              <option value="">全て（共通）</option>
-              <option value="トレーラー">トレーラー</option>
-              <option value="大型">大型</option>
-            </select></div>
+          {form.price_type !== "daily" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div><label className="block text-xs text-muted mb-1">積み地</label>
+                <input type="text" list="dl-po" value={form.load_place} onChange={e => setForm({ ...form, load_place: e.target.value })} className="w-full" /></div>
+              <div><label className="block text-xs text-muted mb-1">下ろし先</label>
+                <input type="text" list="dl-pd" value={form.unload_place} onChange={e => setForm({ ...form, unload_place: e.target.value })} className="w-full" /></div>
+            </div>
+          )}
+          {form.price_type !== "daily" && (
+            <div><label className="block text-xs text-muted mb-1">車両タイプ</label>
+              <select value={form.vehicle_type} onChange={e => setForm({ ...form, vehicle_type: e.target.value })} className="w-full">
+                <option value="">全て（共通）</option>
+                <option value="トレーラー">トレーラー</option>
+                <option value="大型">大型</option>
+              </select></div>
+          )}
           <div><label className="block text-xs text-muted mb-1">単価タイプ</label>
             <select value={form.price_type} onChange={e => setForm({ ...form, price_type: e.target.value })} className="w-full">
               <option value="per_ton">t単価（円/t）</option>
               <option value="fixed">固定金額（円/回）</option>
+              <option value="daily">常用（円/日・参考値）</option>
             </select></div>
+          {form.price_type === "daily" && (
+            <p className="text-xs text-amber-400 bg-amber-500/10 rounded px-2 py-1.5">
+              往復など1日に複数件登録する場合の目安表示専用です。自動計算には使われません。配車登録時にこの荷主の日額が表示されるので、代表の1件にスポット金額として入力してください。
+            </p>
+          )}
           {form.price_type === "per_ton" ? (
             <div><label className="block text-xs text-muted mb-1">t単価（円）</label>
               <input type="number" step="1" value={form.per_ton_rate} onChange={e => setForm({ ...form, per_ton_rate: e.target.value })} className="w-full" required /></div>
+          ) : form.price_type === "daily" ? (
+            <div><label className="block text-xs text-muted mb-1">日額（円/日）</label>
+              <input type="number" step="1" value={form.fixed_amount} onChange={e => setForm({ ...form, fixed_amount: e.target.value })} className="w-full" required /></div>
           ) : (
             <div><label className="block text-xs text-muted mb-1">固定金額（円）</label>
               <input type="number" step="1" value={form.fixed_amount} onChange={e => setForm({ ...form, fixed_amount: e.target.value })} className="w-full" required /></div>

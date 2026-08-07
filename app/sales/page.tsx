@@ -128,9 +128,9 @@ function SalesContent() {
     }
 
     function search(matchFn: (p: PriceEntry) => boolean): PriceEntry | undefined {
-      // 車両タイプ一致を優先、なければ「全て」
-      return prices.find(p => matchFn(p) && p.vehicle_type === vt)
-        || prices.find(p => matchFn(p) && !p.vehicle_type);
+      // 常用（daily）は目安表示専用で自動計算には使わない
+      return prices.find(p => p.price_type !== "daily" && matchFn(p) && p.vehicle_type === vt)
+        || prices.find(p => p.price_type !== "daily" && matchFn(p) && !p.vehicle_type);
     }
 
     // 1. 完全一致
