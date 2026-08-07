@@ -269,7 +269,7 @@ function SalesContent() {
         lines.push({
           date: grp[0].unload_date || grp[0].load_date,
           loadPlace, unloadPlace, weight, isSpot,
-          priceStr: isSpot ? "スポット" : isJouyou ? "常用" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+          priceStr: isJouyou ? "常用" : isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
           amount,
           taxIncluded: !!grp[0].tax_included,
           toll: grp.reduce((sum, x) => sum + (x.toll_amount || 0), 0),
@@ -282,7 +282,7 @@ function SalesContent() {
         lines.push({
           date: s.unload_date || s.load_date,
           loadPlace: s.load_place || "", unloadPlace: s.unload_place || "", weight: s.weight || 0, isSpot,
-          priceStr: isSpot ? "スポット" : isJouyou ? "常用" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+          priceStr: isJouyou ? "常用" : isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
           amount: calcAmount(s),
           taxIncluded: !!s.tax_included,
           toll: s.toll_amount || 0,
@@ -523,14 +523,14 @@ function SalesContent() {
               const isSpot = (s.manual_amount ?? 0) > 0;
               const isJouyou = !!s.is_jouyou;
               return (
-                <tr key={s.id} className={selectedIds.has(s.id) ? "bg-blue-500/10" : isSpot ? "bg-amber-500/5" : isJouyou ? "bg-purple-500/5" : ""}>
+                <tr key={s.id} className={selectedIds.has(s.id) ? "bg-blue-500/10" : isJouyou ? "bg-purple-500/5" : isSpot ? "bg-amber-500/5" : ""}>
                   <td><input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSelect(s.id)} /></td>
                   <td className="text-sm">{s.unload_date || s.load_date}</td>
                   <td className="text-sm">{s.client_name || "—"}</td>
                   <td className="text-sm">{s.load_place}</td>
                   <td className="text-sm">{s.unload_place}</td>
                   <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
-                  <td className="text-sm text-muted">{isSpot ? <span className="text-xs text-amber-400">スポット</span> : isJouyou ? <span className="text-xs text-purple-400" title="常用配車のため単価マスタは使われません">常用</span> : (p.rate ? (p.type === "per_ton" ? `¥${p.rate}/t` : formatCurrency(p.rate)) : "—")}</td>
+                  <td className="text-sm text-muted">{isJouyou ? <span className="text-xs text-purple-400" title="常用配車のため単価マスタは使われません">常用</span> : isSpot ? <span className="text-xs text-amber-400">スポット</span> : (p.rate ? (p.type === "per_ton" ? `¥${p.rate}/t` : formatCurrency(p.rate)) : "—")}</td>
                   <td>
                     <input
                       type="number"
