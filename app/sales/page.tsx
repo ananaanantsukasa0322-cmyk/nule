@@ -251,6 +251,7 @@ function SalesContent() {
     type InvoiceLine = {
       date: string; loadPlace: string; unloadPlace: string; weight: number;
       isSpot: boolean; priceStr: string; amount: number; taxIncluded: boolean; toll: number; vehicleId?: string;
+      jouyouKey?: string;
     };
     const seenGroups = new Set<string>();
     const lines: InvoiceLine[] = [];
@@ -274,6 +275,7 @@ function SalesContent() {
           taxIncluded: !!grp[0].tax_included,
           toll: grp.reduce((sum, x) => sum + (x.toll_amount || 0), 0),
           vehicleId: grp[0].vehicle_id,
+          jouyouKey: isJouyou ? `${grp[0].unload_date || grp[0].load_date}|${grp[0].driver_id || ""}` : undefined,
         });
       } else {
         const p = findPrice(s);
@@ -287,12 +289,48 @@ function SalesContent() {
           taxIncluded: !!s.tax_included,
           toll: s.toll_amount || 0,
           vehicleId: s.vehicle_id,
+          jouyouKey: isJouyou ? `${s.unload_date || s.load_date}|${s.driver_id || ""}` : undefined,
         });
       }
     }
 
-    const hasTaxIncludedRows = taxEnabled && lines.some(l => l.taxIncluded);
-    const hasTollRows = lines.some(l => l.toll > 0);
+    // 常用（jouyouKey）が同じ行を隣接させ、金額欄をrowspanで1セルにまとめられるようにする
+    const stableLines: InvoiceLine[] = [];
+    const placedJouyouKeys = new Set<string>();
+    for (const l of lines) {
+      if (l.jouyouKey) {
+        if (placedJouyouKeys.has(l.jouyouKey)) continue; // 同キーの行はまとめて後で挿入済み
+        placedJouyouKeys.add(l.jouyouKey);
+        stableLines.push(...lines.filter(x => x.jouyouKey === l.jouyouKey));
+      } else {
+        stableLines.push(l);
+      }
+    }
+    // 金額欄のrowspan情報（先頭行のインデックス→{件数, 合計金額}）
+    const jouyouSpan = new Map<number, { span: number; total: number }>();
+    const skipAmountCell = new Set<number>();
+    {
+      let i = 0;
+      while (i < stableLines.length) {
+        const key = stableLines[i].jouyouKey;
+        if (key) {
+          let j = i;
+          let total = 0;
+          while (j < stableLines.length && stableLines[j].jouyouKey === key) { total += stableLines[j].amount; j++; }
+          const span = j - i;
+          if (span > 1) {
+            jouyouSpan.set(i, { span, total });
+            for (let k = i + 1; k < j; k++) skipAmountCell.add(k);
+          }
+          i = j;
+        } else {
+          i++;
+        }
+      }
+    }
+
+    const hasTaxIncludedRows = taxEnabled && stableLines.some(l => l.taxIncluded);
+    const hasTollRows = stableLines.some(l => l.toll > 0);
 
     // 明細行数に応じてフォント・余白を自動で詰め、1ページに収まりやすくする
     const rowCount = lines.length;
@@ -309,7 +347,7 @@ function SalesContent() {
     let includedSubtotal = 0;  // 税込（そのまま）
     let grandWeight = 0;
     let itemTollTotal = 0;     // 配車ごとに記録された高速代の合計
-    const rows = lines.map(l => {
+    const rows = stableLines.map((l, idx) => {
       if (taxEnabled && l.taxIncluded) includedSubtotal += l.amount;
       else taxableSubtotal += l.amount;
       grandWeight += l.weight;
@@ -324,11 +362,20 @@ function SalesContent() {
       const tollCell = hasTollRows
         ? `<td style="text-align:right;font-size:${cellFs}px">${l.toll ? `¥${l.toll.toLocaleString()}` : "-"}</td>`
         : "";
+      let amountCell: string;
+      if (skipAmountCell.has(idx)) {
+        amountCell = "";
+      } else if (jouyouSpan.has(idx)) {
+        const { span, total } = jouyouSpan.get(idx)!;
+        amountCell = `<td rowspan="${span}" style="text-align:right;vertical-align:middle;background:rgba(167,139,250,0.06)">${total ? `¥${total.toLocaleString()}` : "-"}</td>`;
+      } else {
+        amountCell = `<td style="text-align:right">${l.amount ? `¥${l.amount.toLocaleString()}` : "-"}</td>`;
+      }
       return `<tr>
         <td>${l.date}</td>${vehicleCell}<td>${l.loadPlace}</td><td>${l.unloadPlace}</td>
         <td style="text-align:right">${weightT}</td><td style="text-align:right">${l.priceStr}</td>
         ${taxCell}
-        <td style="text-align:right">${l.amount ? `¥${l.amount.toLocaleString()}` : "-"}</td>
+        ${amountCell}
         ${tollCell}
       </tr>`;
     }).join("");
