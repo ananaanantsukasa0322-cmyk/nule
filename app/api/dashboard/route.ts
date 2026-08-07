@@ -23,18 +23,16 @@ export async function GET() {
     const sixMonthsAgoFirst = ymd(new Date(Date.UTC(y, mo - 5, 1)))
 
     // スケジュールは直近6ヶ月分を1クエリで取得し、集計はすべてメモリ上で行う
-    const [schedulesRes, pricesRes, jouyouRes] = await Promise.all([
+    const [schedulesRes, pricesRes] = await Promise.all([
       supabase.from('schedules')
-        .select('unload_date,client_name,load_place,unload_place,weight,driver_id,manual_amount')
+        .select('unload_date,client_name,load_place,unload_place,weight,driver_id,manual_amount,is_jouyou')
         .gte('unload_date', sixMonthsAgoFirst)
         .lte('unload_date', lastDay),
       supabase.from('prices').select('client_name,load_place,unload_place,price_type,per_ton_rate,fixed_amount,vehicle_type').eq('is_active', true),
-      supabase.from('drivers').select('id').eq('is_jouyou', true),
     ])
 
     const allSchedules = schedulesRes.data || []
     const prices = pricesRes.data || []
-    const jouyouDriverIds = new Set((jouyouRes.data || []).map(d => d.id))
     const driverMap = await buildDriverNameMap()
 
     const schedules = allSchedules.filter(s => s.unload_date >= firstDay && s.unload_date <= lastDay)
@@ -79,10 +77,10 @@ export async function GET() {
       return p
     }
 
-    function calcAmount(s: { weight?: number; manual_amount?: number; driver_id?: string | null }, p: typeof prices[0] | undefined) {
+    function calcAmount(s: { weight?: number; manual_amount?: number; is_jouyou?: boolean }, p: typeof prices[0] | undefined) {
       if ((s.manual_amount ?? 0) > 0) return s.manual_amount!
-      // 常用ドライバーは単価マスタを使わない（スポット金額に入力した分だけ計上）
-      if (s.driver_id && jouyouDriverIds.has(s.driver_id)) return 0
+      // 常用（この配車）は単価マスタを使わない（スポット金額に入力した分だけ計上）
+      if (s.is_jouyou) return 0
       if (!p) return 0
       if (p.price_type === 'per_ton' && p.per_ton_rate) return Math.round(p.per_ton_rate * (s.weight || 0) / 1000)
       if (p.fixed_amount) return p.fixed_amount
