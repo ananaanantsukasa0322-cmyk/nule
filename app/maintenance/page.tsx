@@ -13,7 +13,7 @@ interface Vehicle {
   repair_note?: string | null; caution?: string | null;
 }
 interface Driver {
-  id: string; name: string; phone?: string; status?: string;
+  id: string; name: string; phone?: string; status?: string; is_jouyou?: boolean;
 }
 interface Notice {
   id: string; title: string; body: string; target: string; department: string;
@@ -58,7 +58,7 @@ function MaintenanceContent() {
   const [vForm, setVForm] = useState({ shaken_date: "", inspection_3m_date: "", repair_note: "", caution: "", payload: "", number: "", head_number: "", trailer_number: "", kind: "" });
 
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
-  const [dForm, setDForm] = useState({ name: "", phone: "", status: "" });
+  const [dForm, setDForm] = useState({ name: "", phone: "", status: "", is_jouyou: false });
 
   const [nForm, setNForm] = useState({ title: "", body: "", target: "all", department: "整備", due_date: "" });
 
@@ -106,7 +106,7 @@ function MaintenanceContent() {
 
   function openDriverEdit(d: Driver) {
     setEditDriver(d);
-    setDForm({ name: d.name, phone: d.phone || "", status: d.status || "稼働中" });
+    setDForm({ name: d.name, phone: d.phone || "", status: d.status || "稼働中", is_jouyou: !!d.is_jouyou });
   }
 
   async function saveDriver(e: React.FormEvent) {
@@ -114,7 +114,7 @@ function MaintenanceContent() {
     if (!editDriver) return;
     const res = await fetch(`/api/drivers/${editDriver.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...editDriver, name: dForm.name, phone: dForm.phone, status: dForm.status }),
+      body: JSON.stringify({ ...editDriver, name: dForm.name, phone: dForm.phone, status: dForm.status, is_jouyou: dForm.is_jouyou }),
     });
     if (res.ok) { show("ドライバー情報を保存しました"); setEditDriver(null); loadData(); }
     else { const d = await res.json().catch(() => ({})); show(d.error || "保存に失敗しました", "error"); }
@@ -273,15 +273,16 @@ function MaintenanceContent() {
           </div>
           <div className="overflow-x-auto">
             <table>
-              <thead><tr><th>名前</th><th>連絡先</th><th>状態</th><th>操作</th></tr></thead>
+              <thead><tr><th>名前</th><th>連絡先</th><th>状態</th><th>常用</th><th>操作</th></tr></thead>
               <tbody>
                 {drivers.length === 0 ? (
-                  <tr><td colSpan={4} className="text-center text-muted py-8">ドライバーデータがありません</td></tr>
+                  <tr><td colSpan={5} className="text-center text-muted py-8">ドライバーデータがありません</td></tr>
                 ) : drivers.map(d => (
                   <tr key={d.id}>
                     <td className="text-sm">{d.name}</td>
                     <td className="text-sm text-muted">{d.phone || "—"}</td>
                     <td className="text-xs">{d.status || "稼働中"}</td>
+                    <td>{d.is_jouyou ? <span className="text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-400">常用</span> : <span className="text-xs text-muted">—</span>}</td>
                     <td><button onClick={() => openDriverEdit(d)} className="text-xs text-muted hover:text-white">編集</button></td>
                   </tr>
                 ))}
@@ -377,6 +378,13 @@ function MaintenanceContent() {
               <option value="休職中">休職中</option>
               <option value="退職">退職</option>
             </select></div>
+          <label className="flex items-start gap-2 text-sm cursor-pointer bg-amber-500/10 border border-amber-700/40 rounded-md px-3 py-2.5">
+            <input type="checkbox" checked={dForm.is_jouyou} onChange={e => setDForm({ ...dForm, is_jouyou: e.target.checked })} className="mt-0.5" />
+            <span>
+              <span className="block font-medium text-amber-400">常用ドライバー</span>
+              <span className="block text-xs text-muted mt-0.5">このドライバーの配車は単価マスタを使わず、売上・請求ページの「スポット金額」に入力した金額だけが売上に計上されます（往復で複数件登録しても自動で二重計上されません）</span>
+            </span>
+          </label>
           <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200">保存</button>
         </form>
       </Modal>

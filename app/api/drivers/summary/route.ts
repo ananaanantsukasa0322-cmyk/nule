@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     const [schedulesRes, driversRes, youshasRes, pricesRes] = await Promise.all([
       query.order('unload_date', { ascending: false }),
-      supabase.from('drivers').select('id, name, payment_percentage').eq('is_active', true),
+      supabase.from('drivers').select('id, name, payment_percentage, is_jouyou').eq('is_active', true),
       supabase.from('youshas').select('id, name, display_name'),
       supabase.from('prices').select('*').eq('is_active', true),
     ])
@@ -34,6 +34,8 @@ export async function GET(request: NextRequest) {
 
     const pctMap: Record<string, number> = {}
     for (const d of drivers) pctMap[d.id] = Number(d.payment_percentage) || 0
+
+    const jouyouDriverIds = new Set(drivers.filter(d => d.is_jouyou).map(d => d.id))
 
     function matchPlace(pp: string, sp: string): boolean {
       if (!pp || !sp) return !pp
@@ -54,8 +56,10 @@ export async function GET(request: NextRequest) {
       return p
     }
 
-    function calcAmount(s: { weight?: number; manual_amount?: number }, p: typeof prices[0] | undefined): number {
+    function calcAmount(s: { weight?: number; manual_amount?: number; driver_id?: string | null }, p: typeof prices[0] | undefined): number {
       if ((s.manual_amount ?? 0) > 0) return s.manual_amount!
+      // 常用ドライバーは単価マスタを使わない（スポット金額に入力した分だけ計上）
+      if (s.driver_id && jouyouDriverIds.has(s.driver_id)) return 0
       if (!p) return 0
       if (p.price_type === 'per_ton' && p.per_ton_rate) return Math.round(p.per_ton_rate * (s.weight || 0) / 1000)
       if (p.fixed_amount) return p.fixed_amount

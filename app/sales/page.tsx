@@ -58,6 +58,7 @@ function SalesContent() {
   const [invoiceSuffix, setInvoiceSuffix] = useState("");
   const [showVehicleNo, setShowVehicleNo] = useState(false);
   const [vehicleMap, setVehicleMap] = useState<Record<string, string>>({});
+  const [jouyouDriverIds, setJouyouDriverIds] = useState<Set<string>>(new Set());
   const [tollAmount, setTollAmount] = useState("");
 
   function toggleSelect(id: string) {
@@ -81,12 +82,16 @@ function SalesContent() {
   }
 
   const loadData = useCallback(async () => {
-    const [s, p, c, v] = await Promise.all([
+    const [s, p, c, v, d] = await Promise.all([
       fetch(`/api/sales?date_from=${dateFrom}&date_to=${dateTo}`).then(r => r.json()),
       fetch("/api/masters/prices").then(r => r.json()),
       fetch("/api/masters/clients").then(r => r.json()),
       fetch("/api/vehicles").then(r => r.json()).catch(() => []),
+      fetch("/api/drivers").then(r => r.json()).catch(() => []),
     ]);
+    setJouyouDriverIds(new Set(
+      (Array.isArray(d) ? d : []).filter((x: { is_jouyou?: boolean }) => x.is_jouyou).map((x: { id: string }) => x.id)
+    ));
     const vmap: Record<string, string> = {};
     for (const veh of (Array.isArray(v) ? v : []) as { id: string; number?: string; head_number?: string; trailer_number?: string }[]) {
       const num = veh.number || veh.head_number || veh.trailer_number || "";
@@ -149,6 +154,8 @@ function SalesContent() {
 
   function calcAmount(s: Schedule): number {
     if ((s.manual_amount ?? 0) > 0) return s.manual_amount!;
+    // 常用ドライバーは単価マスタを使わない（スポット金額に入力した分だけ計上）
+    if (s.driver_id && jouyouDriverIds.has(s.driver_id)) return 0;
     const p = findPrice(s);
     if (p.type === "per_ton") return Math.round(p.rate * (s.weight || 0) / 1000);
     if (p.type === "fixed") return p.rate;
@@ -262,11 +269,12 @@ function SalesContent() {
         const weight = grp.reduce((sum, x) => sum + (x.weight || 0), 0);
         const amount = grp.reduce((sum, x) => sum + calcAmount(x), 0);
         const isSpot = grp.some(x => (x.manual_amount ?? 0) > 0);
+        const isJouyou = !!(grp[0].driver_id && jouyouDriverIds.has(grp[0].driver_id));
         const p = findPrice(grp[0]);
         lines.push({
           date: grp[0].unload_date || grp[0].load_date,
           loadPlace, unloadPlace, weight, isSpot,
-          priceStr: isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+          priceStr: isSpot ? "スポット" : isJouyou ? "常用" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
           amount,
           taxIncluded: !!grp[0].tax_included,
           toll: grp.reduce((sum, x) => sum + (x.toll_amount || 0), 0),
@@ -275,10 +283,11 @@ function SalesContent() {
       } else {
         const p = findPrice(s);
         const isSpot = (s.manual_amount ?? 0) > 0;
+        const isJouyou = !!(s.driver_id && jouyouDriverIds.has(s.driver_id));
         lines.push({
           date: s.unload_date || s.load_date,
           loadPlace: s.load_place || "", unloadPlace: s.unload_place || "", weight: s.weight || 0, isSpot,
-          priceStr: isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+          priceStr: isSpot ? "スポット" : isJouyou ? "常用" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
           amount: calcAmount(s),
           taxIncluded: !!s.tax_included,
           toll: s.toll_amount || 0,
@@ -517,6 +526,7 @@ function SalesContent() {
               const p = findPrice(s);
               const amount = calcAmount(s);
               const isSpot = (s.manual_amount ?? 0) > 0;
+              const isJouyou = !!(s.driver_id && jouyouDriverIds.has(s.driver_id));
               return (
                 <tr key={s.id} className={selectedIds.has(s.id) ? "bg-blue-500/10" : isSpot ? "bg-amber-500/5" : ""}>
                   <td><input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSelect(s.id)} /></td>
@@ -525,7 +535,7 @@ function SalesContent() {
                   <td className="text-sm">{s.load_place}</td>
                   <td className="text-sm">{s.unload_place}</td>
                   <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
-                  <td className="text-sm text-muted">{isSpot ? <span className="text-xs text-amber-400">スポット</span> : (p.rate ? (p.type === "per_ton" ? `¥${p.rate}/t` : formatCurrency(p.rate)) : "—")}</td>
+                  <td className="text-sm text-muted">{isSpot ? <span className="text-xs text-amber-400">スポット</span> : isJouyou ? <span className="text-xs text-amber-400" title="常用ドライバーのため単価マスタは使われません">常用</span> : (p.rate ? (p.type === "per_ton" ? `¥${p.rate}/t` : formatCurrency(p.rate)) : "—")}</td>
                   <td>
                     <input
                       type="number"
