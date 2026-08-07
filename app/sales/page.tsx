@@ -253,9 +253,43 @@ function SalesContent() {
       isSpot: boolean; priceStr: string; amount: number; taxIncluded: boolean; toll: number; vehicleId?: string;
     };
     const seenGroups = new Set<string>();
+    const seenJouyouDays = new Set<string>();
     const lines: InvoiceLine[] = [];
     for (const s of items) {
-      if (s.ai_tsumi && s.ai_tsumi_group) {
+      if (s.is_jouyou) {
+        // 常用は相積み有無を問わず、同じ日・同じドライバーの分をまとめて1行にする
+        const dayKey = `${s.unload_date || s.load_date}|${s.driver_id || ""}`;
+        if (seenJouyouDays.has(dayKey)) continue;
+        seenJouyouDays.add(dayKey);
+        const grp = items.filter(x => x.is_jouyou && `${x.unload_date || x.load_date}|${x.driver_id || ""}` === dayKey);
+        const loadPlace = [...new Set(grp.map(x => x.load_place).filter(Boolean))].join("・");
+        const unloadPlace = [...new Set(grp.map(x => x.unload_place).filter(Boolean))].join("・");
+        const weight = grp.reduce((sum, x) => sum + (x.weight || 0), 0);
+        // 相積みグループが混ざっていても二重計上しないよう、グループ単位でユニークに集計
+        const countedAitsuGroups = new Set<string>();
+        let amount = 0, toll = 0;
+        for (const x of grp) {
+          if (x.ai_tsumi && x.ai_tsumi_group) {
+            if (countedAitsuGroups.has(x.ai_tsumi_group)) continue;
+            countedAitsuGroups.add(x.ai_tsumi_group);
+            const aGrp = items.filter(y => y.ai_tsumi_group === x.ai_tsumi_group);
+            amount += aGrp.reduce((sum, y) => sum + calcAmount(y), 0);
+            toll += aGrp.reduce((sum, y) => sum + (y.toll_amount || 0), 0);
+          } else {
+            amount += calcAmount(x);
+            toll += x.toll_amount || 0;
+          }
+        }
+        lines.push({
+          date: grp[0].unload_date || grp[0].load_date,
+          loadPlace, unloadPlace, weight, isSpot: true,
+          priceStr: "常用",
+          amount,
+          taxIncluded: !!grp[0].tax_included,
+          toll,
+          vehicleId: grp[0].vehicle_id,
+        });
+      } else if (s.ai_tsumi && s.ai_tsumi_group) {
         if (seenGroups.has(s.ai_tsumi_group)) continue;
         seenGroups.add(s.ai_tsumi_group);
         const grp = items.filter(x => x.ai_tsumi_group === s.ai_tsumi_group);
@@ -264,12 +298,11 @@ function SalesContent() {
         const weight = grp.reduce((sum, x) => sum + (x.weight || 0), 0);
         const amount = grp.reduce((sum, x) => sum + calcAmount(x), 0);
         const isSpot = grp.some(x => (x.manual_amount ?? 0) > 0);
-        const isJouyou = grp.some(x => x.is_jouyou);
         const p = findPrice(grp[0]);
         lines.push({
           date: grp[0].unload_date || grp[0].load_date,
           loadPlace, unloadPlace, weight, isSpot,
-          priceStr: isJouyou ? "常用" : isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+          priceStr: isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
           amount,
           taxIncluded: !!grp[0].tax_included,
           toll: grp.reduce((sum, x) => sum + (x.toll_amount || 0), 0),
@@ -278,11 +311,10 @@ function SalesContent() {
       } else {
         const p = findPrice(s);
         const isSpot = (s.manual_amount ?? 0) > 0;
-        const isJouyou = !!s.is_jouyou;
         lines.push({
           date: s.unload_date || s.load_date,
           loadPlace: s.load_place || "", unloadPlace: s.unload_place || "", weight: s.weight || 0, isSpot,
-          priceStr: isJouyou ? "常用" : isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+          priceStr: isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
           amount: calcAmount(s),
           taxIncluded: !!s.tax_included,
           toll: s.toll_amount || 0,
