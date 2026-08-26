@@ -14,13 +14,15 @@ interface IssuerInfo {
 }
 const EMPTY_ISSUER: IssuerInfo = { address: "", tel: "", invoiceNo: "", bank: "", dueText: "翌月末日" };
 
-function loadIssuerInfo(name: string): IssuerInfo {
-  if (typeof window === "undefined") return { ...EMPTY_ISSUER };
-  try {
-    const raw = localStorage.getItem(`nule-issuer-${name}`);
-    if (raw) return { ...EMPTY_ISSUER, ...JSON.parse(raw) };
-  } catch { /* 破損データは無視してデフォルトを使う */ }
-  return { ...EMPTY_ISSUER };
+function issuerFromApi(data: Record<string, unknown> | null | undefined): IssuerInfo {
+  if (!data) return { ...EMPTY_ISSUER };
+  return {
+    address: (data.address as string) || "",
+    tel: (data.tel as string) || "",
+    invoiceNo: (data.invoice_no as string) || "",
+    bank: (data.bank as string) || "",
+    dueText: (data.due_text as string) || "翌月末日",
+  };
 }
 
 interface Schedule {
@@ -54,6 +56,7 @@ function SalesContent() {
   const [taxEnabled, setTaxEnabled] = useState(true);
   const [showIssuerModal, setShowIssuerModal] = useState(false);
   const [issuerForm, setIssuerForm] = useState<IssuerInfo>({ ...EMPTY_ISSUER });
+  const [issuerCache, setIssuerCache] = useState<Record<string, IssuerInfo>>({});
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [invoiceSuffix, setInvoiceSuffix] = useState("");
   const [showVehicleNo, setShowVehicleNo] = useState(false);
@@ -68,16 +71,44 @@ function SalesContent() {
     });
   }
 
-  function openIssuerModal() {
-    setIssuerForm(loadIssuerInfo(issuerName));
+  const fetchIssuer = useCallback(async (name: string) => {
+    if (issuerCache[name]) return issuerCache[name];
+    try {
+      const res = await fetch(`/api/issuer-settings?issuer_name=${encodeURIComponent(name)}`);
+      const data = await res.json();
+      const info = issuerFromApi(data.issuer);
+      setIssuerCache(prev => ({ ...prev, [name]: info }));
+      return info;
+    } catch {
+      return { ...EMPTY_ISSUER };
+    }
+  }, [issuerCache]);
+
+  useEffect(() => { fetchIssuer(issuerName); }, [issuerName]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function openIssuerModal() {
+    setIssuerForm(await fetchIssuer(issuerName));
     setShowIssuerModal(true);
   }
 
-  function saveIssuerInfo(e: React.FormEvent) {
+  async function saveIssuerInfo(e: React.FormEvent) {
     e.preventDefault();
-    localStorage.setItem(`nule-issuer-${issuerName}`, JSON.stringify(issuerForm));
-    setShowIssuerModal(false);
-    show("発行者情報を保存しました");
+    const res = await fetch("/api/issuer-settings", {
+      method: "PUT", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        issuer_name: issuerName,
+        address: issuerForm.address, tel: issuerForm.tel,
+        invoice_no: issuerForm.invoiceNo, bank: issuerForm.bank, due_text: issuerForm.dueText,
+      }),
+    });
+    if (res.ok) {
+      setIssuerCache(prev => ({ ...prev, [issuerName]: issuerForm }));
+      setShowIssuerModal(false);
+      show("発行者情報を保存しました（他のPCからも使えます）");
+    } else {
+      const data = await res.json().catch(() => ({}));
+      show(data.error || "保存に失敗しました", "error");
+    }
   }
 
   const loadData = useCallback(async () => {
@@ -243,7 +274,7 @@ function SalesContent() {
     if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
 
     const formalName = clientMap[clientName] || clientName;
-    const issuer = loadIssuerInfo(issuerName);
+    const issuer = issuerCache[issuerName] || EMPTY_ISSUER;
     const suffix = invoiceSuffix.trim() ? `-${invoiceSuffix.trim()}` : "";
     const invoiceNo = `${dateTo.replaceAll("-", "").slice(0, 6)}-${String(clients.indexOf(clientName) + 1).padStart(3, "0")}${suffix}`;
 
