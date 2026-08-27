@@ -29,6 +29,7 @@ interface Schedule {
   id: string; load_date: string; unload_date: string; load_place: string; unload_place: string;
   weight: number; client_name?: string; driver_id?: string; vehicle_id?: string; done: boolean; manual_amount?: number;
   tax_included?: boolean; toll_amount?: number; ai_tsumi?: boolean; ai_tsumi_group?: string | null; is_jouyou?: boolean;
+  vehicle_no_override?: string | null;
 }
 interface PriceEntry {
   client_name: string; load_place: string; unload_place: string;
@@ -282,7 +283,7 @@ function SalesContent() {
     type InvoiceLine = {
       date: string; loadPlace: string; unloadPlace: string; weight: number;
       isSpot: boolean; priceStr: string; amount: number; taxIncluded: boolean; toll: number; vehicleId?: string;
-      jouyouKey?: string;
+      vehicleLabel?: string; jouyouKey?: string;
     };
     const seenGroups = new Set<string>();
     const lines: InvoiceLine[] = [];
@@ -306,6 +307,7 @@ function SalesContent() {
           taxIncluded: !!grp[0].tax_included,
           toll: grp.reduce((sum, x) => sum + (x.toll_amount || 0), 0),
           vehicleId: grp[0].vehicle_id,
+          vehicleLabel: grp.find(x => x.vehicle_no_override)?.vehicle_no_override || undefined,
           jouyouKey: isJouyou ? `${grp[0].unload_date || grp[0].load_date}|${grp[0].driver_id || ""}` : undefined,
         });
       } else {
@@ -320,6 +322,7 @@ function SalesContent() {
           taxIncluded: !!s.tax_included,
           toll: s.toll_amount || 0,
           vehicleId: s.vehicle_id,
+          vehicleLabel: s.vehicle_no_override || undefined,
           jouyouKey: isJouyou ? `${s.unload_date || s.load_date}|${s.driver_id || ""}` : undefined,
         });
       }
@@ -388,7 +391,7 @@ function SalesContent() {
         ? `<td style="text-align:center;font-size:${cellFs}px">${l.taxIncluded ? "税込" : "税別"}</td>`
         : "";
       const vehicleCell = showVehicleNo
-        ? `<td style="font-size:${cellFs}px;white-space:nowrap">${(l.vehicleId && vehicleMap[l.vehicleId]) || "-"}</td>`
+        ? `<td style="font-size:${cellFs}px;white-space:nowrap">${l.vehicleLabel || (l.vehicleId && vehicleMap[l.vehicleId]) || "-"}</td>`
         : "";
       const tollCell = hasTollRows
         ? `<td style="text-align:right;font-size:${cellFs}px">${l.toll ? `¥${l.toll.toLocaleString()}` : "-"}</td>`
