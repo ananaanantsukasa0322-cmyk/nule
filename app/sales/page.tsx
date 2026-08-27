@@ -29,7 +29,12 @@ interface Schedule {
   id: string; load_date: string; unload_date: string; load_place: string; unload_place: string;
   weight: number; client_name?: string; driver_id?: string; vehicle_id?: string; done: boolean; manual_amount?: number;
   tax_included?: boolean; toll_amount?: number; ai_tsumi?: boolean; ai_tsumi_group?: string | null; is_jouyou?: boolean;
-  vehicle_no_override?: string | null;
+  vehicle_no_override?: string | null; head_number_override?: string | null; trailer_number_override?: string | null;
+}
+
+function shortVehicleNo(raw: string): string {
+  const digits = raw.match(/\d+/g)?.join("") || "";
+  return digits ? digits.slice(-4) : raw;
 }
 interface PriceEntry {
   client_name: string; load_place: string; unload_place: string;
@@ -307,7 +312,11 @@ function SalesContent() {
           taxIncluded: !!grp[0].tax_included,
           toll: grp.reduce((sum, x) => sum + (x.toll_amount || 0), 0),
           vehicleId: grp[0].vehicle_id,
-          vehicleLabel: grp.find(x => x.vehicle_no_override)?.vehicle_no_override || undefined,
+          vehicleLabel: (() => {
+            const src = grp.find(x => x.head_number_override || x.trailer_number_override || x.vehicle_no_override);
+            const raw = src?.head_number_override || src?.trailer_number_override || src?.vehicle_no_override;
+            return raw ? shortVehicleNo(raw) : undefined;
+          })(),
           jouyouKey: isJouyou ? `${grp[0].unload_date || grp[0].load_date}|${grp[0].driver_id || ""}` : undefined,
         });
       } else {
@@ -322,7 +331,10 @@ function SalesContent() {
           taxIncluded: !!s.tax_included,
           toll: s.toll_amount || 0,
           vehicleId: s.vehicle_id,
-          vehicleLabel: s.vehicle_no_override || undefined,
+          vehicleLabel: (() => {
+            const raw = s.head_number_override || s.trailer_number_override || s.vehicle_no_override;
+            return raw ? shortVehicleNo(raw) : undefined;
+          })(),
           jouyouKey: isJouyou ? `${s.unload_date || s.load_date}|${s.driver_id || ""}` : undefined,
         });
       }
