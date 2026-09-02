@@ -25,6 +25,7 @@ function PricesContent() {
     price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "",
   });
   const [comboLoadPlaces, setComboLoadPlaces] = useState<string[]>(["", ""]);
+  const [comboUnloadPlaces, setComboUnloadPlaces] = useState<string[]>([""]);
 
   const loadData = useCallback(async () => {
     const [p, s] = await Promise.all([
@@ -51,6 +52,7 @@ function PricesContent() {
   function resetForm() {
     setForm({ client_name: "", load_place: "", unload_place: "", price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "" });
     setComboLoadPlaces(["", ""]);
+    setComboUnloadPlaces([""]);
     setEditingId(null);
   }
 
@@ -61,10 +63,13 @@ function PricesContent() {
       fixed_amount: p.fixed_amount?.toString() || "", vehicle_type: p.vehicle_type || "",
     });
     if (p.price_type === "combo") {
-      const parts = p.load_place.split("|").filter(Boolean);
-      setComboLoadPlaces(parts.length >= 2 ? parts : [...parts, ""]);
+      const loadParts = p.load_place.split("|").filter(Boolean);
+      const unloadParts = p.unload_place.split("|").filter(Boolean);
+      setComboLoadPlaces(loadParts.length ? loadParts : ["", ""]);
+      setComboUnloadPlaces(unloadParts.length ? unloadParts : [""]);
     } else {
       setComboLoadPlaces(["", ""]);
+      setComboUnloadPlaces([""]);
     }
     setEditingId(p.id);
     setShowModal(true);
@@ -73,14 +78,11 @@ function PricesContent() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (form.price_type === "combo") {
-      const places = comboLoadPlaces.map(s => s.trim()).filter(Boolean);
+      const loadPlaces = comboLoadPlaces.map(s => s.trim()).filter(Boolean);
+      const unloadPlaces = comboUnloadPlaces.map(s => s.trim()).filter(Boolean);
       const rate = Number(form.fixed_amount);
-      if (places.length < 2) {
-        show("積み地を2件以上入力してください", "error");
-        return;
-      }
-      if (!form.unload_place.trim()) {
-        show("下ろし先を入力してください", "error");
+      if (loadPlaces.length < 1 || unloadPlaces.length < 1 || (loadPlaces.length + unloadPlaces.length) < 3) {
+        show("積み地・下ろし先のどちらかを2件以上入力してください", "error");
         return;
       }
       if (!Number.isFinite(rate) || rate <= 0) {
@@ -88,7 +90,7 @@ function PricesContent() {
         return;
       }
       const body = {
-        client_name: form.client_name, load_places: places, unload_place: form.unload_place,
+        client_name: form.client_name, load_places: loadPlaces, unload_places: unloadPlaces,
         price_type: "combo", fixed_amount: rate,
       };
       const method = editingId ? "PUT" : "POST";
@@ -283,7 +285,7 @@ function PricesContent() {
                 <td><input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)} /></td>
                 <td className="text-sm">{p.client_name || "—"}</td>
                 <td className="text-sm">{p.price_type === "combo" ? p.load_place.split("|").join(" ・ ") : (p.load_place || "—")}</td>
-                <td className="text-sm">{p.unload_place || "—"}</td>
+                <td className="text-sm">{p.price_type === "combo" ? p.unload_place.split("|").join(" ・ ") : (p.unload_place || "—")}</td>
                 <td className="text-xs text-muted">{p.price_type === "daily" || p.price_type === "combo" ? "—" : (p.vehicle_type || "全て")}</td>
                 <td><span className={`text-xs px-2 py-0.5 rounded ${p.price_type === "daily" ? "bg-amber-500/20 text-amber-400" : p.price_type === "combo" ? "bg-blue-500/20 text-blue-400" : "bg-accent"}`}>{p.price_type === "per_ton" ? "t単価" : p.price_type === "daily" ? "常用(日額)" : p.price_type === "combo" ? "相積み合計" : "固定"}</span></td>
                 <td className="text-sm">{p.price_type === "per_ton" ? `${fmt(p.per_ton_rate)}/t` : p.price_type === "daily" ? `${fmt(p.fixed_amount)}/日` : fmt(p.fixed_amount)}</td>
@@ -337,16 +339,16 @@ function PricesContent() {
           {form.price_type === "combo" && (
             <>
               <p className="text-xs text-blue-400 bg-blue-500/10 rounded px-2 py-1.5">
-                同じ荷主で複数の積み地から1箇所に下ろす配送を、1つの合計金額で契約している場合に使います。相積み登録された配車の積み地が全て一致すると自動でこの金額が使われます。
+                複数の積み地→1箇所下ろし、または1箇所積み→複数の下ろし先を、1つの合計金額で契約している場合に使います。相積み登録された配車の積み地・下ろし先が全て一致すると自動でこの金額が使われます。
               </p>
               <div>
-                <label className="block text-xs text-muted mb-1">積み地（2件以上）</label>
+                <label className="block text-xs text-muted mb-1">積み地</label>
                 <div className="space-y-2">
                   {comboLoadPlaces.map((v, i) => (
                     <div key={i} className="flex gap-2">
                       <input type="text" list="dl-po" value={v} className="w-full"
                         onChange={e => setComboLoadPlaces(prev => prev.map((x, idx) => idx === i ? e.target.value : x))} />
-                      {comboLoadPlaces.length > 2 && (
+                      {comboLoadPlaces.length > 1 && (
                         <button type="button" onClick={() => setComboLoadPlaces(prev => prev.filter((_, idx) => idx !== i))}
                           className="text-xs px-2 text-muted hover:text-danger">削除</button>
                       )}
@@ -356,8 +358,23 @@ function PricesContent() {
                 <button type="button" onClick={() => setComboLoadPlaces(prev => [...prev, ""])}
                   className="text-xs px-3 py-1 mt-2 bg-accent rounded hover:bg-accent/70">+ 積み地を追加</button>
               </div>
-              <div><label className="block text-xs text-muted mb-1">下ろし先</label>
-                <input type="text" list="dl-pd" value={form.unload_place} onChange={e => setForm({ ...form, unload_place: e.target.value })} className="w-full" required /></div>
+              <div>
+                <label className="block text-xs text-muted mb-1">下ろし先</label>
+                <div className="space-y-2">
+                  {comboUnloadPlaces.map((v, i) => (
+                    <div key={i} className="flex gap-2">
+                      <input type="text" list="dl-pd" value={v} className="w-full"
+                        onChange={e => setComboUnloadPlaces(prev => prev.map((x, idx) => idx === i ? e.target.value : x))} />
+                      {comboUnloadPlaces.length > 1 && (
+                        <button type="button" onClick={() => setComboUnloadPlaces(prev => prev.filter((_, idx) => idx !== i))}
+                          className="text-xs px-2 text-muted hover:text-danger">削除</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setComboUnloadPlaces(prev => [...prev, ""])}
+                  className="text-xs px-3 py-1 mt-2 bg-accent rounded hover:bg-accent/70">+ 下ろし先を追加</button>
+              </div>
             </>
           )}
           {form.price_type === "per_ton" ? (

@@ -91,12 +91,11 @@ export async function GET() {
     function findComboPrice(group: typeof allSchedules) {
       if (group.length < 2) return undefined
       const clientName = group[0].client_name
-      const unloadPlaces = [...new Set(group.map(x => x.unload_place).filter(Boolean))]
-      if (unloadPlaces.length !== 1) return undefined
-      const key = comboKey(group.map(x => x.load_place))
-      if (!key) return undefined
+      const loadKey = comboKey(group.map(x => x.load_place))
+      const unloadKey = comboKey(group.map(x => x.unload_place))
+      if (!loadKey || !unloadKey) return undefined
       return prices.find(p => p.price_type === 'combo' && p.client_name === clientName
-        && p.load_place === key && p.unload_place === unloadPlaces[0])
+        && p.load_place === loadKey && p.unload_place === unloadKey)
     }
 
     function calcAmount(s: typeof allSchedules[0]) {

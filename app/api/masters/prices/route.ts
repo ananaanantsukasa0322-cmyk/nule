@@ -26,14 +26,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
 
     if (body.price_type === 'combo') {
-      const key = comboKey(Array.isArray(body.load_places) ? body.load_places : [])
-      if (!key || !body.unload_place || !body.client_name) {
-        return Response.json({ error: '荷主・積み地（2件以上）・下ろし先が必要です' }, { status: 400 })
+      const loadKey = comboKey(Array.isArray(body.load_places) ? body.load_places : [])
+      const unloadKey = comboKey(Array.isArray(body.unload_places) ? body.unload_places : (body.unload_place ? [body.unload_place] : []))
+      if (!loadKey || !unloadKey || !body.client_name) {
+        return Response.json({ error: '荷主・積み地・下ろし先が必要です（どちらかは2件以上）' }, { status: 400 })
       }
       const { data, error } = await supabase.from('prices').insert({
         client_name: body.client_name,
-        load_place: key,
-        unload_place: body.unload_place,
+        load_place: loadKey,
+        unload_place: unloadKey,
         price_type: 'combo',
         per_ton_rate: null,
         fixed_amount: body.fixed_amount || null,
@@ -94,7 +95,9 @@ export async function PUT(request: NextRequest) {
     if (body.price_type === 'combo' && Array.isArray(body.load_places)) {
       updateData.load_place = comboKey(body.load_places) || null
     } else if ('load_place' in body) updateData.load_place = body.load_place || null
-    if ('unload_place' in body) updateData.unload_place = body.unload_place || null
+    if (body.price_type === 'combo' && Array.isArray(body.unload_places)) {
+      updateData.unload_place = comboKey(body.unload_places) || null
+    } else if ('unload_place' in body) updateData.unload_place = body.unload_place || null
     if ('price_type' in body) updateData.price_type = body.price_type
     if ('per_ton_rate' in body) updateData.per_ton_rate = body.per_ton_rate || null
     if ('fixed_amount' in body) updateData.fixed_amount = body.fixed_amount || null

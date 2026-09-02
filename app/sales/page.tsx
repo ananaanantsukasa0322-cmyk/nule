@@ -189,16 +189,15 @@ function SalesContent() {
     return [...new Set(loadPlaces.map(p => (p || "").trim()).filter(Boolean))].sort().join("|");
   }
 
-  // 相積みグループ全体で1件の合計単価が登録されていないか探す
+  // 相積みグループ全体で1件の合計単価が登録されていないか探す（複数積み地→1下ろし／1積み地→複数下ろし の両対応）
   function findComboPrice(group: Schedule[]): PriceEntry | undefined {
     if (group.length < 2) return undefined;
     const clientName = group[0].client_name;
-    const unloadPlaces = [...new Set(group.map(x => x.unload_place).filter(Boolean))];
-    if (unloadPlaces.length !== 1) return undefined; // 下ろし先が揃っている場合のみ対応
-    const key = comboKey(group.map(x => x.load_place));
-    if (!key) return undefined;
+    const loadKey = comboKey(group.map(x => x.load_place));
+    const unloadKey = comboKey(group.map(x => x.unload_place));
+    if (!loadKey || !unloadKey) return undefined;
     return prices.find(p => p.price_type === "combo" && p.client_name === clientName
-      && p.load_place === key && p.unload_place === unloadPlaces[0]);
+      && p.load_place === loadKey && p.unload_place === unloadKey);
   }
 
   function calcAmount(s: Schedule): number {
