@@ -165,9 +165,9 @@ function SalesContent() {
     }
 
     function search(matchFn: (p: PriceEntry) => boolean): PriceEntry | undefined {
-      // 常用（daily）は目安表示専用で自動計算には使わない
-      return prices.find(p => p.price_type !== "daily" && matchFn(p) && p.vehicle_type === vt)
-        || prices.find(p => p.price_type !== "daily" && matchFn(p) && !p.vehicle_type);
+      // 常用（daily）・相積み合計（combo）は目安表示/専用集計用で通常の単価検索には使わない
+      return prices.find(p => p.price_type !== "daily" && p.price_type !== "combo" && matchFn(p) && p.vehicle_type === vt)
+        || prices.find(p => p.price_type !== "daily" && p.price_type !== "combo" && matchFn(p) && !p.vehicle_type);
     }
 
     // 1. 完全一致
@@ -184,10 +184,36 @@ function SalesContent() {
     return { rate: 0, type: "none" };
   }
 
+  // 相積み合計単価のマッチング用キー（積み地の集合を正規化して連結）
+  function comboKey(loadPlaces: string[]): string {
+    return [...new Set(loadPlaces.map(p => (p || "").trim()).filter(Boolean))].sort().join("|");
+  }
+
+  // 相積みグループ全体で1件の合計単価が登録されていないか探す
+  function findComboPrice(group: Schedule[]): PriceEntry | undefined {
+    if (group.length < 2) return undefined;
+    const clientName = group[0].client_name;
+    const unloadPlaces = [...new Set(group.map(x => x.unload_place).filter(Boolean))];
+    if (unloadPlaces.length !== 1) return undefined; // 下ろし先が揃っている場合のみ対応
+    const key = comboKey(group.map(x => x.load_place));
+    if (!key) return undefined;
+    return prices.find(p => p.price_type === "combo" && p.client_name === clientName
+      && p.load_place === key && p.unload_place === unloadPlaces[0]);
+  }
+
   function calcAmount(s: Schedule): number {
     if ((s.manual_amount ?? 0) > 0) return s.manual_amount!;
     // 常用（この配車）は単価マスタを使わない（スポット金額に入力した分だけ計上）
     if (s.is_jouyou) return 0;
+    if (s.ai_tsumi && s.ai_tsumi_group) {
+      const group = schedules.filter(x => x.ai_tsumi_group === s.ai_tsumi_group);
+      const combo = findComboPrice(group);
+      if (combo && combo.fixed_amount) {
+        // グループ内で合計額を持たせるのは1件だけ（id最小の行）にして、単純合計しても二重計上されないようにする
+        const primaryId = [...group].map(x => x.id).sort()[0];
+        return s.id === primaryId ? combo.fixed_amount : 0;
+      }
+    }
     const p = findPrice(s);
     if (p.type === "per_ton") return Math.round(p.rate * (s.weight || 0) / 1000);
     if (p.type === "fixed") return p.rate;
@@ -303,11 +329,12 @@ function SalesContent() {
         const amount = grp.reduce((sum, x) => sum + calcAmount(x), 0);
         const isSpot = grp.some(x => (x.manual_amount ?? 0) > 0);
         const isJouyou = grp.some(x => x.is_jouyou);
+        const combo = findComboPrice(grp);
         const p = findPrice(grp[0]);
         lines.push({
           date: grp[0].unload_date || grp[0].load_date,
           loadPlace, unloadPlace, weight, isSpot,
-          priceStr: isJouyou ? "常用" : isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+          priceStr: isJouyou ? "常用" : isSpot ? "スポット" : combo ? "相積み合計" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
           amount,
           taxIncluded: !!grp[0].tax_included,
           toll: grp.reduce((sum, x) => sum + (x.toll_amount || 0), 0),

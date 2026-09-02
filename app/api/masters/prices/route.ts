@@ -15,10 +15,37 @@ export async function GET() {
   }
 }
 
+// 相積み（複数積み地→1件で合計金額）用のマッチングキー：積み地集合を正規化して連結
+function comboKey(loadPlaces: string[]): string {
+  return [...new Set(loadPlaces.map((p) => (p || '').trim()).filter(Boolean))].sort().join('|')
+}
+
 export async function POST(request: NextRequest) {
   try {
     await requireAuth(['admin', 'office'])
     const body = await request.json()
+
+    if (body.price_type === 'combo') {
+      const key = comboKey(Array.isArray(body.load_places) ? body.load_places : [])
+      if (!key || !body.unload_place || !body.client_name) {
+        return Response.json({ error: '荷主・積み地（2件以上）・下ろし先が必要です' }, { status: 400 })
+      }
+      const { data, error } = await supabase.from('prices').insert({
+        client_name: body.client_name,
+        load_place: key,
+        unload_place: body.unload_place,
+        price_type: 'combo',
+        per_ton_rate: null,
+        fixed_amount: body.fixed_amount || null,
+        vehicle_type: null,
+        is_active: true,
+      }).select()
+      if (error) throw error
+      const { data: existingClient } = await supabase.from('clients').select('id').eq('company_name', body.client_name).maybeSingle()
+      if (!existingClient) await supabase.from('clients').insert({ company_name: body.client_name })
+      return Response.json({ price: data }, { status: 201 })
+    }
+
     const unloadPlaces = (body.unload_place || '').split(/[・／]/).map((s: string) => s.trim()).filter(Boolean)
     const loadPlaces = (body.load_place || '').split(/[・／]/).map((s: string) => s.trim()).filter(Boolean)
     if (!unloadPlaces.length) unloadPlaces.push(body.unload_place || '')
@@ -64,7 +91,9 @@ export async function PUT(request: NextRequest) {
     const body = await request.json()
     const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if ('client_name' in body) updateData.client_name = body.client_name || null
-    if ('load_place' in body) updateData.load_place = body.load_place || null
+    if (body.price_type === 'combo' && Array.isArray(body.load_places)) {
+      updateData.load_place = comboKey(body.load_places) || null
+    } else if ('load_place' in body) updateData.load_place = body.load_place || null
     if ('unload_place' in body) updateData.unload_place = body.unload_place || null
     if ('price_type' in body) updateData.price_type = body.price_type
     if ('per_ton_rate' in body) updateData.per_ton_rate = body.per_ton_rate || null

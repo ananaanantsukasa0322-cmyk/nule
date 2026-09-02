@@ -45,8 +45,8 @@ export async function GET(request: NextRequest) {
     function findPrice(s: { client_name?: string; load_place?: string; unload_place?: string; weight?: number }) {
       const vt = (s.weight || 0) >= 15000 ? 'トレーラー' : '大型'
       function search(matchFn: (p: typeof prices[0]) => boolean) {
-        return prices.find(p => p.price_type !== 'daily' && matchFn(p) && p.vehicle_type === vt)
-          || prices.find(p => p.price_type !== 'daily' && matchFn(p) && !p.vehicle_type)
+        return prices.find(p => p.price_type !== 'daily' && p.price_type !== 'combo' && matchFn(p) && p.vehicle_type === vt)
+          || prices.find(p => p.price_type !== 'daily' && p.price_type !== 'combo' && matchFn(p) && !p.vehicle_type)
       }
       let p = search(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place)
       if (!p) p = search(p => p.client_name === s.client_name && matchPlace(p.load_place ?? '', s.load_place ?? '') && matchPlace(p.unload_place ?? '', s.unload_place ?? ''))
@@ -54,10 +54,42 @@ export async function GET(request: NextRequest) {
       return p
     }
 
-    function calcAmount(s: { weight?: number; manual_amount?: number; is_jouyou?: boolean }, p: typeof prices[0] | undefined): number {
+    // 相積みグループ（ai_tsumi_group）ごとの一覧を事前構築（相積み合計単価の判定に使う）
+    const groupMembers = new Map<string, typeof schedules>()
+    for (const s of schedules) {
+      if (!s.ai_tsumi || !s.ai_tsumi_group) continue
+      const arr = groupMembers.get(s.ai_tsumi_group) || []
+      arr.push(s)
+      groupMembers.set(s.ai_tsumi_group, arr)
+    }
+    function comboKey(loadPlaces: (string | null | undefined)[]): string {
+      return [...new Set(loadPlaces.map(p => (p || '').trim()).filter(Boolean))].sort().join('|')
+    }
+    function findComboPrice(group: typeof schedules) {
+      if (group.length < 2) return undefined
+      const clientName = group[0].client_name
+      const unloadPlaces = [...new Set(group.map(x => x.unload_place).filter(Boolean))]
+      if (unloadPlaces.length !== 1) return undefined
+      const key = comboKey(group.map(x => x.load_place))
+      if (!key) return undefined
+      return prices.find(p => p.price_type === 'combo' && p.client_name === clientName
+        && p.load_place === key && p.unload_place === unloadPlaces[0])
+    }
+
+    function calcAmount(s: { id?: string; weight?: number; manual_amount?: number; is_jouyou?: boolean; ai_tsumi?: boolean; ai_tsumi_group?: string | null; client_name?: string; load_place?: string; unload_place?: string }, p: typeof prices[0] | undefined): number {
       if ((s.manual_amount ?? 0) > 0) return s.manual_amount!
       // 常用（この配車）は単価マスタを使わない（スポット金額に入力した分だけ計上）
       if (s.is_jouyou) return 0
+      if (s.ai_tsumi && s.ai_tsumi_group) {
+        const group = groupMembers.get(s.ai_tsumi_group)
+        if (group) {
+          const combo = findComboPrice(group)
+          if (combo && combo.fixed_amount) {
+            const primaryId = [...group].map(x => x.id).sort()[0]
+            return s.id === primaryId ? combo.fixed_amount : 0
+          }
+        }
+      }
       if (!p) return 0
       if (p.price_type === 'per_ton' && p.per_ton_rate) return Math.round(p.per_ton_rate * (s.weight || 0) / 1000)
       if (p.fixed_amount) return p.fixed_amount

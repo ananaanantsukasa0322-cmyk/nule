@@ -24,6 +24,7 @@ function PricesContent() {
     client_name: "", load_place: "", unload_place: "",
     price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "",
   });
+  const [comboLoadPlaces, setComboLoadPlaces] = useState<string[]>(["", ""]);
 
   const loadData = useCallback(async () => {
     const [p, s] = await Promise.all([
@@ -49,6 +50,7 @@ function PricesContent() {
 
   function resetForm() {
     setForm({ client_name: "", load_place: "", unload_place: "", price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "" });
+    setComboLoadPlaces(["", ""]);
     setEditingId(null);
   }
 
@@ -58,12 +60,49 @@ function PricesContent() {
       price_type: p.price_type, per_ton_rate: p.per_ton_rate?.toString() || "",
       fixed_amount: p.fixed_amount?.toString() || "", vehicle_type: p.vehicle_type || "",
     });
+    if (p.price_type === "combo") {
+      const parts = p.load_place.split("|").filter(Boolean);
+      setComboLoadPlaces(parts.length >= 2 ? parts : [...parts, ""]);
+    } else {
+      setComboLoadPlaces(["", ""]);
+    }
     setEditingId(p.id);
     setShowModal(true);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (form.price_type === "combo") {
+      const places = comboLoadPlaces.map(s => s.trim()).filter(Boolean);
+      const rate = Number(form.fixed_amount);
+      if (places.length < 2) {
+        show("積み地を2件以上入力してください", "error");
+        return;
+      }
+      if (!form.unload_place.trim()) {
+        show("下ろし先を入力してください", "error");
+        return;
+      }
+      if (!Number.isFinite(rate) || rate <= 0) {
+        show("合計金額は1円以上の数値を入力してください", "error");
+        return;
+      }
+      const body = {
+        client_name: form.client_name, load_places: places, unload_place: form.unload_place,
+        price_type: "combo", fixed_amount: rate,
+      };
+      const method = editingId ? "PUT" : "POST";
+      const payload = editingId ? { ...body, id: editingId } : body;
+      const res = await fetch("/api/masters/prices", { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (res.ok) {
+        show(editingId ? "単価を更新しました" : "単価を登録しました");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        show(data.error || "保存に失敗しました", "error");
+      }
+      setShowModal(false); resetForm(); loadData();
+      return;
+    }
     const rate = form.price_type === "per_ton" ? Number(form.per_ton_rate) : Number(form.fixed_amount);
     if (!Number.isFinite(rate) || rate <= 0) {
       show("単価は1円以上の数値を入力してください", "error");
@@ -243,10 +282,10 @@ function PricesContent() {
               <tr key={p.id} className={selected.has(p.id) ? "bg-accent/20" : ""}>
                 <td><input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)} /></td>
                 <td className="text-sm">{p.client_name || "—"}</td>
-                <td className="text-sm">{p.load_place || "—"}</td>
+                <td className="text-sm">{p.price_type === "combo" ? p.load_place.split("|").join(" ・ ") : (p.load_place || "—")}</td>
                 <td className="text-sm">{p.unload_place || "—"}</td>
-                <td className="text-xs text-muted">{p.price_type === "daily" ? "—" : (p.vehicle_type || "全て")}</td>
-                <td><span className={`text-xs px-2 py-0.5 rounded ${p.price_type === "daily" ? "bg-amber-500/20 text-amber-400" : "bg-accent"}`}>{p.price_type === "per_ton" ? "t単価" : p.price_type === "daily" ? "常用(日額)" : "固定"}</span></td>
+                <td className="text-xs text-muted">{p.price_type === "daily" || p.price_type === "combo" ? "—" : (p.vehicle_type || "全て")}</td>
+                <td><span className={`text-xs px-2 py-0.5 rounded ${p.price_type === "daily" ? "bg-amber-500/20 text-amber-400" : p.price_type === "combo" ? "bg-blue-500/20 text-blue-400" : "bg-accent"}`}>{p.price_type === "per_ton" ? "t単価" : p.price_type === "daily" ? "常用(日額)" : p.price_type === "combo" ? "相積み合計" : "固定"}</span></td>
                 <td className="text-sm">{p.price_type === "per_ton" ? `${fmt(p.per_ton_rate)}/t` : p.price_type === "daily" ? `${fmt(p.fixed_amount)}/日` : fmt(p.fixed_amount)}</td>
                 <td>
                   <div className="flex gap-2">
@@ -267,7 +306,7 @@ function PricesContent() {
           <datalist id="dl-pd">{knownDests.map(c => <option key={c} value={c} />)}</datalist>
           <div><label className="block text-xs text-muted mb-1">荷主</label>
             <input type="text" list="dl-pc" value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} className="w-full" required /></div>
-          {form.price_type !== "daily" && (
+          {form.price_type !== "daily" && form.price_type !== "combo" && (
             <div className="grid grid-cols-2 gap-3">
               <div><label className="block text-xs text-muted mb-1">積み地</label>
                 <input type="text" list="dl-po" value={form.load_place} onChange={e => setForm({ ...form, load_place: e.target.value })} className="w-full" /></div>
@@ -275,7 +314,7 @@ function PricesContent() {
                 <input type="text" list="dl-pd" value={form.unload_place} onChange={e => setForm({ ...form, unload_place: e.target.value })} className="w-full" /></div>
             </div>
           )}
-          {form.price_type !== "daily" && (
+          {form.price_type !== "daily" && form.price_type !== "combo" && (
             <div><label className="block text-xs text-muted mb-1">車両タイプ</label>
               <select value={form.vehicle_type} onChange={e => setForm({ ...form, vehicle_type: e.target.value })} className="w-full">
                 <option value="">全て（共通）</option>
@@ -288,17 +327,47 @@ function PricesContent() {
               <option value="per_ton">t単価（円/t）</option>
               <option value="fixed">固定金額（円/回）</option>
               <option value="daily">常用（円/日・参考値）</option>
+              <option value="combo">相積み合計（複数積み地→1件でまとめて）</option>
             </select></div>
           {form.price_type === "daily" && (
             <p className="text-xs text-amber-400 bg-amber-500/10 rounded px-2 py-1.5">
               往復など1日に複数件登録する場合の目安表示専用です。自動計算には使われません。配車登録時にこの荷主の日額が表示されるので、代表の1件にスポット金額として入力してください。
             </p>
           )}
+          {form.price_type === "combo" && (
+            <>
+              <p className="text-xs text-blue-400 bg-blue-500/10 rounded px-2 py-1.5">
+                同じ荷主で複数の積み地から1箇所に下ろす配送を、1つの合計金額で契約している場合に使います。相積み登録された配車の積み地が全て一致すると自動でこの金額が使われます。
+              </p>
+              <div>
+                <label className="block text-xs text-muted mb-1">積み地（2件以上）</label>
+                <div className="space-y-2">
+                  {comboLoadPlaces.map((v, i) => (
+                    <div key={i} className="flex gap-2">
+                      <input type="text" list="dl-po" value={v} className="w-full"
+                        onChange={e => setComboLoadPlaces(prev => prev.map((x, idx) => idx === i ? e.target.value : x))} />
+                      {comboLoadPlaces.length > 2 && (
+                        <button type="button" onClick={() => setComboLoadPlaces(prev => prev.filter((_, idx) => idx !== i))}
+                          className="text-xs px-2 text-muted hover:text-danger">削除</button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setComboLoadPlaces(prev => [...prev, ""])}
+                  className="text-xs px-3 py-1 mt-2 bg-accent rounded hover:bg-accent/70">+ 積み地を追加</button>
+              </div>
+              <div><label className="block text-xs text-muted mb-1">下ろし先</label>
+                <input type="text" list="dl-pd" value={form.unload_place} onChange={e => setForm({ ...form, unload_place: e.target.value })} className="w-full" required /></div>
+            </>
+          )}
           {form.price_type === "per_ton" ? (
             <div><label className="block text-xs text-muted mb-1">t単価（円）</label>
               <input type="number" step="1" value={form.per_ton_rate} onChange={e => setForm({ ...form, per_ton_rate: e.target.value })} className="w-full" required /></div>
           ) : form.price_type === "daily" ? (
             <div><label className="block text-xs text-muted mb-1">日額（円/日）</label>
+              <input type="number" step="1" value={form.fixed_amount} onChange={e => setForm({ ...form, fixed_amount: e.target.value })} className="w-full" required /></div>
+          ) : form.price_type === "combo" ? (
+            <div><label className="block text-xs text-muted mb-1">合計金額（円）</label>
               <input type="number" step="1" value={form.fixed_amount} onChange={e => setForm({ ...form, fixed_amount: e.target.value })} className="w-full" required /></div>
           ) : (
             <div><label className="block text-xs text-muted mb-1">固定金額（円）</label>

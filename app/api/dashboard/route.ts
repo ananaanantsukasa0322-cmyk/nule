@@ -25,7 +25,7 @@ export async function GET() {
     // スケジュールは直近6ヶ月分を1クエリで取得し、集計はすべてメモリ上で行う
     const [schedulesRes, pricesRes] = await Promise.all([
       supabase.from('schedules')
-        .select('unload_date,client_name,load_place,unload_place,weight,driver_id,manual_amount,is_jouyou')
+        .select('id,unload_date,client_name,load_place,unload_place,weight,driver_id,manual_amount,is_jouyou,ai_tsumi,ai_tsumi_group')
         .gte('unload_date', sixMonthsAgoFirst)
         .lte('unload_date', lastDay),
       supabase.from('prices').select('client_name,load_place,unload_place,price_type,per_ton_rate,fixed_amount,vehicle_type').eq('is_active', true),
@@ -67,8 +67,8 @@ export async function GET() {
       const key = `${s.client_name || ''}|${s.load_place || ''}|${s.unload_place || ''}|${vt}`
       if (priceCache.has(key)) return priceCache.get(key)
       function search(matchFn: (p: typeof prices[0]) => boolean) {
-        return prices.find(p => p.price_type !== 'daily' && matchFn(p) && p.vehicle_type === vt)
-          || prices.find(p => p.price_type !== 'daily' && matchFn(p) && !p.vehicle_type)
+        return prices.find(p => p.price_type !== 'daily' && p.price_type !== 'combo' && matchFn(p) && p.vehicle_type === vt)
+          || prices.find(p => p.price_type !== 'daily' && p.price_type !== 'combo' && matchFn(p) && !p.vehicle_type)
       }
       let p = search(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place)
       if (!p) p = search(p => p.client_name === s.client_name && matchPlace(p.load_place, s.load_place || '') && matchPlace(p.unload_place, s.unload_place || ''))
@@ -77,10 +77,43 @@ export async function GET() {
       return p
     }
 
-    function calcAmount(s: { weight?: number; manual_amount?: number; is_jouyou?: boolean }, p: typeof prices[0] | undefined) {
+    // 相積みグループ（ai_tsumi_group）ごとの一覧。荷主とグループIDが分かれば辿れるように事前構築
+    const groupMembers = new Map<string, typeof allSchedules>()
+    for (const s of allSchedules) {
+      if (!s.ai_tsumi || !s.ai_tsumi_group) continue
+      const arr = groupMembers.get(s.ai_tsumi_group) || []
+      arr.push(s)
+      groupMembers.set(s.ai_tsumi_group, arr)
+    }
+    function comboKey(loadPlaces: (string | null | undefined)[]): string {
+      return [...new Set(loadPlaces.map(p => (p || '').trim()).filter(Boolean))].sort().join('|')
+    }
+    function findComboPrice(group: typeof allSchedules) {
+      if (group.length < 2) return undefined
+      const clientName = group[0].client_name
+      const unloadPlaces = [...new Set(group.map(x => x.unload_place).filter(Boolean))]
+      if (unloadPlaces.length !== 1) return undefined
+      const key = comboKey(group.map(x => x.load_place))
+      if (!key) return undefined
+      return prices.find(p => p.price_type === 'combo' && p.client_name === clientName
+        && p.load_place === key && p.unload_place === unloadPlaces[0])
+    }
+
+    function calcAmount(s: typeof allSchedules[0]) {
       if ((s.manual_amount ?? 0) > 0) return s.manual_amount!
       // 常用（この配車）は単価マスタを使わない（スポット金額に入力した分だけ計上）
       if (s.is_jouyou) return 0
+      if (s.ai_tsumi && s.ai_tsumi_group) {
+        const group = groupMembers.get(s.ai_tsumi_group)
+        if (group) {
+          const combo = findComboPrice(group)
+          if (combo && combo.fixed_amount) {
+            const primaryId = [...group].map(x => x.id).sort()[0]
+            return s.id === primaryId ? combo.fixed_amount : 0
+          }
+        }
+      }
+      const p = findPrice(s)
       if (!p) return 0
       if (p.price_type === 'per_ton' && p.per_ton_rate) return Math.round(p.per_ton_rate * (s.weight || 0) / 1000)
       if (p.fixed_amount) return p.fixed_amount
@@ -88,7 +121,7 @@ export async function GET() {
     }
 
     function calcRevenue(scheds: typeof allSchedules) {
-      return scheds.reduce((sum, s) => sum + calcAmount(s, findPrice(s)), 0)
+      return scheds.reduce((sum, s) => sum + calcAmount(s), 0)
     }
     const thisMonthRevenue = calcRevenue(schedules)
     const prevMonthRevenue = calcRevenue(prevSchedules)
@@ -100,7 +133,7 @@ export async function GET() {
       if (!clientRevenue[cn]) clientRevenue[cn] = { name: cn, count: 0, revenue: 0, weight: 0 }
       clientRevenue[cn].count += 1
       clientRevenue[cn].weight += s.weight || 0
-      clientRevenue[cn].revenue += calcAmount(s, findPrice(s))
+      clientRevenue[cn].revenue += calcAmount(s)
     }
     const clientRanking = Object.values(clientRevenue).sort((a, b) => b.revenue - a.revenue || b.count - a.count)
 
