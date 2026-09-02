@@ -26,6 +26,7 @@ function PricesContent() {
   });
   const [comboLoadPlaces, setComboLoadPlaces] = useState<string[]>(["", ""]);
   const [comboUnloadPlaces, setComboUnloadPlaces] = useState<string[]>([""]);
+  const [comboRateType, setComboRateType] = useState<"fixed" | "per_ton">("fixed");
 
   const loadData = useCallback(async () => {
     const [p, s] = await Promise.all([
@@ -53,6 +54,7 @@ function PricesContent() {
     setForm({ client_name: "", load_place: "", unload_place: "", price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "" });
     setComboLoadPlaces(["", ""]);
     setComboUnloadPlaces([""]);
+    setComboRateType("fixed");
     setEditingId(null);
   }
 
@@ -67,9 +69,11 @@ function PricesContent() {
       const unloadParts = p.unload_place.split("|").filter(Boolean);
       setComboLoadPlaces(loadParts.length ? loadParts : ["", ""]);
       setComboUnloadPlaces(unloadParts.length ? unloadParts : [""]);
+      setComboRateType(p.per_ton_rate ? "per_ton" : "fixed");
     } else {
       setComboLoadPlaces(["", ""]);
       setComboUnloadPlaces([""]);
+      setComboRateType("fixed");
     }
     setEditingId(p.id);
     setShowModal(true);
@@ -80,18 +84,20 @@ function PricesContent() {
     if (form.price_type === "combo") {
       const loadPlaces = comboLoadPlaces.map(s => s.trim()).filter(Boolean);
       const unloadPlaces = comboUnloadPlaces.map(s => s.trim()).filter(Boolean);
-      const rate = Number(form.fixed_amount);
+      const rate = comboRateType === "per_ton" ? Number(form.per_ton_rate) : Number(form.fixed_amount);
       if (loadPlaces.length < 1 || unloadPlaces.length < 1 || (loadPlaces.length + unloadPlaces.length) < 3) {
         show("積み地・下ろし先のどちらかを2件以上入力してください", "error");
         return;
       }
       if (!Number.isFinite(rate) || rate <= 0) {
-        show("合計金額は1円以上の数値を入力してください", "error");
+        show(comboRateType === "per_ton" ? "t単価は1円以上の数値を入力してください" : "合計金額は1円以上の数値を入力してください", "error");
         return;
       }
       const body = {
         client_name: form.client_name, load_places: loadPlaces, unload_places: unloadPlaces,
-        price_type: "combo", fixed_amount: rate,
+        price_type: "combo",
+        per_ton_rate: comboRateType === "per_ton" ? rate : null,
+        fixed_amount: comboRateType === "per_ton" ? null : rate,
       };
       const method = editingId ? "PUT" : "POST";
       const payload = editingId ? { ...body, id: editingId } : body;
@@ -288,7 +294,7 @@ function PricesContent() {
                 <td className="text-sm">{p.price_type === "combo" ? p.unload_place.split("|").join(" ・ ") : (p.unload_place || "—")}</td>
                 <td className="text-xs text-muted">{p.price_type === "daily" || p.price_type === "combo" ? "—" : (p.vehicle_type || "全て")}</td>
                 <td><span className={`text-xs px-2 py-0.5 rounded ${p.price_type === "daily" ? "bg-amber-500/20 text-amber-400" : p.price_type === "combo" ? "bg-blue-500/20 text-blue-400" : "bg-accent"}`}>{p.price_type === "per_ton" ? "t単価" : p.price_type === "daily" ? "常用(日額)" : p.price_type === "combo" ? "相積み合計" : "固定"}</span></td>
-                <td className="text-sm">{p.price_type === "per_ton" ? `${fmt(p.per_ton_rate)}/t` : p.price_type === "daily" ? `${fmt(p.fixed_amount)}/日` : fmt(p.fixed_amount)}</td>
+                <td className="text-sm">{p.price_type === "per_ton" ? `${fmt(p.per_ton_rate)}/t` : p.price_type === "daily" ? `${fmt(p.fixed_amount)}/日` : p.price_type === "combo" && p.per_ton_rate ? `${fmt(p.per_ton_rate)}/t（合計重量）` : fmt(p.fixed_amount)}</td>
                 <td>
                   <div className="flex gap-2">
                     <button onClick={() => openEdit(p)} className="text-xs text-muted hover:text-white">編集</button>
@@ -384,8 +390,20 @@ function PricesContent() {
             <div><label className="block text-xs text-muted mb-1">日額（円/日）</label>
               <input type="number" step="1" value={form.fixed_amount} onChange={e => setForm({ ...form, fixed_amount: e.target.value })} className="w-full" required /></div>
           ) : form.price_type === "combo" ? (
-            <div><label className="block text-xs text-muted mb-1">合計金額（円）</label>
-              <input type="number" step="1" value={form.fixed_amount} onChange={e => setForm({ ...form, fixed_amount: e.target.value })} className="w-full" required /></div>
+            <>
+              <div><label className="block text-xs text-muted mb-1">単価方式</label>
+                <select value={comboRateType} onChange={e => setComboRateType(e.target.value as "fixed" | "per_ton")} className="w-full">
+                  <option value="fixed">合計金額（固定）</option>
+                  <option value="per_ton">t単価（グループ合計重量に対して）</option>
+                </select></div>
+              {comboRateType === "per_ton" ? (
+                <div><label className="block text-xs text-muted mb-1">t単価（円）</label>
+                  <input type="number" step="1" value={form.per_ton_rate} onChange={e => setForm({ ...form, per_ton_rate: e.target.value })} className="w-full" required /></div>
+              ) : (
+                <div><label className="block text-xs text-muted mb-1">合計金額（円）</label>
+                  <input type="number" step="1" value={form.fixed_amount} onChange={e => setForm({ ...form, fixed_amount: e.target.value })} className="w-full" required /></div>
+              )}
+            </>
           ) : (
             <div><label className="block text-xs text-muted mb-1">固定金額（円）</label>
               <input type="number" step="1" value={form.fixed_amount} onChange={e => setForm({ ...form, fixed_amount: e.target.value })} className="w-full" required /></div>

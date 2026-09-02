@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         load_place: loadKey,
         unload_place: unloadKey,
         price_type: 'combo',
-        per_ton_rate: null,
+        per_ton_rate: body.per_ton_rate || null,
         fixed_amount: body.fixed_amount || null,
         vehicle_type: null,
         is_active: true,

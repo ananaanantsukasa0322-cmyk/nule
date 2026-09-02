@@ -106,9 +106,12 @@ export async function GET() {
         const group = groupMembers.get(s.ai_tsumi_group)
         if (group) {
           const combo = findComboPrice(group)
-          if (combo && combo.fixed_amount) {
+          if (combo && (combo.fixed_amount || combo.per_ton_rate)) {
+            const total = combo.per_ton_rate
+              ? Math.round(combo.per_ton_rate * group.reduce((sum, x) => sum + (x.weight || 0), 0) / 1000)
+              : combo.fixed_amount!
             const primaryId = [...group].map(x => x.id).sort()[0]
-            return s.id === primaryId ? combo.fixed_amount : 0
+            return s.id === primaryId ? total : 0
           }
         }
       }

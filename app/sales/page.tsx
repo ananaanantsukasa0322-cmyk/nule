@@ -207,10 +207,13 @@ function SalesContent() {
     if (s.ai_tsumi && s.ai_tsumi_group) {
       const group = schedules.filter(x => x.ai_tsumi_group === s.ai_tsumi_group);
       const combo = findComboPrice(group);
-      if (combo && combo.fixed_amount) {
+      if (combo && (combo.fixed_amount || combo.per_ton_rate)) {
+        const total = combo.per_ton_rate
+          ? Math.round(combo.per_ton_rate * group.reduce((sum, x) => sum + (x.weight || 0), 0) / 1000)
+          : combo.fixed_amount!;
         // グループ内で合計額を持たせるのは1件だけ（id最小の行）にして、単純合計しても二重計上されないようにする
         const primaryId = [...group].map(x => x.id).sort()[0];
-        return s.id === primaryId ? combo.fixed_amount : 0;
+        return s.id === primaryId ? total : 0;
       }
     }
     const p = findPrice(s);
