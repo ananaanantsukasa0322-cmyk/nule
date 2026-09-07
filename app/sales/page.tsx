@@ -30,6 +30,7 @@ interface Schedule {
   weight: number; client_name?: string; driver_id?: string; vehicle_id?: string; done: boolean; manual_amount?: number;
   tax_included?: boolean; toll_amount?: number; ai_tsumi?: boolean; ai_tsumi_group?: string | null; is_jouyou?: boolean;
   vehicle_no_override?: string | null; head_number_override?: string | null; trailer_number_override?: string | null;
+  slot_index?: number | null;
 }
 
 function shortVehicleNo(raw: string): string {
@@ -302,9 +303,28 @@ function SalesContent() {
   }).sort((a, b) => b.total - a.total);
 
   function generateInvoice(clientName: string, onlyIds?: Set<string>) {
-    const items = schedules
-      .filter(s => s.client_name === clientName && (!onlyIds || onlyIds.has(s.id)))
-      .sort((a, b) => (a.unload_date || a.load_date).localeCompare(b.unload_date || b.load_date));
+    const filteredSchedules = schedules.filter(s => s.client_name === clientName && (!onlyIds || onlyIds.has(s.id)));
+    // 相積みグループは代表行（先頭に見つかったslot_indexを持つ行）の値をグループ全体に適用する
+    const groupSlotIndex = new Map<string, number>();
+    for (const s of filteredSchedules) {
+      if (s.ai_tsumi && s.ai_tsumi_group && s.slot_index != null && !groupSlotIndex.has(s.ai_tsumi_group)) {
+        groupSlotIndex.set(s.ai_tsumi_group, s.slot_index);
+      }
+    }
+    function effectiveSlotIndex(s: Schedule): number {
+      if (s.slot_index != null) return s.slot_index;
+      if (s.ai_tsumi && s.ai_tsumi_group && groupSlotIndex.has(s.ai_tsumi_group)) return groupSlotIndex.get(s.ai_tsumi_group)!;
+      return 99;
+    }
+    // 配車予定表の並び（同じ日・同じドライバーなら配達①②③④の順）をそのまま請求書にも反映する
+    const items = filteredSchedules
+      .sort((a, b) => {
+        const d = (a.unload_date || a.load_date).localeCompare(b.unload_date || b.load_date);
+        if (d !== 0) return d;
+        const drv = (a.driver_id || "").localeCompare(b.driver_id || "");
+        if (drv !== 0) return drv;
+        return effectiveSlotIndex(a) - effectiveSlotIndex(b);
+      });
     if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
 
     const formalName = clientMap[clientName] || clientName;
