@@ -13,7 +13,8 @@ export async function GET(request: NextRequest) {
     if (dateFrom) query = query.gte('unload_date', dateFrom)
     if (dateTo) query = query.lte('unload_date', dateTo)
 
-    const { data, error } = await query.order('unload_date', { ascending: false })
+    // unload_dateが同じ場合の並びを不定順にしないため、登録日時を明示的な第2キーにする
+    const { data, error } = await query.order('unload_date', { ascending: false }).order('created_at', { ascending: true })
     if (error) throw error
 
     const driverMap = await buildDriverNameMap()

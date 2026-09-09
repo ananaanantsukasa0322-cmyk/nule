@@ -16,7 +16,9 @@ export async function GET(request: NextRequest) {
     if (done === 'true') query = query.eq('done', true)
     if (done === 'false') query = query.eq('done', false)
 
-    const { data, error } = await query.order('unload_date', { ascending: false })
+    // unload_dateが同じ場合の並びをDB任せの不定順にしないため、登録日時を明示的な第2キーにする
+    // （配車予定表の「slot_index未設定行の左詰め」処理が呼び出しごとに順番がぶれないようにするため）
+    const { data, error } = await query.order('unload_date', { ascending: false }).order('created_at', { ascending: true })
     if (error) throw error
     return Response.json(data)
   } catch (e) {
