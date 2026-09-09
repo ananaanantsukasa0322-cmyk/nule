@@ -316,13 +316,20 @@ function SalesContent() {
       if (s.ai_tsumi && s.ai_tsumi_group && groupSlotIndex.has(s.ai_tsumi_group)) return groupSlotIndex.get(s.ai_tsumi_group)!;
       return 99;
     }
-    // 配車予定表の並び（同じ日・同じドライバーなら配達①②③④の順）をそのまま請求書にも反映する
+    // 積置き分（load_date < unload_date）は配車予定表で常に配達①より左の列に出るため、並びも必ず先頭に来るようにする
+    function isPreloaded(s: Schedule): boolean {
+      return !!s.load_date && !!s.unload_date && s.load_date < s.unload_date;
+    }
+    // 配車予定表の並び（積置き分 → 配達①②③④の順）をそのまま請求書にも反映する
     const items = filteredSchedules
       .sort((a, b) => {
         const d = (a.unload_date || a.load_date).localeCompare(b.unload_date || b.load_date);
         if (d !== 0) return d;
         const drv = (a.driver_id || "").localeCompare(b.driver_id || "");
         if (drv !== 0) return drv;
+        const preA = isPreloaded(a) ? 0 : 1;
+        const preB = isPreloaded(b) ? 0 : 1;
+        if (preA !== preB) return preA - preB;
         return effectiveSlotIndex(a) - effectiveSlotIndex(b);
       });
     if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
