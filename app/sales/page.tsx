@@ -31,6 +31,7 @@ interface Schedule {
   tax_included?: boolean; toll_amount?: number; ai_tsumi?: boolean; ai_tsumi_group?: string | null; is_jouyou?: boolean;
   vehicle_no_override?: string | null; head_number_override?: string | null; trailer_number_override?: string | null;
   slot_index?: number | null;
+  created_at?: string;
 }
 
 function shortVehicleNo(raw: string): string {
@@ -304,17 +305,25 @@ function SalesContent() {
 
   function generateInvoice(clientName: string, onlyIds?: Set<string>) {
     const filteredSchedules = schedules.filter(s => s.client_name === clientName && (!onlyIds || onlyIds.has(s.id)));
-    // 相積みグループは代表行（先頭に見つかったslot_indexを持つ行）の値をグループ全体に適用する
+    // 相積みグループは代表行（先頭に見つかったslot_index・created_atを持つ行）の値をグループ全体に適用する
     const groupSlotIndex = new Map<string, number>();
+    const groupCreatedAt = new Map<string, string>();
     for (const s of filteredSchedules) {
-      if (s.ai_tsumi && s.ai_tsumi_group && s.slot_index != null && !groupSlotIndex.has(s.ai_tsumi_group)) {
-        groupSlotIndex.set(s.ai_tsumi_group, s.slot_index);
-      }
+      if (!s.ai_tsumi || !s.ai_tsumi_group) continue;
+      if (s.slot_index != null && !groupSlotIndex.has(s.ai_tsumi_group)) groupSlotIndex.set(s.ai_tsumi_group, s.slot_index);
+      const cur = groupCreatedAt.get(s.ai_tsumi_group);
+      if (s.created_at && (!cur || s.created_at < cur)) groupCreatedAt.set(s.ai_tsumi_group, s.created_at);
     }
+    // 配車予定表で明示的にドラッグ配置された（slot_indexが付いている）行はその位置を最優先。
+    // 付いていない行は、配車予定表側も登録順で左詰め表示されるため登録日時（created_at）で代用する
     function effectiveSlotIndex(s: Schedule): number {
       if (s.slot_index != null) return s.slot_index;
       if (s.ai_tsumi && s.ai_tsumi_group && groupSlotIndex.has(s.ai_tsumi_group)) return groupSlotIndex.get(s.ai_tsumi_group)!;
       return 99;
+    }
+    function effectiveCreatedAt(s: Schedule): string {
+      if (s.ai_tsumi && s.ai_tsumi_group && groupCreatedAt.has(s.ai_tsumi_group)) return groupCreatedAt.get(s.ai_tsumi_group)!;
+      return s.created_at || "";
     }
     // 積置き分（load_date < unload_date）は配車予定表で常に配達①より左の列に出るため、並びも必ず先頭に来るようにする
     function isPreloaded(s: Schedule): boolean {
@@ -330,7 +339,9 @@ function SalesContent() {
         const preA = isPreloaded(a) ? 0 : 1;
         const preB = isPreloaded(b) ? 0 : 1;
         if (preA !== preB) return preA - preB;
-        return effectiveSlotIndex(a) - effectiveSlotIndex(b);
+        const slot = effectiveSlotIndex(a) - effectiveSlotIndex(b);
+        if (slot !== 0) return slot;
+        return effectiveCreatedAt(a).localeCompare(effectiveCreatedAt(b));
       });
     if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
 
