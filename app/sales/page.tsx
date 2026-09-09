@@ -305,31 +305,62 @@ function SalesContent() {
 
   function generateInvoice(clientName: string, onlyIds?: Set<string>) {
     const filteredSchedules = schedules.filter(s => s.client_name === clientName && (!onlyIds || onlyIds.has(s.id)));
-    // 相積みグループは代表行（先頭に見つかったslot_index・created_atを持つ行）の値をグループ全体に適用する
-    const groupSlotIndex = new Map<string, number>();
-    const groupCreatedAt = new Map<string, string>();
-    for (const s of filteredSchedules) {
-      if (!s.ai_tsumi || !s.ai_tsumi_group) continue;
-      if (s.slot_index != null && !groupSlotIndex.has(s.ai_tsumi_group)) groupSlotIndex.set(s.ai_tsumi_group, s.slot_index);
-      const cur = groupCreatedAt.get(s.ai_tsumi_group);
-      if (s.created_at && (!cur || s.created_at < cur)) groupCreatedAt.set(s.ai_tsumi_group, s.created_at);
-    }
-    // 配車予定表で明示的にドラッグ配置された（slot_indexが付いている）行はその位置を最優先。
-    // 付いていない行は、配車予定表側も登録順で左詰め表示されるため登録日時（created_at）で代用する
-    function effectiveSlotIndex(s: Schedule): number {
-      if (s.slot_index != null) return s.slot_index;
-      if (s.ai_tsumi && s.ai_tsumi_group && groupSlotIndex.has(s.ai_tsumi_group)) return groupSlotIndex.get(s.ai_tsumi_group)!;
-      return 99;
-    }
-    function effectiveCreatedAt(s: Schedule): string {
-      if (s.ai_tsumi && s.ai_tsumi_group && groupCreatedAt.has(s.ai_tsumi_group)) return groupCreatedAt.get(s.ai_tsumi_group)!;
-      return s.created_at || "";
-    }
-    // 積置き分（load_date < unload_date）は配車予定表で常に配達①より左の列に出るため、並びも必ず先頭に来るようにする
     function isPreloaded(s: Schedule): boolean {
       return !!s.load_date && !!s.unload_date && s.load_date < s.unload_date;
     }
-    // 配車予定表の並び（積置き分 → 配達①②③④の順）をそのまま請求書にも反映する
+    const ca = (s: Schedule) => s.created_at || "";
+
+    // 配車予定表の「配達①〜⑤埋めロジック」（app/api/dispatch-tool/route.ts の _renderHaishaInner と同一）を
+    // 再現し、各行の実際の表示位置（0〜4）を求める。slot_indexが未設定の行は登録日時順に左詰めされる。
+    const deliveryPos = new Map<string, number>();
+    {
+      const byDayDriver = new Map<string, Schedule[]>();
+      for (const s of filteredSchedules) {
+        if (isPreloaded(s)) continue;
+        const key = `${s.unload_date}|${s.driver_id || ""}`;
+        const arr = byDayDriver.get(key) || [];
+        arr.push(s);
+        byDayDriver.set(key, arr);
+      }
+      for (const group of byDayDriver.values()) {
+        const normal = group.filter(s => !s.ai_tsumi).sort((a, b) => ca(a).localeCompare(ca(b)));
+        const groupsMap = new Map<string, Schedule[]>();
+        for (const s of group) {
+          if (!s.ai_tsumi || !s.ai_tsumi_group) continue;
+          const arr = groupsMap.get(s.ai_tsumi_group) || [];
+          arr.push(s);
+          groupsMap.set(s.ai_tsumi_group, arr);
+        }
+        const slotOccupied = [false, false, false, false, false];
+        const unslotted: Schedule[] = [];
+        for (const s of normal) {
+          const si = s.slot_index;
+          if (si != null && si >= 0 && si < 5) { deliveryPos.set(s.id, si); slotOccupied[si] = true; }
+          else unslotted.push(s);
+        }
+        let ui = 0;
+        for (const s of unslotted) {
+          const idx = Math.min(ui++, 4);
+          deliveryPos.set(s.id, idx);
+          slotOccupied[idx] = true;
+        }
+        const aitsuGroups = [...groupsMap.entries()].sort((a, b) => {
+          const ea = a[1].map(ca).sort()[0] || "";
+          const eb = b[1].map(ca).sort()[0] || "";
+          return ea.localeCompare(eb);
+        });
+        for (const [, members] of aitsuGroups) {
+          const savedIdx = members[0]?.slot_index;
+          const useIdx = (savedIdx != null && savedIdx >= 0 && savedIdx < 5 && !slotOccupied[savedIdx])
+            ? savedIdx : slotOccupied.findIndex(occ => !occ);
+          const finalIdx = useIdx >= 0 ? useIdx : 4;
+          slotOccupied[finalIdx] = true;
+          for (const m of members) deliveryPos.set(m.id, finalIdx);
+        }
+      }
+    }
+
+    // 配車予定表の並び（積置き分は登録順→通常品のあとに相積みをまとめて表示。配達枠は上のfill順）をそのまま請求書に反映する
     const items = filteredSchedules
       .sort((a, b) => {
         const d = (a.unload_date || a.load_date).localeCompare(b.unload_date || b.load_date);
@@ -339,9 +370,17 @@ function SalesContent() {
         const preA = isPreloaded(a) ? 0 : 1;
         const preB = isPreloaded(b) ? 0 : 1;
         if (preA !== preB) return preA - preB;
-        const slot = effectiveSlotIndex(a) - effectiveSlotIndex(b);
-        if (slot !== 0) return slot;
-        return effectiveCreatedAt(a).localeCompare(effectiveCreatedAt(b));
+        if (preA === 0) {
+          // 積置き分タブ：通常品（登録順）→ 相積み（登録順）の順で並ぶ
+          const aiA = a.ai_tsumi ? 1 : 0;
+          const aiB = b.ai_tsumi ? 1 : 0;
+          if (aiA !== aiB) return aiA - aiB;
+          return ca(a).localeCompare(ca(b));
+        }
+        const posA = deliveryPos.get(a.id) ?? 99;
+        const posB = deliveryPos.get(b.id) ?? 99;
+        if (posA !== posB) return posA - posB;
+        return ca(a).localeCompare(ca(b));
       });
     if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
 
