@@ -252,6 +252,27 @@ function SalesContent() {
     loadData();
   }
 
+  // 常用グループ（同じ日・同じドライバー）のスポット金額をまとめて編集：代表1件に合計額を入れ、他は0にする
+  async function updateJouyouGroupAmount(group: Schedule[], primaryId: string, value: string) {
+    const amount = value === "" ? 0 : Number(value);
+    if (!Number.isFinite(amount) || amount < 0) {
+      show("スポット金額は0以上の数値を入力してください", "error");
+      return;
+    }
+    const beforeTotal = group.reduce((sum, s) => sum + (s.manual_amount || 0), 0);
+    if (beforeTotal === amount) return;
+    for (const s of group) {
+      const next = s.id === primaryId ? amount : 0;
+      if ((s.manual_amount || 0) === next) continue;
+      await fetch(`/api/schedules/${s.id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ manual_amount: next || null }),
+      });
+    }
+    show(`常用の日額 ${formatCurrency(amount)} を保存しました`);
+    loadData();
+  }
+
   async function updateTollAmount(id: string, value: string) {
     const amount = value === "" ? null : Number(value);
     if (amount !== null && (!Number.isFinite(amount) || amount < 0)) {
@@ -272,6 +293,19 @@ function SalesContent() {
   const clients = [...new Set(schedules.map(s => s.client_name).filter(Boolean) as string[])].sort();
   const filtered = clientFilter ? schedules.filter(s => s.client_name === clientFilter) : schedules;
   const totalAmount = filtered.reduce((sum, s) => sum + calcAmount(s), 0);
+
+  // 常用（is_jouyou）は同じ日・同じドライバーの行をまとめて1つのスポット金額欄として表示する
+  const jouyouKeyOf = (s: Schedule) => s.is_jouyou ? `${s.unload_date || s.load_date}|${s.driver_id || ""}` : null;
+  const jouyouGroups = new Map<string, Schedule[]>();
+  const jouyouPrimaryId = new Map<string, string>();
+  for (const s of filtered) {
+    const k = jouyouKeyOf(s);
+    if (!k) continue;
+    const arr = jouyouGroups.get(k) || [];
+    arr.push(s);
+    jouyouGroups.set(k, arr);
+    if (!jouyouPrimaryId.has(k)) jouyouPrimaryId.set(k, s.id);
+  }
   const selectedRows = schedules.filter(s => selectedIds.has(s.id));
   const selectedTotal = selectedRows.reduce((sum, s) => sum + calcAmount(s), 0);
   const selectedTaxable = selectedRows.filter(s => !s.tax_included).reduce((sum, s) => sum + calcAmount(s), 0);
@@ -721,6 +755,11 @@ function SalesContent() {
               const amount = calcAmount(s);
               const isSpot = (s.manual_amount ?? 0) > 0;
               const isJouyou = !!s.is_jouyou;
+              const jKey = jouyouKeyOf(s);
+              const jGroup = jKey ? jouyouGroups.get(jKey)! : null;
+              const isJouyouGroup = !!jGroup && jGroup.length > 1;
+              const isJouyouPrimary = !jKey || jouyouPrimaryId.get(jKey) === s.id;
+              const jGroupTotal = jGroup ? jGroup.reduce((sum, x) => sum + (x.manual_amount || 0), 0) : 0;
               return (
                 <tr key={s.id} className={selectedIds.has(s.id) ? "bg-blue-500/10" : isJouyou ? "bg-purple-500/5" : isSpot ? "bg-amber-500/5" : ""}>
                   <td><input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSelect(s.id)} /></td>
@@ -730,15 +769,18 @@ function SalesContent() {
                   <td className="text-sm">{s.unload_place}</td>
                   <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
                   <td className="text-sm text-muted">{isJouyou ? <span className="text-xs text-purple-400" title="常用配車のため単価マスタは使われません">常用</span> : isSpot ? <span className="text-xs text-amber-400">スポット</span> : (p.rate ? (p.type === "per_ton" ? `¥${p.rate}/t` : formatCurrency(p.rate)) : "—")}</td>
-                  <td>
-                    <input
-                      type="number"
-                      defaultValue={s.manual_amount ?? ""}
-                      placeholder="直接入力"
-                      className="bg-transparent border-b border-border text-sm w-28 outline-none focus:border-amber-400 text-right"
-                      onBlur={e => updateManualAmount(s.id, e.target.value)}
-                    />
-                  </td>
+                  {isJouyouGroup && !isJouyouPrimary ? null : (
+                    <td rowSpan={isJouyouGroup ? jGroup!.length : undefined}>
+                      <input
+                        type="number"
+                        defaultValue={isJouyouGroup ? (jGroupTotal || "") : (s.manual_amount ?? "")}
+                        placeholder="直接入力"
+                        title={isJouyouGroup ? "同じ日・同じドライバーの常用をまとめた金額です" : undefined}
+                        className="bg-transparent border-b border-border text-sm w-28 outline-none focus:border-amber-400 text-right"
+                        onBlur={e => isJouyouGroup ? updateJouyouGroupAmount(jGroup!, s.id, e.target.value) : updateManualAmount(s.id, e.target.value)}
+                      />
+                    </td>
+                  )}
                   <td>
                     <input
                       type="number"
@@ -755,7 +797,11 @@ function SalesContent() {
                       {s.tax_included ? "税込" : "税別"}
                     </button>
                   </td>
-                  <td className="text-sm font-medium">{amount ? formatCurrency(amount) : "—"}</td>
+                  {isJouyouGroup && !isJouyouPrimary ? null : (
+                    <td rowSpan={isJouyouGroup ? jGroup!.length : undefined} className="text-sm font-medium">
+                      {(isJouyouGroup ? jGroupTotal : amount) ? formatCurrency(isJouyouGroup ? jGroupTotal : amount) : "—"}
+                    </td>
+                  )}
                 </tr>
               );
             })}
