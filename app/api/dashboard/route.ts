@@ -2,6 +2,9 @@ import { supabase } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 import { buildDriverNameMap } from '@/lib/resolve-drivers'
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 const JST_OFFSET = 9 * 60 * 60 * 1000
 
 function ymd(d: Date): string {
@@ -31,6 +34,8 @@ export async function GET() {
       supabase.from('prices').select('client_name,load_place,unload_place,price_type,per_ton_rate,fixed_amount,vehicle_type').eq('is_active', true),
     ])
 
+    if (schedulesRes.error) throw schedulesRes.error
+    if (pricesRes.error) throw pricesRes.error
     const allSchedules = schedulesRes.data || []
     const prices = pricesRes.data || []
     const driverMap = await buildDriverNameMap()

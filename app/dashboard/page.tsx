@@ -58,22 +58,29 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
       const [res, nRes] = await Promise.all([
-        fetch("/api/dashboard"),
-        fetch("/api/notices").catch(() => null),
+        fetch("/api/dashboard", { cache: "no-store" }),
+        fetch("/api/notices", { cache: "no-store" }).catch(() => null),
       ]);
       if (res.ok) {
         setData(await res.json());
         setUpdatedAt(new Date());
+        setLoadError(null);
+      } else {
+        const body = await res.json().catch(() => ({}));
+        setLoadError(body.error || `更新に失敗しました（${res.status}）`);
       }
       if (nRes?.ok) {
         const n = await nRes.json();
         setNotices((Array.isArray(n) ? n : []).filter((x: Notice) => x.target !== "dispatch"));
       }
+    } catch {
+      setLoadError("更新に失敗しました（通信エラー）");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -106,6 +113,7 @@ function DashboardContent() {
           <p className="text-xs text-muted mt-1">{monthLabel}</p>
         </div>
         <div className="flex items-center gap-3">
+          {loadError && <span className="text-[10px] text-red-400">{loadError}</span>}
           {updatedAt && <span className="text-[10px] text-muted">更新 {updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}</span>}
           <button onClick={() => load(true)} disabled={refreshing}
             className="text-xs px-3 py-1.5 bg-accent rounded-md hover:bg-border disabled:opacity-50 transition-colors">
