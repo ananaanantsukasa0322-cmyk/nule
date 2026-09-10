@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
+import { fetchAllRows } from '@/lib/supabase-paginate'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,21 +10,22 @@ export async function GET(request: NextRequest) {
     const dateTo = request.nextUrl.searchParams.get('date_to')
     const driverId = request.nextUrl.searchParams.get('driver_id')
 
-    let query = supabase.from('schedules').select('*')
-    if (dateFrom) query = query.gte('unload_date', dateFrom)
-    if (dateTo) query = query.lte('unload_date', dateTo)
-    if (driverId) query = query.eq('driver_id', driverId)
+    function buildQuery() {
+      let query = supabase.from('schedules').select('*')
+      if (dateFrom) query = query.gte('unload_date', dateFrom)
+      if (dateTo) query = query.lte('unload_date', dateTo)
+      if (driverId) query = query.eq('driver_id', driverId)
+      return query.order('unload_date', { ascending: false }).order('id', { ascending: true })
+    }
 
-    const [schedulesRes, driversRes, youshasRes, pricesRes] = await Promise.all([
-      query.order('unload_date', { ascending: false }),
+    // 件数が1000件を超えるとSupabaseが黙って切り詰めるため、fetchAllRowsで全件をページングして取得する
+    const [schedules, driversRes, youshasRes, pricesRes] = await Promise.all([
+      fetchAllRows((from, to) => buildQuery().range(from, to)),
       supabase.from('drivers').select('id, name, payment_percentage').eq('is_active', true),
       supabase.from('youshas').select('id, name, display_name'),
       supabase.from('prices').select('*').eq('is_active', true),
     ])
 
-    if (schedulesRes.error) throw schedulesRes.error
-
-    const schedules = schedulesRes.data || []
     const drivers = driversRes.data || []
     const youshas = youshasRes.data || []
     const prices = pricesRes.data || []

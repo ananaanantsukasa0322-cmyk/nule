@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
+import { fetchAllRows } from '@/lib/supabase-paginate'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,17 +10,19 @@ export async function GET(request: NextRequest) {
     const dateTo = request.nextUrl.searchParams.get('date_to')
     const done = request.nextUrl.searchParams.get('done')
 
-    let query = supabase.from('schedules').select('*, vehicle:vehicles(*)')
+    function buildQuery() {
+      let query = supabase.from('schedules').select('*, vehicle:vehicles(*)')
+      if (dateFrom) query = query.gte('unload_date', dateFrom)
+      if (dateTo) query = query.lte('unload_date', dateTo)
+      if (done === 'true') query = query.eq('done', true)
+      if (done === 'false') query = query.eq('done', false)
+      // unload_dateが同じ場合の並びをDB任せの不定順にしないため、登録日時を明示的な第2キーにする
+      // （配車予定表の「slot_index未設定行の左詰め」処理が呼び出しごとに順番がぶれないようにするため）
+      return query.order('unload_date', { ascending: false }).order('created_at', { ascending: true })
+    }
 
-    if (dateFrom) query = query.gte('unload_date', dateFrom)
-    if (dateTo) query = query.lte('unload_date', dateTo)
-    if (done === 'true') query = query.eq('done', true)
-    if (done === 'false') query = query.eq('done', false)
-
-    // unload_dateが同じ場合の並びをDB任せの不定順にしないため、登録日時を明示的な第2キーにする
-    // （配車予定表の「slot_index未設定行の左詰め」処理が呼び出しごとに順番がぶれないようにするため）
-    const { data, error } = await query.order('unload_date', { ascending: false }).order('created_at', { ascending: true })
-    if (error) throw error
+    // 件数が1000件を超えるとSupabaseが黙って切り詰めるため、fetchAllRowsで全件をページングして取得する
+    const data = await fetchAllRows((from, to) => buildQuery().range(from, to))
     return Response.json(data)
   } catch (e) {
     const msg = e instanceof Error ? e.message : (typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : String(e))

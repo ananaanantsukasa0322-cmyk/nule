@@ -1,6 +1,7 @@
 import { supabase } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 import { buildDriverNameMap } from '@/lib/resolve-drivers'
+import { fetchAllRows } from '@/lib/supabase-paginate'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -25,18 +26,26 @@ export async function GET() {
     const lastDay = ymd(new Date(Date.UTC(y, mo + 1, 0)))
     const sixMonthsAgoFirst = ymd(new Date(Date.UTC(y, mo - 5, 1)))
 
-    // スケジュールは直近6ヶ月分を1クエリで取得し、集計はすべてメモリ上で行う
-    const [schedulesRes, pricesRes] = await Promise.all([
-      supabase.from('schedules')
-        .select('id,unload_date,client_name,load_place,unload_place,weight,driver_id,manual_amount,is_jouyou,ai_tsumi,ai_tsumi_group')
-        .gte('unload_date', sixMonthsAgoFirst)
-        .lte('unload_date', lastDay),
+    // スケジュールは直近6ヶ月分を取得し、集計はすべてメモリ上で行う。
+    // 件数が1000件を超えるとSupabaseが黙って切り詰めるため、fetchAllRowsで全件をページングして取得する
+    type ScheduleRow = {
+      id: string; unload_date: string; client_name: string | null; load_place: string | null; unload_place: string | null
+      weight: number | null; driver_id: string | null; manual_amount: number | null; is_jouyou: boolean | null
+      ai_tsumi: boolean | null; ai_tsumi_group: string | null
+    }
+    const [allSchedules, pricesRes] = await Promise.all([
+      fetchAllRows<ScheduleRow>((from, to) =>
+        supabase.from('schedules')
+          .select('id,unload_date,client_name,load_place,unload_place,weight,driver_id,manual_amount,is_jouyou,ai_tsumi,ai_tsumi_group')
+          .gte('unload_date', sixMonthsAgoFirst)
+          .lte('unload_date', lastDay)
+          .order('id', { ascending: true })
+          .range(from, to)
+      ),
       supabase.from('prices').select('client_name,load_place,unload_place,price_type,per_ton_rate,fixed_amount,vehicle_type').eq('is_active', true),
     ])
 
-    if (schedulesRes.error) throw schedulesRes.error
     if (pricesRes.error) throw pricesRes.error
-    const allSchedules = schedulesRes.data || []
     const prices = pricesRes.data || []
     const driverMap = await buildDriverNameMap()
 
@@ -67,7 +76,7 @@ export async function GET() {
 
     // 同一 荷主×積み地×下ろし先×車両タイプ の単価検索をキャッシュ
     const priceCache = new Map<string, typeof prices[0] | undefined>()
-    function findPrice(s: { client_name?: string; load_place?: string; unload_place?: string; weight?: number }) {
+    function findPrice(s: { client_name?: string | null; load_place?: string | null; unload_place?: string | null; weight?: number | null }) {
       const vt = (s.weight || 0) >= 15000 ? 'トレーラー' : '大型'
       const key = `${s.client_name || ''}|${s.load_place || ''}|${s.unload_place || ''}|${vt}`
       if (priceCache.has(key)) return priceCache.get(key)
