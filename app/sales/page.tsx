@@ -38,6 +38,72 @@ function shortVehicleNo(raw: string): string {
   const digits = raw.match(/\d+/g)?.join("") || "";
   return digits ? digits.slice(-4) : raw;
 }
+
+// 配車予定表の並び（積置き分 → 配達①〜⑤）を再現し、全スケジュールに対して一意にソート可能な文字列キーを割り当てる。
+// 荷主で絞り込む前の全件から計算する（同じ日・同じドライバーの枠取り合いは荷主をまたいで発生するため）。
+// app/api/dispatch-tool/route.ts の _renderHaishaInner と同一のfillアルゴリズムを踏襲すること。
+function computeBoardOrder(allSchedules: Schedule[]): Map<string, string> {
+  const ca = (s: Schedule) => s.created_at || "";
+  const isPreloaded = (s: Schedule) => !!s.load_date && !!s.unload_date && s.load_date < s.unload_date;
+
+  const deliveryPos = new Map<string, number>();
+  const byDayDriver = new Map<string, Schedule[]>();
+  for (const s of allSchedules) {
+    if (isPreloaded(s)) continue;
+    const key = `${s.unload_date}|${s.driver_id || ""}`;
+    const arr = byDayDriver.get(key) || [];
+    arr.push(s);
+    byDayDriver.set(key, arr);
+  }
+  for (const group of byDayDriver.values()) {
+    const normal = group.filter(s => !s.ai_tsumi).sort((a, b) => ca(a).localeCompare(ca(b)));
+    const groupsMap = new Map<string, Schedule[]>();
+    for (const s of group) {
+      if (!s.ai_tsumi || !s.ai_tsumi_group) continue;
+      const arr = groupsMap.get(s.ai_tsumi_group) || [];
+      arr.push(s);
+      groupsMap.set(s.ai_tsumi_group, arr);
+    }
+    const slotOccupied = [false, false, false, false, false];
+    const unslotted: Schedule[] = [];
+    for (const s of normal) {
+      const si = s.slot_index;
+      if (si != null && si >= 0 && si < 5) { deliveryPos.set(s.id, si); slotOccupied[si] = true; }
+      else unslotted.push(s);
+    }
+    let ui = 0;
+    for (const s of unslotted) {
+      const idx = Math.min(ui++, 4);
+      deliveryPos.set(s.id, idx);
+      slotOccupied[idx] = true;
+    }
+    const aitsuGroups = [...groupsMap.entries()].sort((a, b) => {
+      const ea = a[1].map(ca).sort()[0] || "";
+      const eb = b[1].map(ca).sort()[0] || "";
+      return ea.localeCompare(eb);
+    });
+    for (const [, members] of aitsuGroups) {
+      const savedIdx = members[0]?.slot_index;
+      const useIdx = (savedIdx != null && savedIdx >= 0 && savedIdx < 5 && !slotOccupied[savedIdx])
+        ? savedIdx : slotOccupied.findIndex(occ => !occ);
+      const finalIdx = useIdx >= 0 ? useIdx : 4;
+      slotOccupied[finalIdx] = true;
+      for (const m of members) deliveryPos.set(m.id, finalIdx);
+    }
+  }
+
+  const rank = new Map<string, string>();
+  for (const s of allSchedules) {
+    const date = s.unload_date || s.load_date || "";
+    const drv = s.driver_id || "";
+    const pre = isPreloaded(s) ? "0" : "1";
+    const sub = isPreloaded(s)
+      ? `${s.ai_tsumi ? "1" : "0"}|${ca(s)}`
+      : `${String(deliveryPos.get(s.id) ?? 99).padStart(2, "0")}|${ca(s)}`;
+    rank.set(s.id, `${date}|${drv}|${pre}|${sub}`);
+  }
+  return rank;
+}
 interface PriceEntry {
   client_name: string; load_place: string; unload_place: string;
   price_type: string; per_ton_rate: number | null; fixed_amount: number | null;
@@ -291,7 +357,10 @@ function SalesContent() {
   }
 
   const clients = [...new Set(schedules.map(s => s.client_name).filter(Boolean) as string[])].sort();
-  const filtered = clientFilter ? schedules.filter(s => s.client_name === clientFilter) : schedules;
+  // 配車予定表の並びは荷主をまたいで決まる（同じ日・同じドライバーの枠取り合いのため）ので、絞り込み前の全件から計算する
+  const boardOrder = computeBoardOrder(schedules);
+  const byBoardOrder = (a: Schedule, b: Schedule) => (boardOrder.get(a.id) || "").localeCompare(boardOrder.get(b.id) || "");
+  const filtered = (clientFilter ? schedules.filter(s => s.client_name === clientFilter) : schedules).slice().sort(byBoardOrder);
   const totalAmount = filtered.reduce((sum, s) => sum + calcAmount(s), 0);
 
   // 常用（is_jouyou）は同じ日・同じドライバーの行をまとめて1つのスポット金額欄として表示する
@@ -338,84 +407,10 @@ function SalesContent() {
   }).sort((a, b) => b.total - a.total);
 
   function generateInvoice(clientName: string, onlyIds?: Set<string>) {
-    const filteredSchedules = schedules.filter(s => s.client_name === clientName && (!onlyIds || onlyIds.has(s.id)));
-    function isPreloaded(s: Schedule): boolean {
-      return !!s.load_date && !!s.unload_date && s.load_date < s.unload_date;
-    }
-    const ca = (s: Schedule) => s.created_at || "";
-
-    // 配車予定表の「配達①〜⑤埋めロジック」（app/api/dispatch-tool/route.ts の _renderHaishaInner と同一）を
-    // 再現し、各行の実際の表示位置（0〜4）を求める。slot_indexが未設定の行は登録日時順に左詰めされる。
-    const deliveryPos = new Map<string, number>();
-    {
-      const byDayDriver = new Map<string, Schedule[]>();
-      for (const s of filteredSchedules) {
-        if (isPreloaded(s)) continue;
-        const key = `${s.unload_date}|${s.driver_id || ""}`;
-        const arr = byDayDriver.get(key) || [];
-        arr.push(s);
-        byDayDriver.set(key, arr);
-      }
-      for (const group of byDayDriver.values()) {
-        const normal = group.filter(s => !s.ai_tsumi).sort((a, b) => ca(a).localeCompare(ca(b)));
-        const groupsMap = new Map<string, Schedule[]>();
-        for (const s of group) {
-          if (!s.ai_tsumi || !s.ai_tsumi_group) continue;
-          const arr = groupsMap.get(s.ai_tsumi_group) || [];
-          arr.push(s);
-          groupsMap.set(s.ai_tsumi_group, arr);
-        }
-        const slotOccupied = [false, false, false, false, false];
-        const unslotted: Schedule[] = [];
-        for (const s of normal) {
-          const si = s.slot_index;
-          if (si != null && si >= 0 && si < 5) { deliveryPos.set(s.id, si); slotOccupied[si] = true; }
-          else unslotted.push(s);
-        }
-        let ui = 0;
-        for (const s of unslotted) {
-          const idx = Math.min(ui++, 4);
-          deliveryPos.set(s.id, idx);
-          slotOccupied[idx] = true;
-        }
-        const aitsuGroups = [...groupsMap.entries()].sort((a, b) => {
-          const ea = a[1].map(ca).sort()[0] || "";
-          const eb = b[1].map(ca).sort()[0] || "";
-          return ea.localeCompare(eb);
-        });
-        for (const [, members] of aitsuGroups) {
-          const savedIdx = members[0]?.slot_index;
-          const useIdx = (savedIdx != null && savedIdx >= 0 && savedIdx < 5 && !slotOccupied[savedIdx])
-            ? savedIdx : slotOccupied.findIndex(occ => !occ);
-          const finalIdx = useIdx >= 0 ? useIdx : 4;
-          slotOccupied[finalIdx] = true;
-          for (const m of members) deliveryPos.set(m.id, finalIdx);
-        }
-      }
-    }
-
-    // 配車予定表の並び（積置き分は登録順→通常品のあとに相積みをまとめて表示。配達枠は上のfill順）をそのまま請求書に反映する
-    const items = filteredSchedules
-      .sort((a, b) => {
-        const d = (a.unload_date || a.load_date).localeCompare(b.unload_date || b.load_date);
-        if (d !== 0) return d;
-        const drv = (a.driver_id || "").localeCompare(b.driver_id || "");
-        if (drv !== 0) return drv;
-        const preA = isPreloaded(a) ? 0 : 1;
-        const preB = isPreloaded(b) ? 0 : 1;
-        if (preA !== preB) return preA - preB;
-        if (preA === 0) {
-          // 積置き分タブ：通常品（登録順）→ 相積み（登録順）の順で並ぶ
-          const aiA = a.ai_tsumi ? 1 : 0;
-          const aiB = b.ai_tsumi ? 1 : 0;
-          if (aiA !== aiB) return aiA - aiB;
-          return ca(a).localeCompare(ca(b));
-        }
-        const posA = deliveryPos.get(a.id) ?? 99;
-        const posB = deliveryPos.get(b.id) ?? 99;
-        if (posA !== posB) return posA - posB;
-        return ca(a).localeCompare(ca(b));
-      });
+    // 配車予定表の並び（明細一覧と同じboardOrder。荷主をまたいで計算済みのものを流用する）をそのまま請求書に反映する
+    const items = schedules
+      .filter(s => s.client_name === clientName && (!onlyIds || onlyIds.has(s.id)))
+      .sort(byBoardOrder);
     if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
 
     const formalName = clientMap[clientName] || clientName;
