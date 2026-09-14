@@ -27,25 +27,31 @@ export async function createSession(userId: string): Promise<string> {
 }
 
 export async function getCurrentUser(): Promise<User | null> {
-  try {
-    const cookieStore = await cookies()
-    const session = cookieStore.get(SESSION_COOKIE)
-    if (!session?.value) return null
+  const cookieStore = await cookies()
+  const session = cookieStore.get(SESSION_COOKIE)
+  if (!session?.value) return null
 
-    const [userId] = session.value.split(':')
-    if (!userId) return null
+  const [userId] = session.value.split(':')
+  if (!userId) return null
 
-    const { data, error } = await supabase
-      .from('users')
-      .select('id, email, name, role, created_at, updated_at')
-      .eq('id', userId)
-      .single()
-
-    if (error || !data) return null
-    return data as User
-  } catch {
-    return null
+  // DB照会の一時的な失敗（コネクション瞬断など）を「未ログイン」と誤判定して
+  // 全APIが401を返し、強制ログアウトにつながらないよう1回だけリトライする
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id, email, name, role, created_at, updated_at')
+        .eq('id', userId)
+        .single()
+      if (error) throw error
+      if (!data) return null
+      return data as User
+    } catch {
+      if (attempt === 0) continue
+      return null
+    }
   }
+  return null
 }
 
 export async function requireAuth(allowedRoles?: UserRole[]): Promise<User> {
