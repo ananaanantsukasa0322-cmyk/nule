@@ -14,6 +14,7 @@ export async function PUT(request: NextRequest) {
 
     if (body.email) updateData.email = body.email
     if (body.name) updateData.name = body.name
+    if (body.role) updateData.role = body.role
     if (body.password) updateData.password_hash = await hashPassword(body.password)
 
     const { data, error } = await supabase.from('users').update(updateData).eq('id', body.id).select('id, email, name, role').single()

@@ -46,11 +46,11 @@ function UserManagementContent() {
 
   const [showEdit, setShowEdit] = useState(false);
   const [editUser, setEditUser] = useState<User | null>(null);
-  const [editForm, setEditForm] = useState({ email: "", password: "", name: "" });
+  const [editForm, setEditForm] = useState({ email: "", password: "", name: "", role: "dispatcher" });
 
   function openEdit(u: User) {
     setEditUser(u);
-    setEditForm({ email: u.email, password: "", name: u.name });
+    setEditForm({ email: u.email, password: "", name: u.name, role: u.role });
     setShowEdit(true);
   }
 
@@ -60,6 +60,7 @@ function UserManagementContent() {
     const body: Record<string, string> = { id: editUser.id };
     if (editForm.email !== editUser.email) body.email = editForm.email;
     if (editForm.name !== editUser.name) body.name = editForm.name;
+    if (editForm.role !== editUser.role) body.role = editForm.role;
     if (editForm.password) body.password = editForm.password;
     const res = await fetch("/api/users/update", {
       method: "PUT", headers: { "Content-Type": "application/json" },
@@ -139,6 +140,14 @@ function UserManagementContent() {
             <input type="text" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} className="w-full" required /></div>
           <div><label className="block text-xs text-muted mb-1">メールアドレス</label>
             <input type="email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="w-full" required /></div>
+          <div><label className="block text-xs text-muted mb-1">権限</label>
+            <select value={editForm.role} onChange={e => setEditForm({ ...editForm, role: e.target.value })} className="w-full"
+              disabled={editUser?.email === "test@test.com"}>
+              <option value="admin">管理者</option>
+              <option value="office">事務所</option>
+              <option value="dispatcher">配車係</option>
+            </select>
+            {editUser?.email === "test@test.com" && <p className="text-xs text-muted mt-1">オーナーの権限は変更できません</p>}</div>
           <div><label className="block text-xs text-muted mb-1">新しいパスワード（変更する場合のみ）</label>
             <input type="password" value={editForm.password} onChange={e => setEditForm({ ...editForm, password: e.target.value })} className="w-full" placeholder="変更しない場合は空欄" /></div>
           <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-4">更新</button>
