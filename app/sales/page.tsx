@@ -32,6 +32,7 @@ interface Schedule {
   vehicle_no_override?: string | null; head_number_override?: string | null; trailer_number_override?: string | null;
   slot_index?: number | null;
   created_at?: string;
+  category?: "steel" | "container";
 }
 
 function shortVehicleNo(raw: string): string {
@@ -126,6 +127,7 @@ function SalesContent() {
   const [dateFrom, setDateFrom] = useState(`${y}-${String(m).padStart(2,"0")}-01`);
   const [dateTo, setDateTo] = useState(`${y}-${String(m).padStart(2,"0")}-${new Date(y, m, 0).getDate()}`);
   const [clientFilter, setClientFilter] = useState("");
+  const [categoryTab, setCategoryTab] = useState<"steel" | "container">("steel");
   const [issuerName, setIssuerName] = useState("サンテツ運輸株式会社");
   const [taxEnabled, setTaxEnabled] = useState(true);
   const [showIssuerModal, setShowIssuerModal] = useState(false);
@@ -356,11 +358,13 @@ function SalesContent() {
     loadData();
   }
 
-  const clients = [...new Set(schedules.map(s => s.client_name).filter(Boolean) as string[])].sort();
+  // 鋼材/コンテナは請求書・一覧上は完全に分けて扱う（ドライバー・車両も別プールのため混ざらない）
+  const categorySchedules = schedules.filter(s => (s.category || "steel") === categoryTab);
+  const clients = [...new Set(categorySchedules.map(s => s.client_name).filter(Boolean) as string[])].sort();
   // 配車予定表の並びは荷主をまたいで決まる（同じ日・同じドライバーの枠取り合いのため）ので、絞り込み前の全件から計算する
   const boardOrder = computeBoardOrder(schedules);
   const byBoardOrder = (a: Schedule, b: Schedule) => (boardOrder.get(a.id) || "").localeCompare(boardOrder.get(b.id) || "");
-  const filtered = (clientFilter ? schedules.filter(s => s.client_name === clientFilter) : schedules).slice().sort(byBoardOrder);
+  const filtered = (clientFilter ? categorySchedules.filter(s => s.client_name === clientFilter) : categorySchedules).slice().sort(byBoardOrder);
   const totalAmount = filtered.reduce((sum, s) => sum + calcAmount(s), 0);
 
   // 常用（is_jouyou）は同じ日・同じドライバーの行をまとめて1つのスポット金額欄として表示する
@@ -375,7 +379,7 @@ function SalesContent() {
     jouyouGroups.set(k, arr);
     if (!jouyouPrimaryId.has(k)) jouyouPrimaryId.set(k, s.id);
   }
-  const selectedRows = schedules.filter(s => selectedIds.has(s.id));
+  const selectedRows = categorySchedules.filter(s => selectedIds.has(s.id));
   const selectedTotal = selectedRows.reduce((sum, s) => sum + calcAmount(s), 0);
   const selectedTaxable = selectedRows.filter(s => !s.tax_included).reduce((sum, s) => sum + calcAmount(s), 0);
   const selectedGrandTotal = selectedTaxable + Math.round(selectedTaxable * 0.1) + (selectedTotal - selectedTaxable);
@@ -401,15 +405,16 @@ function SalesContent() {
   }
 
   const clientSummary = clients.map(c => {
-    const cs = schedules.filter(s => s.client_name === c);
+    const cs = categorySchedules.filter(s => s.client_name === c);
     const total = cs.reduce((sum, s) => sum + calcAmount(s), 0);
     return { name: c, count: cs.length, total };
   }).sort((a, b) => b.total - a.total);
 
   function generateInvoice(clientName: string, onlyIds?: Set<string>) {
     // 配車予定表の並び（明細一覧と同じboardOrder。荷主をまたいで計算済みのものを流用する）をそのまま請求書に反映する
+    // 鋼材・コンテナは同じ荷主名でも別の請求書として扱う（現在表示中のタブのみ対象）
     const items = schedules
-      .filter(s => s.client_name === clientName && (!onlyIds || onlyIds.has(s.id)))
+      .filter(s => s.client_name === clientName && (s.category || "steel") === categoryTab && (!onlyIds || onlyIds.has(s.id)))
       .sort(byBoardOrder);
     if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
 
@@ -660,7 +665,16 @@ function SalesContent() {
   return (
     <div>
       {toastNode}
-      <h2 className="text-xl font-light mb-6">売上・請求管理</h2>
+      <h2 className="text-xl font-light mb-4">売上・請求管理</h2>
+
+      <div className="flex items-center gap-2 mb-6">
+        {(["steel", "container"] as const).map(c => (
+          <button key={c} onClick={() => { setCategoryTab(c); setClientFilter(""); setSelectedIds(new Set()); }}
+            className={`text-sm px-4 py-1.5 rounded-md transition-colors ${categoryTab === c ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+            {c === "steel" ? "🔩 鋼材" : "📦 コンテナ"}
+          </button>
+        ))}
+      </div>
 
       <div className="flex flex-wrap items-end gap-3 mb-6">
         <div><label className="block text-xs text-muted mb-1">開始日</label>
