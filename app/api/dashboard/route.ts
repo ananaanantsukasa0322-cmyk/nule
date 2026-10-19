@@ -12,6 +12,16 @@ function ymd(d: Date): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
 }
 
+type ScheduleRow = {
+  id: string; unload_date: string; client_name: string | null; load_place: string | null; unload_place: string | null
+  weight: number | null; driver_id: string | null; manual_amount: number | null; is_jouyou: boolean | null
+  ai_tsumi: boolean | null; ai_tsumi_group: string | null; category: string | null
+}
+type PriceRow = {
+  client_name: string | null; load_place: string | null; unload_place: string | null; price_type: string
+  per_ton_rate: number | null; fixed_amount: number | null; vehicle_type: string | null; category: string | null
+}
+
 export async function GET() {
   try {
     await requireAuth(['admin', 'office'])
@@ -25,47 +35,26 @@ export async function GET() {
     const firstDay = ymd(new Date(Date.UTC(y, mo, 1)))
     const lastDay = ymd(new Date(Date.UTC(y, mo + 1, 0)))
     const sixMonthsAgoFirst = ymd(new Date(Date.UTC(y, mo - 5, 1)))
+    const prevFirstDay = ymd(new Date(Date.UTC(y, mo - 1, 1)))
+    const prevLastDay = ymd(new Date(Date.UTC(y, mo, 0)))
 
     // スケジュールは直近6ヶ月分を取得し、集計はすべてメモリ上で行う。
     // 件数が1000件を超えるとSupabaseが黙って切り詰めるため、fetchAllRowsで全件をページングして取得する
-    type ScheduleRow = {
-      id: string; unload_date: string; client_name: string | null; load_place: string | null; unload_place: string | null
-      weight: number | null; driver_id: string | null; manual_amount: number | null; is_jouyou: boolean | null
-      ai_tsumi: boolean | null; ai_tsumi_group: string | null
-    }
-    const [allSchedules, pricesRes] = await Promise.all([
+    const [allSchedulesRaw, pricesRes] = await Promise.all([
       fetchAllRows<ScheduleRow>((from, to) =>
         supabase.from('schedules')
-          .select('id,unload_date,client_name,load_place,unload_place,weight,driver_id,manual_amount,is_jouyou,ai_tsumi,ai_tsumi_group')
+          .select('id,unload_date,client_name,load_place,unload_place,weight,driver_id,manual_amount,is_jouyou,ai_tsumi,ai_tsumi_group,category')
           .gte('unload_date', sixMonthsAgoFirst)
           .lte('unload_date', lastDay)
           .order('id', { ascending: true })
           .range(from, to)
       ),
-      supabase.from('prices').select('client_name,load_place,unload_place,price_type,per_ton_rate,fixed_amount,vehicle_type').eq('is_active', true),
+      supabase.from('prices').select('client_name,load_place,unload_place,price_type,per_ton_rate,fixed_amount,vehicle_type,category').eq('is_active', true),
     ])
 
     if (pricesRes.error) throw pricesRes.error
-    const prices = pricesRes.data || []
+    const allPrices: PriceRow[] = pricesRes.data || []
     const driverMap = await buildDriverNameMap()
-
-    const schedules = allSchedules.filter(s => s.unload_date >= firstDay && s.unload_date <= lastDay)
-    const prevFirstDay = ymd(new Date(Date.UTC(y, mo - 1, 1)))
-    const prevLastDay = ymd(new Date(Date.UTC(y, mo, 0)))
-    const prevSchedules = allSchedules.filter(s => s.unload_date >= prevFirstDay && s.unload_date <= prevLastDay)
-    const todaySchedules = allSchedules.filter(s => s.unload_date === today)
-
-    // --- 今日の状況 ---
-    const todayCount = todaySchedules.length
-    const todayDrivers = new Set(todaySchedules.map(s => s.driver_id).filter(Boolean)).size
-    const todayWeight = todaySchedules.reduce((sum, s) => sum + (s.weight || 0), 0)
-    const todayUnassigned = todaySchedules.filter(s => !s.driver_id).length
-
-    // --- 今月の実績 ---
-    const thisMonthCount = schedules.length
-    const thisMonthWeight = schedules.reduce((sum, s) => sum + (s.weight || 0), 0)
-    const prevMonthCount = prevSchedules.length
-    const prevMonthWeight = prevSchedules.reduce((sum, s) => sum + (s.weight || 0), 0)
 
     function matchPlace(pp: string, sp: string): boolean {
       if (!pp || !sp) return !pp
@@ -73,130 +62,151 @@ export async function GET() {
       if (sp.includes(pp) || pp.includes(sp)) return true
       return false
     }
-
-    // 同一 荷主×積み地×下ろし先×車両タイプ の単価検索をキャッシュ
-    const priceCache = new Map<string, typeof prices[0] | undefined>()
-    function findPrice(s: { client_name?: string | null; load_place?: string | null; unload_place?: string | null; weight?: number | null }) {
-      const vt = (s.weight || 0) >= 15000 ? 'トレーラー' : '大型'
-      const key = `${s.client_name || ''}|${s.load_place || ''}|${s.unload_place || ''}|${vt}`
-      if (priceCache.has(key)) return priceCache.get(key)
-      function search(matchFn: (p: typeof prices[0]) => boolean) {
-        return prices.find(p => p.price_type !== 'daily' && p.price_type !== 'combo' && matchFn(p) && p.vehicle_type === vt)
-          || prices.find(p => p.price_type !== 'daily' && p.price_type !== 'combo' && matchFn(p) && !p.vehicle_type)
-      }
-      let p = search(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place)
-      if (!p) p = search(p => p.client_name === s.client_name && matchPlace(p.load_place, s.load_place || '') && matchPlace(p.unload_place, s.unload_place || ''))
-      if (!p) p = search(p => p.client_name === s.client_name && !p.load_place && !p.unload_place)
-      priceCache.set(key, p)
-      return p
-    }
-
-    // 相積みグループ（ai_tsumi_group）ごとの一覧。荷主とグループIDが分かれば辿れるように事前構築
-    const groupMembers = new Map<string, typeof allSchedules>()
-    for (const s of allSchedules) {
-      if (!s.ai_tsumi || !s.ai_tsumi_group) continue
-      const arr = groupMembers.get(s.ai_tsumi_group) || []
-      arr.push(s)
-      groupMembers.set(s.ai_tsumi_group, arr)
-    }
     function comboKey(loadPlaces: (string | null | undefined)[]): string {
       return [...new Set(loadPlaces.map(p => (p || '').trim()).filter(Boolean))].sort().join('|')
     }
-    function findComboPrice(group: typeof allSchedules) {
-      if (group.length < 2) return undefined
-      const clientName = group[0].client_name
-      const loadKey = comboKey(group.map(x => x.load_place))
-      const unloadKey = comboKey(group.map(x => x.unload_place))
-      if (!loadKey || !unloadKey) return undefined
-      return prices.find(p => p.price_type === 'combo' && p.client_name === clientName
-        && p.load_place === loadKey && p.unload_place === unloadKey)
-    }
 
-    function calcAmount(s: typeof allSchedules[0]) {
-      if ((s.manual_amount ?? 0) > 0) return s.manual_amount!
-      // 常用（この配車）は単価マスタを使わない（スポット金額に入力した分だけ計上）
-      if (s.is_jouyou) return 0
-      if (s.ai_tsumi && s.ai_tsumi_group) {
-        const group = groupMembers.get(s.ai_tsumi_group)
-        if (group) {
-          const combo = findComboPrice(group)
-          if (combo && (combo.fixed_amount || combo.per_ton_rate)) {
-            const total = combo.per_ton_rate
-              ? Math.round(combo.per_ton_rate * group.reduce((sum, x) => sum + (x.weight || 0), 0) / 1000)
-              : combo.fixed_amount!
-            const primaryId = [...group].map(x => x.id).sort()[0]
-            return s.id === primaryId ? total : 0
+    // カテゴリ（鋼材/コンテナ/全体）ごとに集計する。schedulesとpricesは渡された時点で既に絞り込み済みのものを使う
+    function buildStats(allSchedules: ScheduleRow[], prices: PriceRow[]) {
+      const schedules = allSchedules.filter(s => s.unload_date >= firstDay && s.unload_date <= lastDay)
+      const prevSchedules = allSchedules.filter(s => s.unload_date >= prevFirstDay && s.unload_date <= prevLastDay)
+      const todaySchedules = allSchedules.filter(s => s.unload_date === today)
+
+      const todayCount = todaySchedules.length
+      const todayDrivers = new Set(todaySchedules.map(s => s.driver_id).filter(Boolean)).size
+      const todayWeight = todaySchedules.reduce((sum, s) => sum + (s.weight || 0), 0)
+      const todayUnassigned = todaySchedules.filter(s => !s.driver_id).length
+
+      const thisMonthCount = schedules.length
+      const thisMonthWeight = schedules.reduce((sum, s) => sum + (s.weight || 0), 0)
+      const prevMonthCount = prevSchedules.length
+      const prevMonthWeight = prevSchedules.reduce((sum, s) => sum + (s.weight || 0), 0)
+
+      const priceCache = new Map<string, PriceRow | undefined>()
+      function findPrice(s: { client_name?: string | null; load_place?: string | null; unload_place?: string | null; weight?: number | null }) {
+        const vt = (s.weight || 0) >= 15000 ? 'トレーラー' : '大型'
+        const key = `${s.client_name || ''}|${s.load_place || ''}|${s.unload_place || ''}|${vt}`
+        if (priceCache.has(key)) return priceCache.get(key)
+        function search(matchFn: (p: PriceRow) => boolean) {
+          return prices.find(p => p.price_type !== 'daily' && p.price_type !== 'combo' && matchFn(p) && p.vehicle_type === vt)
+            || prices.find(p => p.price_type !== 'daily' && p.price_type !== 'combo' && matchFn(p) && !p.vehicle_type)
+        }
+        let p = search(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place)
+        if (!p) p = search(p => p.client_name === s.client_name && matchPlace(p.load_place || '', s.load_place || '') && matchPlace(p.unload_place || '', s.unload_place || ''))
+        if (!p) p = search(p => p.client_name === s.client_name && !p.load_place && !p.unload_place)
+        priceCache.set(key, p)
+        return p
+      }
+
+      const groupMembers = new Map<string, ScheduleRow[]>()
+      for (const s of allSchedules) {
+        if (!s.ai_tsumi || !s.ai_tsumi_group) continue
+        const arr = groupMembers.get(s.ai_tsumi_group) || []
+        arr.push(s)
+        groupMembers.set(s.ai_tsumi_group, arr)
+      }
+      function findComboPrice(group: ScheduleRow[]) {
+        if (group.length < 2) return undefined
+        const clientName = group[0].client_name
+        const loadKey = comboKey(group.map(x => x.load_place))
+        const unloadKey = comboKey(group.map(x => x.unload_place))
+        if (!loadKey || !unloadKey) return undefined
+        return prices.find(p => p.price_type === 'combo' && p.client_name === clientName
+          && p.load_place === loadKey && p.unload_place === unloadKey)
+      }
+
+      function calcAmount(s: ScheduleRow) {
+        if ((s.manual_amount ?? 0) > 0) return s.manual_amount!
+        if (s.is_jouyou) return 0
+        if (s.ai_tsumi && s.ai_tsumi_group) {
+          const group = groupMembers.get(s.ai_tsumi_group)
+          if (group) {
+            const combo = findComboPrice(group)
+            if (combo && (combo.fixed_amount || combo.per_ton_rate)) {
+              const total = combo.per_ton_rate
+                ? Math.round(combo.per_ton_rate * group.reduce((sum, x) => sum + (x.weight || 0), 0) / 1000)
+                : combo.fixed_amount!
+              const primaryId = [...group].map(x => x.id).sort()[0]
+              return s.id === primaryId ? total : 0
+            }
           }
         }
+        const p = findPrice(s)
+        if (!p) return 0
+        if (p.price_type === 'per_ton' && p.per_ton_rate) return Math.round(p.per_ton_rate * (s.weight || 0) / 1000)
+        if (p.fixed_amount) return p.fixed_amount
+        return 0
       }
-      const p = findPrice(s)
-      if (!p) return 0
-      if (p.price_type === 'per_ton' && p.per_ton_rate) return Math.round(p.per_ton_rate * (s.weight || 0) / 1000)
-      if (p.fixed_amount) return p.fixed_amount
-      return 0
+
+      function calcRevenue(scheds: ScheduleRow[]) {
+        return scheds.reduce((sum, s) => sum + calcAmount(s), 0)
+      }
+      const thisMonthRevenue = calcRevenue(schedules)
+      const prevMonthRevenue = calcRevenue(prevSchedules)
+
+      const clientRevenue: Record<string, { name: string; count: number; revenue: number; weight: number }> = {}
+      for (const s of schedules) {
+        const cn = s.client_name || '未設定'
+        if (!clientRevenue[cn]) clientRevenue[cn] = { name: cn, count: 0, revenue: 0, weight: 0 }
+        clientRevenue[cn].count += 1
+        clientRevenue[cn].weight += s.weight || 0
+        clientRevenue[cn].revenue += calcAmount(s)
+      }
+      const clientRanking = Object.values(clientRevenue).sort((a, b) => b.revenue - a.revenue || b.count - a.count)
+
+      const driverStats: Record<string, { name: string; count: number; weight: number }> = {}
+      for (const s of schedules) {
+        const did = s.driver_id || ''
+        if (!did) continue
+        const dname = driverMap[did] || '不明'
+        if (!driverStats[did]) driverStats[did] = { name: dname, count: 0, weight: 0 }
+        driverStats[did].count += 1
+        driverStats[did].weight += s.weight || 0
+      }
+      const driverList = Object.values(driverStats).sort((a, b) => b.count - a.count)
+
+      const weeklyData: { date: string; day: string; count: number }[] = []
+      const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(nowJst.getTime() - i * 24 * 60 * 60 * 1000)
+        const ds = ymd(d)
+        const count = allSchedules.filter(s => s.unload_date === ds).length
+        weeklyData.push({ date: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`, day: DAY_LABELS[d.getUTCDay()], count })
+      }
+
+      const monthlyData: { month: string; count: number; revenue: number }[] = []
+      for (let i = 5; i >= 0; i--) {
+        const mFirst = ymd(new Date(Date.UTC(y, mo - i, 1)))
+        const mLast = ymd(new Date(Date.UTC(y, mo - i + 1, 0)))
+        const ms = allSchedules.filter(s => s.unload_date >= mFirst && s.unload_date <= mLast)
+        const mDate = new Date(Date.UTC(y, mo - i, 1))
+        monthlyData.push({
+          month: `${mDate.getUTCMonth() + 1}月`,
+          count: ms.length,
+          revenue: calcRevenue(ms),
+        })
+      }
+
+      return {
+        today: { count: todayCount, drivers: todayDrivers, weight: todayWeight, unassigned: todayUnassigned },
+        thisMonth: { count: thisMonthCount, weight: thisMonthWeight, revenue: thisMonthRevenue },
+        prevMonth: { count: prevMonthCount, weight: prevMonthWeight, revenue: prevMonthRevenue },
+        client_ranking: clientRanking,
+        driver_stats: driverList,
+        weekly: weeklyData,
+        monthly: monthlyData,
+      }
     }
 
-    function calcRevenue(scheds: typeof allSchedules) {
-      return scheds.reduce((sum, s) => sum + calcAmount(s), 0)
-    }
-    const thisMonthRevenue = calcRevenue(schedules)
-    const prevMonthRevenue = calcRevenue(prevSchedules)
-
-    // --- 荷主別売上ランキング ---
-    const clientRevenue: Record<string, { name: string; count: number; revenue: number; weight: number }> = {}
-    for (const s of schedules) {
-      const cn = s.client_name || '未設定'
-      if (!clientRevenue[cn]) clientRevenue[cn] = { name: cn, count: 0, revenue: 0, weight: 0 }
-      clientRevenue[cn].count += 1
-      clientRevenue[cn].weight += s.weight || 0
-      clientRevenue[cn].revenue += calcAmount(s)
-    }
-    const clientRanking = Object.values(clientRevenue).sort((a, b) => b.revenue - a.revenue || b.count - a.count)
-
-    // --- ドライバー別稼働 ---
-    const driverStats: Record<string, { name: string; count: number; weight: number }> = {}
-    for (const s of schedules) {
-      const did = s.driver_id || ''
-      if (!did) continue
-      const dname = driverMap[did] || '不明'
-      if (!driverStats[did]) driverStats[did] = { name: dname, count: 0, weight: 0 }
-      driverStats[did].count += 1
-      driverStats[did].weight += s.weight || 0
-    }
-    const driverList = Object.values(driverStats).sort((a, b) => b.count - a.count)
-
-    // --- 週間推移（直近7日） ---
-    const weeklyData: { date: string; day: string; count: number }[] = []
-    const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(nowJst.getTime() - i * 24 * 60 * 60 * 1000)
-      const ds = ymd(d)
-      const count = allSchedules.filter(s => s.unload_date === ds).length
-      weeklyData.push({ date: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`, day: DAY_LABELS[d.getUTCDay()], count })
-    }
-
-    // --- 月次推移（直近6ヶ月の売上・件数） ---
-    const monthlyData: { month: string; count: number; revenue: number }[] = []
-    for (let i = 5; i >= 0; i--) {
-      const mFirst = ymd(new Date(Date.UTC(y, mo - i, 1)))
-      const mLast = ymd(new Date(Date.UTC(y, mo - i + 1, 0)))
-      const ms = allSchedules.filter(s => s.unload_date >= mFirst && s.unload_date <= mLast)
-      const mDate = new Date(Date.UTC(y, mo - i, 1))
-      monthlyData.push({
-        month: `${mDate.getUTCMonth() + 1}月`,
-        count: ms.length,
-        revenue: calcRevenue(ms),
-      })
-    }
+    const steelSchedules = allSchedulesRaw.filter(s => (s.category || 'steel') === 'steel')
+    const containerSchedules = allSchedulesRaw.filter(s => s.category === 'container')
+    const steelPrices = allPrices.filter(p => (p.category || 'steel') === 'steel')
+    const containerPrices = allPrices.filter(p => p.category === 'container')
 
     return Response.json({
-      today: { count: todayCount, drivers: todayDrivers, weight: todayWeight, unassigned: todayUnassigned },
-      thisMonth: { count: thisMonthCount, weight: thisMonthWeight, revenue: thisMonthRevenue },
-      prevMonth: { count: prevMonthCount, weight: prevMonthWeight, revenue: prevMonthRevenue },
-      client_ranking: clientRanking,
-      driver_stats: driverList,
-      weekly: weeklyData,
-      monthly: monthlyData,
+      all: buildStats(allSchedulesRaw, allPrices),
+      steel: buildStats(steelSchedules, steelPrices),
+      container: buildStats(containerSchedules, containerPrices),
     })
   } catch (e) {
     const message = e instanceof Error ? e.message : ''

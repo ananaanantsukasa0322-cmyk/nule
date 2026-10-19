@@ -13,6 +13,10 @@ interface DashboardData {
   monthly?: { month: string; count: number; revenue: number }[];
 }
 
+interface DashboardByCategory {
+  all: DashboardData; steel: DashboardData; container: DashboardData;
+}
+
 function fmt(n: number) { return `¥${n.toLocaleString()}`; }
 function fmtCompact(n: number) {
   if (n >= 100000000) return `${(n / 100000000).toFixed(1)}億`;
@@ -53,7 +57,8 @@ interface Notice {
 }
 
 function DashboardContent() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const [allData, setAllData] = useState<DashboardByCategory | null>(null);
+  const [categoryTab, setCategoryTab] = useState<"all" | "steel" | "container">("all");
   const [notices, setNotices] = useState<Notice[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,7 +73,7 @@ function DashboardContent() {
         fetch("/api/notices", { cache: "no-store" }).catch(() => null),
       ]);
       if (res.ok) {
-        setData(await res.json());
+        setAllData(await res.json());
         setUpdatedAt(new Date());
         setLoadError(null);
       } else {
@@ -90,7 +95,8 @@ function DashboardContent() {
   useEffect(() => { load(); }, [load]);
 
   if (loading) return <Skeleton />;
-  if (!data) return <div className="text-muted text-sm">データの取得に失敗しました</div>;
+  if (!allData) return <div className="text-muted text-sm">データの取得に失敗しました</div>;
+  const data = allData[categoryTab];
 
   const now = new Date();
   const monthLabel = `${now.getFullYear()}年${now.getMonth() + 1}月`;
@@ -107,7 +113,7 @@ function DashboardContent() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-2xl font-extralight tracking-wide">ダッシュボード</h2>
           <p className="text-xs text-muted mt-1">{monthLabel}</p>
@@ -120,6 +126,15 @@ function DashboardContent() {
             {refreshing ? "更新中..." : "↻ 更新"}
           </button>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 mb-6">
+        {([["all", "全体"], ["steel", "🔩 鋼材"], ["container", "📦 コンテナ"]] as const).map(([key, label]) => (
+          <button key={key} onClick={() => setCategoryTab(key)}
+            className={`text-sm px-4 py-1.5 rounded-md transition-colors ${categoryTab === key ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* 共有注意事項（整備管理などから） */}
