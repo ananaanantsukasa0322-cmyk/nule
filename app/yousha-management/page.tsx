@@ -7,6 +7,7 @@ import Modal from "@/components/Modal";
 interface Yousha {
   id: string; name: string; display_name: string; company: string;
   phone: string; vehicle_info: string; payment_rate: number; note: string;
+  category?: "steel" | "container";
 }
 
 interface Schedule {
@@ -28,8 +29,9 @@ function YoushaContent() {
   const [selectedYousha, setSelectedYousha] = useState<Yousha | null>(null);
   const [form, setForm] = useState({
     name: "", display_name: "", company: "", phone: "",
-    vehicle_info: "", payment_rate: "", note: "",
+    vehicle_info: "", payment_rate: "", note: "", category: "steel",
   });
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "steel" | "container">("all");
 
   const now = new Date();
   const [dateFrom, setDateFrom] = useState(
@@ -52,7 +54,7 @@ function YoushaContent() {
   useEffect(() => { loadData(); }, [loadData]);
 
   function resetForm() {
-    setForm({ name: "", display_name: "", company: "", phone: "", vehicle_info: "", payment_rate: "", note: "" });
+    setForm({ name: "", display_name: "", company: "", phone: "", vehicle_info: "", payment_rate: "", note: "", category: "steel" });
     setEditId(null);
   }
 
@@ -61,6 +63,7 @@ function YoushaContent() {
       name: y.name, display_name: y.display_name || "", company: y.company || "",
       phone: y.phone || "", vehicle_info: y.vehicle_info || "",
       payment_rate: y.payment_rate?.toString() || "0", note: y.note || "",
+      category: y.category || "steel",
     });
     setEditId(y.id);
     setShowModal(true);
@@ -105,20 +108,30 @@ function YoushaContent() {
         </button>
       </div>
 
+      <div className="flex items-center gap-2 mb-4">
+        {(["all", "steel", "container"] as const).map(c => (
+          <button key={c} onClick={() => setCategoryFilter(c)}
+            className={`text-xs px-3 py-1.5 rounded-md transition-colors ${categoryFilter === c ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+            {c === "all" ? "全て" : c === "steel" ? "鋼材" : "コンテナ"}
+          </button>
+        ))}
+      </div>
+
       <div className="overflow-x-auto mb-8">
         <table>
           <thead>
             <tr>
-              <th>表示名</th><th>会社名</th><th>連絡先</th><th>車両情報</th>
+              <th>表示名</th><th>区分</th><th>会社名</th><th>連絡先</th><th>車両情報</th>
               <th>支払単価</th><th>備考</th><th></th>
             </tr>
           </thead>
           <tbody>
-            {youshas.length === 0 ? (
-              <tr><td colSpan={7} className="text-center text-muted py-8">傭車データなし</td></tr>
-            ) : youshas.map(y => (
+            {youshas.filter(y => categoryFilter === "all" || (y.category || "steel") === categoryFilter).length === 0 ? (
+              <tr><td colSpan={8} className="text-center text-muted py-8">傭車データなし</td></tr>
+            ) : youshas.filter(y => categoryFilter === "all" || (y.category || "steel") === categoryFilter).map(y => (
               <tr key={y.id}>
                 <td className="text-sm font-medium">{y.display_name || y.name}</td>
+                <td className="text-xs text-muted">{(y.category || "steel") === "steel" ? "鋼材" : "コンテナ"}</td>
                 <td className="text-sm text-muted">{y.company || "—"}</td>
                 <td className="text-sm text-muted">{y.phone || "—"}</td>
                 <td className="text-sm text-muted">{y.vehicle_info || "—"}</td>
@@ -198,6 +211,11 @@ function YoushaContent() {
           </div>
           <div><label className="block text-xs text-muted mb-1">備考</label>
             <input type="text" value={form.note} onChange={e => setForm({ ...form, note: e.target.value })} className="w-full" /></div>
+          <div><label className="block text-xs text-muted mb-1">区分</label>
+            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full">
+              <option value="steel">鋼材</option>
+              <option value="container">コンテナ</option>
+            </select></div>
           <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-4">{editId ? "更新" : "登録"}</button>
         </form>
       </Modal>

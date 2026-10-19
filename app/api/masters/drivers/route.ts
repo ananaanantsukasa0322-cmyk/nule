@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
         phone: body.phone || null,
         status: body.status || '稼働中',
         haisha_visible: body.haisha_visible !== false,
+        category: body.category || 'steel',
       })
       .select()
       .single()
@@ -58,6 +59,7 @@ export async function PUT(request: NextRequest) {
     if (body.phone !== undefined) updateData.phone = body.phone
     if (body.status !== undefined) updateData.status = body.status
     if (body.haisha_visible !== undefined) updateData.haisha_visible = body.haisha_visible
+    if (body.category !== undefined) updateData.category = body.category
 
     const { data, error } = await supabase
       .from('drivers')

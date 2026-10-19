@@ -8,7 +8,7 @@ import { useToast } from "@/components/Toast";
 interface PriceEntry {
   id: string; client_name: string; load_place: string; unload_place: string;
   price_type: string; per_ton_rate: number | null; fixed_amount: number | null;
-  vehicle_type: string | null;
+  vehicle_type: string | null; category: string;
 }
 
 function PricesContent() {
@@ -22,11 +22,12 @@ function PricesContent() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({
     client_name: "", load_place: "", unload_place: "",
-    price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "",
+    price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "", category: "steel",
   });
   const [comboLoadPlaces, setComboLoadPlaces] = useState<string[]>(["", ""]);
   const [comboUnloadPlaces, setComboUnloadPlaces] = useState<string[]>([""]);
   const [comboRateType, setComboRateType] = useState<"fixed" | "per_ton">("fixed");
+  const [categoryTab, setCategoryTab] = useState<"steel" | "container">("steel");
 
   const loadData = useCallback(async () => {
     const [p, s] = await Promise.all([
@@ -37,7 +38,7 @@ function PricesContent() {
       id: x.id as string, client_name: (x.client_name || '') as string, load_place: (x.load_place || '') as string,
       unload_place: (x.unload_place || '') as string, price_type: (x.price_type || 'fixed') as string,
       per_ton_rate: x.per_ton_rate as number | null, fixed_amount: x.fixed_amount as number | null,
-      vehicle_type: (x.vehicle_type || null) as string | null,
+      vehicle_type: (x.vehicle_type || null) as string | null, category: (x.category || 'steel') as string,
     })));
     setSchedules(Array.isArray(s) ? s : []);
     setSelected(new Set());
@@ -51,7 +52,7 @@ function PricesContent() {
   const knownDests = [...new Set(schedules.map(s => s.unload_place).filter(Boolean))].sort();
 
   function resetForm() {
-    setForm({ client_name: "", load_place: "", unload_place: "", price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "" });
+    setForm({ client_name: "", load_place: "", unload_place: "", price_type: "per_ton", per_ton_rate: "", fixed_amount: "", vehicle_type: "", category: categoryTab });
     setComboLoadPlaces(["", ""]);
     setComboUnloadPlaces([""]);
     setComboRateType("fixed");
@@ -63,6 +64,7 @@ function PricesContent() {
       client_name: p.client_name, load_place: p.load_place, unload_place: p.unload_place,
       price_type: p.price_type, per_ton_rate: p.per_ton_rate?.toString() || "",
       fixed_amount: p.fixed_amount?.toString() || "", vehicle_type: p.vehicle_type || "",
+      category: p.category || "steel",
     });
     if (p.price_type === "combo") {
       const loadParts = p.load_place.split("|").filter(Boolean);
@@ -98,6 +100,7 @@ function PricesContent() {
         price_type: "combo",
         per_ton_rate: comboRateType === "per_ton" ? rate : null,
         fixed_amount: comboRateType === "per_ton" ? null : rate,
+        category: form.category,
       };
       const method = editingId ? "PUT" : "POST";
       const payload = editingId ? { ...body, id: editingId } : body;
@@ -152,9 +155,11 @@ function PricesContent() {
     });
   }
 
+  const filteredPrices = prices.filter(p => (p.category || "steel") === categoryTab);
+
   function toggleAll() {
-    if (selected.size === prices.length) setSelected(new Set());
-    else setSelected(new Set(prices.map(p => p.id)));
+    if (selected.size === filteredPrices.length) setSelected(new Set());
+    else setSelected(new Set(filteredPrices.map(p => p.id)));
   }
 
   async function deleteSelected() {
@@ -196,8 +201,18 @@ function PricesContent() {
           </div>
         </div>
       )}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-light">単価マスタ</h2>
+      </div>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          {(["steel", "container"] as const).map(c => (
+            <button key={c} onClick={() => setCategoryTab(c)}
+              className={`text-sm px-4 py-1.5 rounded-md transition-colors ${categoryTab === c ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+              {c === "steel" ? "鋼材" : "コンテナ"}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-3">
           <label className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded cursor-pointer hover:bg-blue-700">
             AI単価取込
@@ -219,6 +234,7 @@ function PricesContent() {
                         price_type: ent.price_type || "fixed",
                         fixed_amount: ent.price_type !== "per_ton" ? Number(ent.rate) : null,
                         per_ton_rate: ent.price_type === "per_ton" ? Number(ent.rate) : null,
+                        category: categoryTab,
                       })
                     });
                     ok++;
@@ -280,13 +296,13 @@ function PricesContent() {
       <div className="overflow-x-auto">
         <table>
           <thead><tr>
-            <th><input type="checkbox" checked={selected.size === prices.length && prices.length > 0} onChange={toggleAll} /></th>
+            <th><input type="checkbox" checked={selected.size === filteredPrices.length && filteredPrices.length > 0} onChange={toggleAll} /></th>
             <th>荷主</th><th>積み地</th><th>下ろし先</th><th>車両</th><th>タイプ</th><th>単価/金額</th><th>操作</th>
           </tr></thead>
           <tbody>
-            {prices.length === 0 ? (
+            {filteredPrices.length === 0 ? (
               <tr><td colSpan={8} className="text-center text-muted py-8">単価データがありません</td></tr>
-            ) : prices.map(p => (
+            ) : filteredPrices.map(p => (
               <tr key={p.id} className={selected.has(p.id) ? "bg-accent/20" : ""}>
                 <td><input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)} /></td>
                 <td className="text-sm">{p.client_name || "—"}</td>
@@ -314,6 +330,11 @@ function PricesContent() {
           <datalist id="dl-pd">{knownDests.map(c => <option key={c} value={c} />)}</datalist>
           <div><label className="block text-xs text-muted mb-1">荷主</label>
             <input type="text" list="dl-pc" value={form.client_name} onChange={e => setForm({ ...form, client_name: e.target.value })} className="w-full" required /></div>
+          <div><label className="block text-xs text-muted mb-1">区分</label>
+            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })} className="w-full">
+              <option value="steel">鋼材</option>
+              <option value="container">コンテナ</option>
+            </select></div>
           {form.price_type !== "daily" && form.price_type !== "combo" && (
             <div className="grid grid-cols-2 gap-3">
               <div><label className="block text-xs text-muted mb-1">積み地</label>

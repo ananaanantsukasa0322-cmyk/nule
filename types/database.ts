@@ -50,6 +50,7 @@ export interface Driver {
   name: string
   payment_percentage: number
   is_active: boolean
+  category?: 'steel' | 'container'
   created_at: string
   updated_at: string
 }

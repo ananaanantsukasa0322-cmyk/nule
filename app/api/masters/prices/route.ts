@@ -39,6 +39,7 @@ export async function POST(request: NextRequest) {
         per_ton_rate: body.per_ton_rate || null,
         fixed_amount: body.fixed_amount || null,
         vehicle_type: null,
+        category: body.category || 'steel',
         is_active: true,
       }).select()
       if (error) throw error
@@ -63,6 +64,7 @@ export async function POST(request: NextRequest) {
           per_ton_rate: body.per_ton_rate || null,
           fixed_amount: body.fixed_amount || null,
           vehicle_type: body.vehicle_type || null,
+          category: body.category || 'steel',
           is_active: true,
         })
       }
@@ -102,6 +104,7 @@ export async function PUT(request: NextRequest) {
     if ('per_ton_rate' in body) updateData.per_ton_rate = body.per_ton_rate || null
     if ('fixed_amount' in body) updateData.fixed_amount = body.fixed_amount || null
     if ('vehicle_type' in body) updateData.vehicle_type = body.vehicle_type || null
+    if ('category' in body) updateData.category = body.category || 'steel'
     const { data, error } = await supabase.from('prices').update(updateData).eq('id', body.id).select().single()
     if (error) throw error
     return Response.json({ price: data })

@@ -11,9 +11,11 @@ interface Vehicle {
   payload: number; note: string;
   shaken_date?: string | null; inspection_3m_date?: string | null;
   repair_note?: string | null; caution?: string | null;
+  category?: "steel" | "container";
 }
 interface Driver {
   id: string; name: string; phone?: string; status?: string;
+  category?: "steel" | "container";
 }
 interface Notice {
   id: string; title: string; body: string; target: string; department: string;
@@ -55,10 +57,13 @@ function MaintenanceContent() {
   const [aiLoading, setAiLoading] = useState(false);
 
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
-  const [vForm, setVForm] = useState({ shaken_date: "", inspection_3m_date: "", repair_note: "", caution: "", payload: "", number: "", head_number: "", trailer_number: "", kind: "" });
+  const [showNewVehicle, setShowNewVehicle] = useState(false);
+  const [vForm, setVForm] = useState({ shaken_date: "", inspection_3m_date: "", repair_note: "", caution: "", payload: "", number: "", head_number: "", trailer_number: "", kind: "", category: "steel" });
+  const [vehicleCategoryFilter, setVehicleCategoryFilter] = useState<"all" | "steel" | "container">("all");
 
   const [editDriver, setEditDriver] = useState<Driver | null>(null);
-  const [dForm, setDForm] = useState({ name: "", phone: "", status: "" });
+  const [dForm, setDForm] = useState({ name: "", phone: "", status: "", category: "steel" });
+  const [driverCategoryFilter, setDriverCategoryFilter] = useState<"all" | "steel" | "container">("all");
 
   const [nForm, setNForm] = useState({ title: "", body: "", target: "all", department: "整備", due_date: "" });
 
@@ -83,7 +88,12 @@ function MaintenanceContent() {
       repair_note: v.repair_note || "", caution: v.caution || "",
       payload: v.payload ? String(v.payload) : "", number: v.number || "",
       head_number: v.head_number || "", trailer_number: v.trailer_number || "", kind: v.kind || "",
+      category: v.category || "steel",
     });
+  }
+
+  function resetVehicleForm() {
+    setVForm({ shaken_date: "", inspection_3m_date: "", repair_note: "", caution: "", payload: "", number: "", head_number: "", trailer_number: "", kind: "", category: "steel" });
   }
 
   async function saveVehicle(e: React.FormEvent) {
@@ -98,15 +108,35 @@ function MaintenanceContent() {
         inspection_3m_date: vForm.inspection_3m_date || null,
         repair_note: vForm.repair_note || null,
         caution: vForm.caution || null,
+        category: vForm.category,
       }),
     });
     if (res.ok) { show("車両情報を保存しました"); setEditVehicle(null); loadData(); }
     else { const d = await res.json().catch(() => ({})); show(d.error || "保存に失敗しました", "error"); }
   }
 
+  async function createVehicle(e: React.FormEvent) {
+    e.preventDefault();
+    const res = await fetch("/api/vehicles", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind: vForm.kind, number: vForm.number, head_number: vForm.head_number,
+        trailer_number: vForm.trailer_number, payload: Number(vForm.payload) || 0,
+        shaken_date: vForm.shaken_date || null,
+        inspection_3m_date: vForm.inspection_3m_date || null,
+        repair_note: vForm.repair_note || null,
+        caution: vForm.caution || null,
+        category: vForm.category,
+        is_active: true,
+      }),
+    });
+    if (res.ok) { show("車両を登録しました"); setShowNewVehicle(false); resetVehicleForm(); loadData(); }
+    else { const d = await res.json().catch(() => ({})); show(d.error || "登録に失敗しました", "error"); }
+  }
+
   function openDriverEdit(d: Driver) {
     setEditDriver(d);
-    setDForm({ name: d.name, phone: d.phone || "", status: d.status || "稼働中" });
+    setDForm({ name: d.name, phone: d.phone || "", status: d.status || "稼働中", category: d.category || "steel" });
   }
 
   async function saveDriver(e: React.FormEvent) {
@@ -114,7 +144,7 @@ function MaintenanceContent() {
     if (!editDriver) return;
     const res = await fetch(`/api/drivers/${editDriver.id}`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...editDriver, name: dForm.name, phone: dForm.phone, status: dForm.status }),
+      body: JSON.stringify({ ...editDriver, name: dForm.name, phone: dForm.phone, status: dForm.status, category: dForm.category }),
     });
     if (res.ok) { show("ドライバー情報を保存しました"); setEditDriver(null); loadData(); }
     else { const d = await res.json().catch(() => ({})); show(d.error || "保存に失敗しました", "error"); }
@@ -228,6 +258,8 @@ function MaintenanceContent() {
       {tab === "vehicles" && (
         <div>
           <div className="flex flex-wrap items-center gap-3 mb-4">
+            <button onClick={() => { resetVehicleForm(); setShowNewVehicle(true); }}
+              className="px-3 py-1.5 bg-white text-black text-sm rounded hover:bg-gray-200">+ 新規車両</button>
             <FileImport target="vehicles" label="Excel/CSV取込（車番で照合・更新）" onComplete={loadData} />
             <label className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded cursor-pointer hover:bg-blue-700">
               AI取込（PDF/画像）
@@ -235,15 +267,24 @@ function MaintenanceContent() {
             </label>
             <span className="text-xs text-muted">列名例: 車番 / ヘッド / 台車 / 積載量 / 車検日 / 3ヶ月点検 / 修理情報 / 注意事項</span>
           </div>
+          <div className="flex items-center gap-2 mb-4">
+            {(["all", "steel", "container"] as const).map(c => (
+              <button key={c} onClick={() => setVehicleCategoryFilter(c)}
+                className={`text-xs px-3 py-1.5 rounded-md transition-colors ${vehicleCategoryFilter === c ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+                {c === "all" ? "全て" : c === "steel" ? "鋼材" : "コンテナ"}
+              </button>
+            ))}
+          </div>
           <div className="overflow-x-auto">
             <table>
-              <thead><tr><th>車番</th><th>種別</th><th>積載量</th><th>車検満了日</th><th>3ヶ月点検</th><th>修理情報</th><th>注意事項</th><th>操作</th></tr></thead>
+              <thead><tr><th>車番</th><th>区分</th><th>種別</th><th>積載量</th><th>車検満了日</th><th>3ヶ月点検</th><th>修理情報</th><th>注意事項</th><th>操作</th></tr></thead>
               <tbody>
-                {vehicles.length === 0 ? (
-                  <tr><td colSpan={8} className="text-center text-muted py-8">車両データがありません</td></tr>
-                ) : vehicles.map(v => (
+                {vehicles.filter(v => vehicleCategoryFilter === "all" || (v.category || "steel") === vehicleCategoryFilter).length === 0 ? (
+                  <tr><td colSpan={9} className="text-center text-muted py-8">車両データがありません</td></tr>
+                ) : vehicles.filter(v => vehicleCategoryFilter === "all" || (v.category || "steel") === vehicleCategoryFilter).map(v => (
                   <tr key={v.id}>
                     <td className="text-sm whitespace-nowrap">{vehicleName(v)}</td>
+                    <td className="text-xs text-muted">{(v.category || "steel") === "steel" ? "鋼材" : "コンテナ"}</td>
                     <td className="text-xs text-muted">{v.kind || "—"}</td>
                     <td className="text-sm whitespace-nowrap">{v.payload ? `${v.payload.toLocaleString()}kg` : "—"}</td>
                     <td><DateBadge date={v.shaken_date} warnDays={30} /></td>
@@ -271,15 +312,24 @@ function MaintenanceContent() {
             </label>
             <span className="text-xs text-muted">列名例: 名前 / 連絡先 / 状態</span>
           </div>
+          <div className="flex items-center gap-2 mb-4">
+            {(["all", "steel", "container"] as const).map(c => (
+              <button key={c} onClick={() => setDriverCategoryFilter(c)}
+                className={`text-xs px-3 py-1.5 rounded-md transition-colors ${driverCategoryFilter === c ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+                {c === "all" ? "全て" : c === "steel" ? "鋼材" : "コンテナ"}
+              </button>
+            ))}
+          </div>
           <div className="overflow-x-auto">
             <table>
-              <thead><tr><th>名前</th><th>連絡先</th><th>状態</th><th>操作</th></tr></thead>
+              <thead><tr><th>名前</th><th>区分</th><th>連絡先</th><th>状態</th><th>操作</th></tr></thead>
               <tbody>
-                {drivers.length === 0 ? (
-                  <tr><td colSpan={4} className="text-center text-muted py-8">ドライバーデータがありません</td></tr>
-                ) : drivers.map(d => (
+                {drivers.filter(d => driverCategoryFilter === "all" || (d.category || "steel") === driverCategoryFilter).length === 0 ? (
+                  <tr><td colSpan={5} className="text-center text-muted py-8">ドライバーデータがありません</td></tr>
+                ) : drivers.filter(d => driverCategoryFilter === "all" || (d.category || "steel") === driverCategoryFilter).map(d => (
                   <tr key={d.id}>
                     <td className="text-sm">{d.name}</td>
+                    <td className="text-xs text-muted">{(d.category || "steel") === "steel" ? "鋼材" : "コンテナ"}</td>
                     <td className="text-sm text-muted">{d.phone || "—"}</td>
                     <td className="text-xs">{d.status || "稼働中"}</td>
                     <td><button onClick={() => openDriverEdit(d)} className="text-xs text-muted hover:text-white">編集</button></td>
@@ -350,6 +400,11 @@ function MaintenanceContent() {
               <input type="text" value={vForm.trailer_number} onChange={e => setVForm({ ...vForm, trailer_number: e.target.value })} className="w-full" /></div>
             <div><label className="block text-xs text-muted mb-1">積載量(kg)</label>
               <input type="number" value={vForm.payload} onChange={e => setVForm({ ...vForm, payload: e.target.value })} className="w-full" /></div>
+            <div><label className="block text-xs text-muted mb-1">区分</label>
+              <select value={vForm.category} onChange={e => setVForm({ ...vForm, category: e.target.value })} className="w-full">
+                <option value="steel">鋼材</option>
+                <option value="container">コンテナ</option>
+              </select></div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div><label className="block text-xs text-muted mb-1">車検満了日</label>
@@ -365,6 +420,29 @@ function MaintenanceContent() {
         </form>
       </Modal>
 
+      <Modal open={showNewVehicle} onClose={() => { setShowNewVehicle(false); resetVehicleForm(); }} title="新規車両登録">
+        <form onSubmit={createVehicle} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><label className="block text-xs text-muted mb-1">車番</label>
+              <input type="text" value={vForm.number} onChange={e => setVForm({ ...vForm, number: e.target.value })} className="w-full" /></div>
+            <div><label className="block text-xs text-muted mb-1">種別</label>
+              <input type="text" value={vForm.kind} onChange={e => setVForm({ ...vForm, kind: e.target.value })} className="w-full" /></div>
+            <div><label className="block text-xs text-muted mb-1">ヘッド車番</label>
+              <input type="text" value={vForm.head_number} onChange={e => setVForm({ ...vForm, head_number: e.target.value })} className="w-full" /></div>
+            <div><label className="block text-xs text-muted mb-1">シャーシ車番</label>
+              <input type="text" value={vForm.trailer_number} onChange={e => setVForm({ ...vForm, trailer_number: e.target.value })} className="w-full" /></div>
+            <div><label className="block text-xs text-muted mb-1">積載量(kg)</label>
+              <input type="number" value={vForm.payload} onChange={e => setVForm({ ...vForm, payload: e.target.value })} className="w-full" /></div>
+            <div><label className="block text-xs text-muted mb-1">区分</label>
+              <select value={vForm.category} onChange={e => setVForm({ ...vForm, category: e.target.value })} className="w-full">
+                <option value="steel">鋼材</option>
+                <option value="container">コンテナ</option>
+              </select></div>
+          </div>
+          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200">登録</button>
+        </form>
+      </Modal>
+
       <Modal open={!!editDriver} onClose={() => setEditDriver(null)} title="ドライバー情報">
         <form onSubmit={saveDriver} className="space-y-3">
           <div><label className="block text-xs text-muted mb-1">名前</label>
@@ -376,6 +454,11 @@ function MaintenanceContent() {
               <option value="稼働中">稼働中</option>
               <option value="休職中">休職中</option>
               <option value="退職">退職</option>
+            </select></div>
+          <div><label className="block text-xs text-muted mb-1">区分</label>
+            <select value={dForm.category} onChange={e => setDForm({ ...dForm, category: e.target.value })} className="w-full">
+              <option value="steel">鋼材</option>
+              <option value="container">コンテナ</option>
             </select></div>
           <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200">保存</button>
         </form>
