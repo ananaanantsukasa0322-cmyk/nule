@@ -260,7 +260,8 @@ function MaintenanceContent() {
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <button onClick={() => { resetVehicleForm(); setShowNewVehicle(true); }}
               className="px-3 py-1.5 bg-white text-black text-sm rounded hover:bg-gray-200">+ 新規車両</button>
-            <FileImport target="vehicles" label="Excel/CSV取込（車番で照合・更新）" onComplete={loadData} />
+            <FileImport target="vehicles" label="Excel/CSV取込（車番で照合・更新）" onComplete={loadData}
+              category={vehicleCategoryFilter === "container" ? "container" : "steel"} />
             <label className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded cursor-pointer hover:bg-blue-700">
               AI取込（PDF/画像）
               <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => handleAiImport(e, "vehicles")} />
@@ -305,7 +306,8 @@ function MaintenanceContent() {
       {tab === "drivers" && (
         <div>
           <div className="flex flex-wrap items-center gap-3 mb-4">
-            <FileImport target="drivers" label="Excel/CSV取込（名前で照合・更新）" onComplete={loadData} />
+            <FileImport target="drivers" label="Excel/CSV取込（名前で照合・更新）" onComplete={loadData}
+              category={driverCategoryFilter === "container" ? "container" : "steel"} />
             <label className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded cursor-pointer hover:bg-blue-700">
               AI取込（PDF/画像）
               <input type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={e => handleAiImport(e, "drivers")} />

@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData()
     const file = formData.get('file') as File
     const target = formData.get('target') as string
+    const category = (formData.get('category') as string) || 'steel'
 
     if (!file || !target) {
       return Response.json({ error: 'ファイルと対象を指定してください' }, { status: 400 })
@@ -36,6 +37,11 @@ export async function POST(request: NextRequest) {
 
     let inserted = 0
     let errors = 0
+    const errorDetails: string[] = []
+    function addError(rowIndex: number, reason: string) {
+      errors++
+      if (errorDetails.length < 10) errorDetails.push(`行${rowIndex + 2}: ${reason}`)
+    }
 
     // 日付らしき値をYYYY-MM-DDに正規化（Excelシリアル値・スラッシュ区切り対応）
     function normDate(v: unknown): string | null {
@@ -54,13 +60,15 @@ export async function POST(request: NextRequest) {
 
     if (target === 'drivers') {
       const { data: existing } = await supabase.from('drivers').select('id,name')
-      for (const row of rows) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
         const name = String(row['名前'] || row['氏名'] || row['name'] || '').trim()
-        if (!name) { errors++; continue }
+        if (!name) { addError(i, `名前の列が見つかりません（実際の列名: ${Object.keys(row).join('、') || 'なし'}）`); continue }
         const values: Record<string, unknown> = {
           name,
           phone: String(row['連絡先'] || row['電話番号'] || row['phone'] || ''),
           status: String(row['状態'] || row['status'] || '稼働中'),
+          category,
         }
         const pay = row['支払率'] ?? row['payment_percentage']
         if (pay != null && pay !== '') values.payment_percentage = Number(pay) || 0
@@ -70,14 +78,15 @@ export async function POST(request: NextRequest) {
         const { error } = match
           ? await supabase.from('drivers').update(values).eq('id', match.id)
           : await supabase.from('drivers').insert(values)
-        if (error) errors++; else inserted++
+        if (error) addError(i, error.message); else inserted++
       }
     } else if (target === 'vehicles') {
       const { data: existing } = await supabase.from('vehicles').select('id,number,head_number')
-      for (const row of rows) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
         const number = String(row['ナンバー'] || row['車番'] || row['number'] || '').trim()
         const headNumber = String(row['ヘッド'] || row['ヘッド車番'] || row['head_number'] || '').trim()
-        const values: Record<string, unknown> = {}
+        const values: Record<string, unknown> = { category }
         if (row['種別'] || row['kind']) values.kind = String(row['種別'] || row['kind'])
         if (number) values.number = number
         if (headNumber) values.head_number = headNumber
@@ -92,7 +101,7 @@ export async function POST(request: NextRequest) {
         if (row['修理情報'] || row['repair_note']) values.repair_note = String(row['修理情報'] || row['repair_note'])
         if (row['注意事項'] || row['caution']) values.caution = String(row['注意事項'] || row['caution'])
 
-        if (!number && !headNumber) { errors++; continue }
+        if (!number && !headNumber) { addError(i, `車番・ヘッドの列が見つかりません（実際の列名: ${Object.keys(row).join('、') || 'なし'}）`); continue }
         // 車番またはヘッド車番一致で既存を更新、なければ新規
         const match = (existing || []).find(v =>
           (number && (v.number === number || v.head_number === number)) ||
@@ -101,21 +110,23 @@ export async function POST(request: NextRequest) {
         const { error } = match
           ? await supabase.from('vehicles').update(values).eq('id', match.id)
           : await supabase.from('vehicles').insert({ kind: 'トラック', ...values })
-        if (error) errors++; else inserted++
+        if (error) addError(i, error.message); else inserted++
       }
     } else if (target === 'clients') {
-      for (const row of rows) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
         const company_name = String(row['会社名'] || row['company_name'] || '').trim()
-        if (!company_name) { errors++; continue }
+        if (!company_name) { addError(i, `会社名の列が見つかりません（実際の列名: ${Object.keys(row).join('、') || 'なし'}）`); continue }
         const { error } = await supabase.from('clients').insert({
           company_name,
           address: String(row['住所'] || row['address'] || ''),
           contact: String(row['連絡先'] || row['contact'] || ''),
         })
-        if (error) errors++; else inserted++
+        if (error) addError(i, error.message); else inserted++
       }
     } else if (target === 'prices') {
-      for (const row of rows) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
         const price_type = String(row['タイプ'] || row['price_type'] || 'fixed')
         const { error } = await supabase.from('prices').insert({
           client_id: row['client_id'] || null,
@@ -123,26 +134,28 @@ export async function POST(request: NextRequest) {
           price_type,
           per_ton_rate: Number(row['t単価'] || row['per_ton_rate'] || 0) || null,
           fixed_amount: Number(row['固定金額'] || row['fixed_amount'] || 0) || null,
+          category,
         })
-        if (error) errors++; else inserted++
+        if (error) addError(i, error.message); else inserted++
       }
     } else if (target === 'daily_reports') {
-      for (const row of rows) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i]
         const report_date = String(row['日付'] || row['report_date'] || '').trim()
-        if (!report_date) { errors++; continue }
+        if (!report_date) { addError(i, `日付の列が見つかりません（実際の列名: ${Object.keys(row).join('、') || 'なし'}）`); continue }
         const { error } = await supabase.from('daily_reports').insert({
           report_date,
           ocr_text: String(row['内容'] || row['ocr_text'] || ''),
           notes: String(row['備考'] || row['notes'] || ''),
           status: 'pending',
         })
-        if (error) errors++; else inserted++
+        if (error) addError(i, error.message); else inserted++
       }
     } else {
       return Response.json({ error: '不明な対象: ' + target }, { status: 400 })
     }
 
-    return Response.json({ inserted, errors, total: rows.length })
+    return Response.json({ inserted, errors, total: rows.length, errorDetails })
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
     if (msg === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })

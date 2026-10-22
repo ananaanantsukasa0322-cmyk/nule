@@ -71,7 +71,8 @@ function DriversContent() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">ドライバーマスタ</h2>
         <div className="flex items-center gap-3">
-          <FileImport target="drivers" label="CSV/Excel" onComplete={loadData} />
+          <FileImport target="drivers" label="CSV/Excel" onComplete={loadData}
+            category={categoryFilter === "container" ? "container" : "steel"} />
           <button
             onClick={() => { resetForm(); setShowModal(true); }}
             className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200 transition-colors"
