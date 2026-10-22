@@ -10,6 +10,8 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File
     const target = formData.get('target') as string
     const category = (formData.get('category') as string) || 'steel'
+    // 完全同期：Excelにある内容で全項目を上書きし、Excelに無い既存データは無効化する
+    const fullSync = formData.get('fullSync') === 'true'
 
     if (!file || !target) {
       return Response.json({ error: 'ファイルと対象を指定してください' }, { status: 400 })
@@ -37,6 +39,7 @@ export async function POST(request: NextRequest) {
 
     let inserted = 0
     let errors = 0
+    let deactivated = 0
     const errorDetails: string[] = []
     function addError(rowIndex: number, reason: string) {
       errors++
@@ -59,47 +62,74 @@ export async function POST(request: NextRequest) {
     }
 
     if (target === 'drivers') {
-      const { data: existing } = await supabase.from('drivers').select('id,name')
+      const { data: existing } = await supabase.from('drivers').select('id,name,category').eq('is_active', true)
+      const matchedIds = new Set<string>()
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i]
         const name = String(row['名前'] || row['氏名'] || row['name'] || '').trim()
         if (!name) { addError(i, `名前の列が見つかりません（実際の列名: ${Object.keys(row).join('、') || 'なし'}）`); continue }
+        const pay = row['支払率'] ?? row['payment_percentage']
         const values: Record<string, unknown> = {
           name,
           phone: String(row['連絡先'] || row['電話番号'] || row['phone'] || ''),
           status: String(row['状態'] || row['status'] || '稼働中'),
           category,
         }
-        const pay = row['支払率'] ?? row['payment_percentage']
-        if (pay != null && pay !== '') values.payment_percentage = Number(pay) || 0
+        // 完全同期時は空欄も含め毎回上書きする。通常時は値がある列だけ更新する
+        if (fullSync) values.payment_percentage = pay != null && pay !== '' ? Number(pay) || 0 : 0
+        else if (pay != null && pay !== '') values.payment_percentage = Number(pay) || 0
         // 名前一致（空白無視）で既存を更新、なければ新規
         const norm = (n: string) => n.replace(/[\s　]/g, '')
         const match = (existing || []).find(d => norm(d.name) === norm(name))
+        if (match) matchedIds.add(match.id)
         const { error } = match
           ? await supabase.from('drivers').update(values).eq('id', match.id)
           : await supabase.from('drivers').insert(values)
         if (error) addError(i, error.message); else inserted++
       }
+      if (fullSync) {
+        const toDeactivate = (existing || []).filter(d => (d.category || 'steel') === category && !matchedIds.has(d.id))
+        for (const d of toDeactivate) {
+          const { error } = await supabase.from('drivers').update({ is_active: false }).eq('id', d.id)
+          if (!error) deactivated++
+        }
+      }
     } else if (target === 'vehicles') {
-      const { data: existing } = await supabase.from('vehicles').select('id,number,head_number')
+      const { data: existing } = await supabase.from('vehicles').select('id,number,head_number,category').eq('is_active', true)
+      const matchedIds = new Set<string>()
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i]
         const number = String(row['ナンバー'] || row['車番'] || row['number'] || '').trim()
         const headNumber = String(row['ヘッド'] || row['ヘッド車番'] || row['head_number'] || '').trim()
-        const values: Record<string, unknown> = { category }
-        if (row['種別'] || row['kind']) values.kind = String(row['種別'] || row['kind'])
-        if (number) values.number = number
-        if (headNumber) values.head_number = headNumber
-        if (row['台車'] || row['シャーシ'] || row['trailer_number']) values.trailer_number = String(row['台車'] || row['シャーシ'] || row['trailer_number'])
+        const trailerNumber = String(row['台車'] || row['シャーシ'] || row['trailer_number'] || '').trim()
         const payload = row['積載量'] ?? row['payload']
-        if (payload != null && payload !== '') values.payload = Number(String(payload).replace(/[,kg]/g, '')) || 0
-        if (row['メモ'] || row['note']) values.note = String(row['メモ'] || row['note'])
-        const shaken = normDate(row['車検日'] ?? row['車検'] ?? row['shaken_date'])
-        if (shaken) values.shaken_date = shaken
-        const insp = normDate(row['3ヶ月点検'] ?? row['3ヶ月点検日'] ?? row['点検日'] ?? row['inspection_3m_date'])
-        if (insp) values.inspection_3m_date = insp
-        if (row['修理情報'] || row['repair_note']) values.repair_note = String(row['修理情報'] || row['repair_note'])
-        if (row['注意事項'] || row['caution']) values.caution = String(row['注意事項'] || row['caution'])
+        const values: Record<string, unknown> = { category }
+        if (fullSync) {
+          // 完全同期時は空欄も含め毎回上書きする
+          values.kind = String(row['種別'] || row['kind'] || 'トラック')
+          values.number = number || null
+          values.head_number = headNumber || null
+          values.trailer_number = trailerNumber || null
+          values.payload = payload != null && payload !== '' ? Number(String(payload).replace(/[,kg]/g, '')) || 0 : 0
+          values.note = String(row['メモ'] || row['note'] || '') || null
+          values.shaken_date = normDate(row['車検日'] ?? row['車検'] ?? row['shaken_date'])
+          values.inspection_3m_date = normDate(row['3ヶ月点検'] ?? row['3ヶ月点検日'] ?? row['点検日'] ?? row['inspection_3m_date'])
+          values.repair_note = String(row['修理情報'] || row['repair_note'] || '') || null
+          values.caution = String(row['注意事項'] || row['caution'] || '') || null
+        } else {
+          if (row['種別'] || row['kind']) values.kind = String(row['種別'] || row['kind'])
+          if (number) values.number = number
+          if (headNumber) values.head_number = headNumber
+          if (trailerNumber) values.trailer_number = trailerNumber
+          if (payload != null && payload !== '') values.payload = Number(String(payload).replace(/[,kg]/g, '')) || 0
+          if (row['メモ'] || row['note']) values.note = String(row['メモ'] || row['note'])
+          const shaken = normDate(row['車検日'] ?? row['車検'] ?? row['shaken_date'])
+          if (shaken) values.shaken_date = shaken
+          const insp = normDate(row['3ヶ月点検'] ?? row['3ヶ月点検日'] ?? row['点検日'] ?? row['inspection_3m_date'])
+          if (insp) values.inspection_3m_date = insp
+          if (row['修理情報'] || row['repair_note']) values.repair_note = String(row['修理情報'] || row['repair_note'])
+          if (row['注意事項'] || row['caution']) values.caution = String(row['注意事項'] || row['caution'])
+        }
 
         if (!number && !headNumber) { addError(i, `車番・ヘッドの列が見つかりません（実際の列名: ${Object.keys(row).join('、') || 'なし'}）`); continue }
         // 車番またはヘッド車番一致で既存を更新、なければ新規
@@ -107,10 +137,18 @@ export async function POST(request: NextRequest) {
           (number && (v.number === number || v.head_number === number)) ||
           (headNumber && (v.head_number === headNumber || v.number === headNumber))
         )
+        if (match) matchedIds.add(match.id)
         const { error } = match
           ? await supabase.from('vehicles').update(values).eq('id', match.id)
           : await supabase.from('vehicles').insert({ kind: 'トラック', ...values })
         if (error) addError(i, error.message); else inserted++
+      }
+      if (fullSync) {
+        const toDeactivate = (existing || []).filter(v => (v.category || 'steel') === category && !matchedIds.has(v.id))
+        for (const v of toDeactivate) {
+          const { error } = await supabase.from('vehicles').update({ is_active: false }).eq('id', v.id)
+          if (!error) deactivated++
+        }
       }
     } else if (target === 'clients') {
       for (let i = 0; i < rows.length; i++) {
@@ -155,7 +193,7 @@ export async function POST(request: NextRequest) {
       return Response.json({ error: '不明な対象: ' + target }, { status: 400 })
     }
 
-    return Response.json({ inserted, errors, total: rows.length, errorDetails })
+    return Response.json({ inserted, errors, total: rows.length, errorDetails, deactivated })
   } catch (e) {
     const msg = e instanceof Error ? e.message : ''
     if (msg === 'UNAUTHORIZED') return Response.json({ error: '未認証' }, { status: 401 })
