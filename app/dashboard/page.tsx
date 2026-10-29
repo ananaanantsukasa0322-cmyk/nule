@@ -152,7 +152,7 @@ function DashboardContent() {
 
       {/* 共有注意事項（整備管理などから） */}
       {notices.length > 0 && (
-        <div className="mb-4 px-4 py-3 bg-[#0d0d0d] border border-border rounded-lg space-y-1.5">
+        <div className="mb-4 px-4 py-3 bg-card border border-border rounded-lg space-y-1.5">
           {notices.map(n => (
             <p key={n.id} className="text-sm text-foreground/90" title={n.body}>
               <span className="text-muted">{n.department ? `[${n.department}] ` : "[お知らせ] "}</span>{n.title}
@@ -172,7 +172,7 @@ function DashboardContent() {
       )}
 
       {/* 本日の状況 */}
-      <div className="bg-[#0d0d0d] border border-border rounded-xl p-5 mb-6">
+      <div className="bg-card border border-border rounded-xl p-5 mb-6">
         <div className="flex items-center justify-between mb-5">
           <SectionLabel>本日の状況</SectionLabel>
           <span className="text-[10px] text-muted">{now.getMonth() + 1}/{now.getDate()}</span>
@@ -199,7 +199,7 @@ function DashboardContent() {
 
       {/* 今月の実績 + 前月比 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-xl p-5">
           <p className="text-xs text-muted mb-2">配車件数</p>
           <div className="flex items-end gap-2">
             <p className="text-4xl font-light tracking-tight tabular-nums">{data.thisMonth.count}</p>
@@ -207,7 +207,7 @@ function DashboardContent() {
           </div>
           <p className="text-xs text-muted mt-2">前月 {data.prevMonth.count}件</p>
         </div>
-        <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-xl p-5">
           <p className="text-xs text-muted mb-2">総重量</p>
           <div className="flex items-end gap-2">
             <p className="text-4xl font-light tracking-tight tabular-nums">{ton(data.thisMonth.weight)}</p>
@@ -215,7 +215,7 @@ function DashboardContent() {
           </div>
           <p className="text-xs text-muted mt-2">前月 {ton(data.prevMonth.weight)}</p>
         </div>
-        <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-xl p-5">
           <p className="text-xs text-muted mb-2">売上</p>
           <div className="flex items-end gap-2">
             <p className="text-4xl font-light tracking-tight tabular-nums">{fmt(data.thisMonth.revenue)}</p>
@@ -228,7 +228,7 @@ function DashboardContent() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         {/* 月次売上推移（直近6ヶ月） */}
         {monthly.length > 0 && (
-          <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+          <div className="bg-card border border-border rounded-xl p-5">
             <SectionLabel>月次売上推移（6ヶ月）</SectionLabel>
             <div className="flex items-end gap-3 h-36">
               {monthly.map((m, i) => {
@@ -248,7 +248,7 @@ function DashboardContent() {
         )}
 
         {/* 週間推移 */}
-        <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-xl p-5">
           <SectionLabel>直近7日間の配車数</SectionLabel>
           <div className="flex items-end gap-3 h-36">
             {data.weekly.map((w, i) => {
@@ -270,7 +270,7 @@ function DashboardContent() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* 荷主別売上ランキング */}
-        <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-xl p-5">
           <SectionLabel>荷主別売上</SectionLabel>
           {ranking.length === 0 ? <p className="text-xs text-muted">データなし</p> : (
             <div className="space-y-1">
@@ -292,7 +292,7 @@ function DashboardContent() {
         </div>
 
         {/* ドライバー別稼働 */}
-        <div className="bg-[#0d0d0d] border border-border rounded-xl p-5">
+        <div className="bg-card border border-border rounded-xl p-5">
           <SectionLabel>ドライバー別稼働</SectionLabel>
           {data.driver_stats.length === 0 ? <p className="text-xs text-muted">データなし</p> : (
             <div className="space-y-2.5">
