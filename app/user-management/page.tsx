@@ -81,7 +81,7 @@ function UserManagementContent() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">ユーザー管理</h2>
         <button onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200">
+          className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90">
           + ユーザー招待
         </button>
       </div>
@@ -97,7 +97,7 @@ function UserManagementContent() {
                 <td><span className="text-xs px-2 py-0.5 rounded bg-accent">{roleLabel[u.role] || u.role}</span></td>
                 <td>
                   <div className="flex gap-2">
-                    <button onClick={() => openEdit(u)} className="text-xs text-muted hover:text-white">編集</button>
+                    <button onClick={() => openEdit(u)} className="text-xs text-muted hover:text-foreground">編集</button>
                     {u.email === "test@test.com" ? <span className="text-xs text-muted">オーナー</span> :
                       <button onClick={() => deleteUser(u.id)} className="text-xs text-muted hover:text-danger">削除</button>}
                   </div>
@@ -115,7 +115,7 @@ function UserManagementContent() {
             <div className="bg-accent p-3 rounded text-xs break-all select-all">{inviteUrl}</div>
             <p className="text-xs text-muted">このリンクを相手に送ってください。リンクからパスワードを設定してログインできます。</p>
             <button onClick={() => { navigator.clipboard.writeText(inviteUrl); alert("コピーしました"); }}
-              className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200">リンクをコピー</button>
+              className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90">リンクをコピー</button>
           </div>
         ) : (
           <form onSubmit={handleInvite} className="space-y-3">
@@ -129,7 +129,7 @@ function UserManagementContent() {
                 <option value="office">事務所</option>
                 <option value="dispatcher">配車係</option>
               </select></div>
-            <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-4">招待リンク生成</button>
+            <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 mt-4">招待リンク生成</button>
           </form>
         )}
       </Modal>
@@ -150,7 +150,7 @@ function UserManagementContent() {
             {editUser?.email === "test@test.com" && <p className="text-xs text-muted mt-1">オーナーの権限は変更できません</p>}</div>
           <div><label className="block text-xs text-muted mb-1">新しいパスワード（変更する場合のみ）</label>
             <input type="password" value={editForm.password} onChange={e => setEditForm({ ...editForm, password: e.target.value })} className="w-full" placeholder="変更しない場合は空欄" /></div>
-          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-4">更新</button>
+          <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 mt-4">更新</button>
         </form>
       </Modal>
     </div>

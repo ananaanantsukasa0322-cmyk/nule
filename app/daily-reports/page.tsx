@@ -186,7 +186,7 @@ function DailyReportsContent() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">日報管理</h2>
         <div className="flex items-center gap-3">
-          <button onClick={openVerify} className="px-4 py-2 bg-accent text-white text-sm rounded-md hover:bg-border">
+          <button onClick={openVerify} className="px-4 py-2 bg-accent text-foreground text-sm rounded-md hover:bg-border">
             配車照合
           </button>
           <button onClick={() => setShowParse(true)} className="px-4 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700">
@@ -249,7 +249,7 @@ function DailyReportsContent() {
               className="flex-1 py-2 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50">
               {parsing ? "AI解析中..." : "AI解析（手書き対応）"}</button>
             <button onClick={() => { if (!parsedEntries.length) for (let i = 0; i < 5; i++) addEntry(); }}
-              className="px-4 py-2 bg-accent text-white text-sm rounded-md hover:bg-border">手入力</button>
+              className="px-4 py-2 bg-accent text-foreground text-sm rounded-md hover:bg-border">手入力</button>
           </div>
 
           {parsedEntries.length > 0 && (
@@ -277,7 +277,7 @@ function DailyReportsContent() {
                   </div>
                 ))}
               </div>
-              <button onClick={addEntry} className="mt-2 text-xs text-muted hover:text-white">+ 行を追加</button>
+              <button onClick={addEntry} className="mt-2 text-xs text-muted hover:text-foreground">+ 行を追加</button>
               <button onClick={confirmImport}
                 className="w-full py-2.5 bg-success text-white text-sm rounded-md hover:bg-green-600 mt-4">
                 NULEに取り込む（{parsedEntries.filter(e => e.destination?.trim()).length}件）
@@ -312,7 +312,7 @@ function DailyReportsContent() {
                         <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
                         <td>
                           <input type="number" value={s.report_weight || ""} onChange={e => updateReportWeight(i, e.target.value)}
-                            className="w-24 text-sm bg-transparent border-b border-border outline-none focus:border-white" placeholder="kg" />
+                            className="w-24 text-sm bg-transparent border-b border-border outline-none focus:border-primary" placeholder="kg" />
                         </td>
                         <td>
                           <span className={`text-xs px-2 py-0.5 rounded ${
@@ -328,7 +328,7 @@ function DailyReportsContent() {
                 </table>
               </div>
               <button onClick={confirmVerify}
-                className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-4">
+                className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 mt-4">
                 日報の重量で更新（差異があるもののみ）
               </button>
             </div>

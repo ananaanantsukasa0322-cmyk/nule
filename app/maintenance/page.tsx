@@ -38,7 +38,7 @@ function DateBadge({ date, warnDays }: { date?: string | null; warnDays: number 
   if (days === null) return <span className="text-xs text-muted">未登録</span>;
   const cls = days < 0 ? "bg-red-500/20 text-red-400"
     : days <= warnDays ? "bg-amber-500/20 text-amber-400"
-    : "bg-white/5 text-muted";
+    : "bg-foreground/5 text-muted";
   const label = days < 0 ? `${-days}日超過` : days === 0 ? "本日" : `あと${days}日`;
   return (
     <span className={`text-xs px-2 py-0.5 rounded whitespace-nowrap ${cls}`}>
@@ -249,7 +249,7 @@ function MaintenanceContent() {
       <div className="flex gap-1 mb-6 border-b border-border">
         {([["vehicles", "車両管理"], ["drivers", "ドライバー管理"], ["notices", "共有注意事項"]] as const).map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
-            className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${tab === key ? "border-white text-white" : "border-transparent text-muted hover:text-white"}`}>
+            className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${tab === key ? "border-primary text-foreground" : "border-transparent text-muted hover:text-foreground"}`}>
             {label}
           </button>
         ))}
@@ -259,7 +259,7 @@ function MaintenanceContent() {
         <div>
           <div className="flex flex-wrap items-center gap-3 mb-4">
             <button onClick={() => { resetVehicleForm(); setShowNewVehicle(true); }}
-              className="px-3 py-1.5 bg-white text-black text-sm rounded hover:bg-gray-200">+ 新規車両</button>
+              className="px-3 py-1.5 bg-primary text-primary-foreground text-sm rounded hover:opacity-90">+ 新規車両</button>
             <FileImport target="vehicles" label="Excel/CSV取込（車番で照合・更新）" onComplete={loadData}
               category={vehicleCategoryFilter === "container" ? "container" : "steel"} allowFullSync />
             <label className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded cursor-pointer hover:bg-blue-700">
@@ -271,7 +271,7 @@ function MaintenanceContent() {
           <div className="flex items-center gap-2 mb-4">
             {(["all", "steel", "container"] as const).map(c => (
               <button key={c} onClick={() => setVehicleCategoryFilter(c)}
-                className={`text-xs px-3 py-1.5 rounded-md transition-colors ${vehicleCategoryFilter === c ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+                className={`text-xs px-3 py-1.5 rounded-md transition-colors ${vehicleCategoryFilter === c ? "bg-primary text-primary-foreground" : "bg-accent text-muted hover:text-foreground"}`}>
                 {c === "all" ? "全て" : c === "steel" ? "鋼材" : "コンテナ"}
               </button>
             ))}
@@ -294,7 +294,7 @@ function MaintenanceContent() {
                     <td className="text-xs max-w-[200px] truncate" title={v.caution || ""}>
                       {v.caution ? <span className="text-amber-400">⚠️ {v.caution}</span> : "—"}
                     </td>
-                    <td><button onClick={() => openVehicleEdit(v)} className="text-xs text-muted hover:text-white">編集</button></td>
+                    <td><button onClick={() => openVehicleEdit(v)} className="text-xs text-muted hover:text-foreground">編集</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -317,7 +317,7 @@ function MaintenanceContent() {
           <div className="flex items-center gap-2 mb-4">
             {(["all", "steel", "container"] as const).map(c => (
               <button key={c} onClick={() => setDriverCategoryFilter(c)}
-                className={`text-xs px-3 py-1.5 rounded-md transition-colors ${driverCategoryFilter === c ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+                className={`text-xs px-3 py-1.5 rounded-md transition-colors ${driverCategoryFilter === c ? "bg-primary text-primary-foreground" : "bg-accent text-muted hover:text-foreground"}`}>
                 {c === "all" ? "全て" : c === "steel" ? "鋼材" : "コンテナ"}
               </button>
             ))}
@@ -334,7 +334,7 @@ function MaintenanceContent() {
                     <td className="text-xs text-muted">{(d.category || "steel") === "steel" ? "鋼材" : "コンテナ"}</td>
                     <td className="text-sm text-muted">{d.phone || "—"}</td>
                     <td className="text-xs">{d.status || "稼働中"}</td>
-                    <td><button onClick={() => openDriverEdit(d)} className="text-xs text-muted hover:text-white">編集</button></td>
+                    <td><button onClick={() => openDriverEdit(d)} className="text-xs text-muted hover:text-foreground">編集</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -345,7 +345,7 @@ function MaintenanceContent() {
 
       {tab === "notices" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-[#111] border border-border rounded-lg p-5">
+          <div className="bg-card border border-border rounded-lg p-5">
             <h3 className="text-sm font-light text-muted mb-4">注意事項を共有する</h3>
             <form onSubmit={addNotice} className="space-y-3">
               <div><label className="block text-xs text-muted mb-1">タイトル *</label>
@@ -364,17 +364,17 @@ function MaintenanceContent() {
                 <div><label className="block text-xs text-muted mb-1">期限（任意）</label>
                   <input type="date" value={nForm.due_date} onChange={e => setNForm({ ...nForm, due_date: e.target.value })} className="w-full" /></div>
               </div>
-              <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200">共有する</button>
+              <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90">共有する</button>
             </form>
           </div>
-          <div className="bg-[#111] border border-border rounded-lg p-5">
+          <div className="bg-card border border-border rounded-lg p-5">
             <h3 className="text-sm font-light text-muted mb-4">共有中の注意事項</h3>
             {notices.length === 0 ? <p className="text-xs text-muted">共有中の注意事項はありません</p> : (
               <div className="space-y-3">
                 {notices.map(n => (
                   <div key={n.id} className="border border-border rounded-lg p-3">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs px-1.5 py-0.5 bg-white/5 rounded text-muted">{TARGET_LABELS[n.target] || n.target}</span>
+                      <span className="text-xs px-1.5 py-0.5 bg-foreground/5 rounded text-muted">{TARGET_LABELS[n.target] || n.target}</span>
                       {n.department && <span className="text-xs text-muted">発信: {n.department}</span>}
                       {n.due_date && <span className="text-xs text-amber-400">期限 {n.due_date}</span>}
                       <button onClick={() => deleteNotice(n.id)} className="text-xs text-muted hover:text-danger ml-auto">終了</button>
@@ -418,7 +418,7 @@ function MaintenanceContent() {
             <textarea value={vForm.repair_note} onChange={e => setVForm({ ...vForm, repair_note: e.target.value })} className="w-full h-20" placeholder="例: 7/10 ブレーキパッド交換済み" /></div>
           <div><label className="block text-xs text-muted mb-1">注意事項（配車画面に表示されます）</label>
             <textarea value={vForm.caution} onChange={e => setVForm({ ...vForm, caution: e.target.value })} className="w-full h-16" placeholder="例: 積み置き無し" /></div>
-          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200">保存</button>
+          <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90">保存</button>
         </form>
       </Modal>
 
@@ -441,7 +441,7 @@ function MaintenanceContent() {
                 <option value="container">コンテナ</option>
               </select></div>
           </div>
-          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200">登録</button>
+          <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90">登録</button>
         </form>
       </Modal>
 
@@ -462,7 +462,7 @@ function MaintenanceContent() {
               <option value="steel">鋼材</option>
               <option value="container">コンテナ</option>
             </select></div>
-          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200">保存</button>
+          <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90">保存</button>
         </form>
       </Modal>
     </div>

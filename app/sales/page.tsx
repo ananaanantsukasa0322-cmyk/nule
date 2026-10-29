@@ -670,7 +670,7 @@ function SalesContent() {
       <div className="flex items-center gap-2 mb-6">
         {(["steel", "container"] as const).map(c => (
           <button key={c} onClick={() => { setCategoryTab(c); setClientFilter(""); setSelectedIds(new Set()); }}
-            className={`text-sm px-4 py-1.5 rounded-md transition-colors ${categoryTab === c ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+            className={`text-sm px-4 py-1.5 rounded-md transition-colors ${categoryTab === c ? "bg-primary text-primary-foreground" : "bg-accent text-muted hover:text-foreground"}`}>
             {c === "steel" ? "🔩 鋼材" : "📦 コンテナ"}
           </button>
         ))}
@@ -706,12 +706,12 @@ function SalesContent() {
             placeholder="例: 15000" className="w-32" /></div>
       </div>
 
-      <div className="bg-[#111] border border-border rounded-lg p-5 mb-6">
+      <div className="bg-card border border-border rounded-lg p-5 mb-6">
         <p className="text-xs text-muted mb-1">期間内売上合計</p>
         <p className="text-3xl font-extralight">{formatCurrency(totalAmount)}</p>
       </div>
 
-      <div className="bg-[#111] border border-border rounded-lg p-5 mb-6">
+      <div className="bg-card border border-border rounded-lg p-5 mb-6">
         <h3 className="text-sm font-light text-muted mb-4">荷主別集計・請求書発行</h3>
         <div className="space-y-2">
           {clientSummary.length === 0 ? <p className="text-xs text-muted">データなし</p> :
@@ -744,9 +744,9 @@ function SalesContent() {
               placeholder="例: 2" className="w-14 text-sm bg-transparent border border-border rounded px-2 py-1" />
           </div>
           <button onClick={generateSelectedInvoice}
-            className="text-xs px-3 py-1.5 bg-white text-black rounded hover:bg-gray-200">選択分で請求書発行</button>
+            className="text-xs px-3 py-1.5 bg-primary text-primary-foreground rounded hover:opacity-90">選択分で請求書発行</button>
           <button onClick={() => setSelectedIds(new Set())}
-            className="text-xs text-muted hover:text-white ml-auto">選択解除</button>
+            className="text-xs text-muted hover:text-foreground ml-auto">選択解除</button>
         </div>
       )}
 
@@ -802,7 +802,7 @@ function SalesContent() {
                   <td>
                     <button onClick={() => toggleTaxIncluded(s)}
                       title="クリックで税別⇄税込を切替"
-                      className={`text-xs px-2 py-0.5 rounded transition-colors ${s.tax_included ? "bg-emerald-500/15 text-emerald-400" : "bg-white/5 text-muted hover:text-white"}`}>
+                      className={`text-xs px-2 py-0.5 rounded transition-colors ${s.tax_included ? "bg-emerald-500/15 text-emerald-400" : "bg-foreground/5 text-muted hover:text-foreground"}`}>
                       {s.tax_included ? "税込" : "税別"}
                     </button>
                   </td>
@@ -831,7 +831,7 @@ function SalesContent() {
           <div><label className="block text-xs text-muted mb-1">支払期限の表記</label>
             <input type="text" value={issuerForm.dueText} onChange={e => setIssuerForm({ ...issuerForm, dueText: e.target.value })} className="w-full" placeholder="例: 翌月末日" /></div>
           <p className="text-xs text-muted">※ 入力した項目だけ請求書に表示されます（このブラウザに保存）</p>
-          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-2">保存</button>
+          <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 mt-2">保存</button>
         </form>
       </Modal>
     </div>

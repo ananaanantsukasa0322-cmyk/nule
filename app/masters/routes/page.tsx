@@ -68,7 +68,7 @@ function RoutesContent() {
         <h2 className="text-xl font-light">ルートマスタ</h2>
         <button
           onClick={() => { resetForm(); setShowModal(true); }}
-          className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200 transition-colors"
+          className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 transition-colors"
         >
           + 新規ルート
         </button>
@@ -93,7 +93,7 @@ function RoutesContent() {
                   <td>{r.destination}</td>
                   <td>
                     <div className="flex gap-2">
-                      <button onClick={() => openEdit(r)} className="text-xs text-muted hover:text-white">編集</button>
+                      <button onClick={() => openEdit(r)} className="text-xs text-muted hover:text-foreground">編集</button>
                       <button onClick={() => handleDelete(r.id)} className="text-xs text-muted hover:text-danger">削除</button>
                     </div>
                   </td>
@@ -114,7 +114,7 @@ function RoutesContent() {
             <label className="block text-xs text-muted mb-1">目的地</label>
             <input type="text" value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} className="w-full" required />
           </div>
-          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 transition-colors mt-4">
+          <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 transition-colors mt-4">
             {editingId ? "更新" : "登録"}
           </button>
         </form>

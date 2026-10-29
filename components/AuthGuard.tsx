@@ -72,10 +72,10 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <h1 className="text-3xl font-extralight tracking-[0.3em] text-white mb-4">
+          <h1 className="text-3xl font-extralight tracking-[0.3em] text-foreground mb-4">
             NULE
           </h1>
-          <div className="w-8 h-8 border border-muted border-t-white rounded-full animate-spin mx-auto" />
+          <div className="w-8 h-8 border border-muted border-t-foreground rounded-full animate-spin mx-auto" />
         </div>
       </div>
     );
@@ -85,7 +85,7 @@ export default function AuthGuard({ children, allowedRoles }: AuthGuardProps) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <h1 className="text-3xl font-extralight tracking-[0.3em] text-white mb-4">NULE</h1>
+          <h1 className="text-3xl font-extralight tracking-[0.3em] text-foreground mb-4">NULE</h1>
           <p className="text-sm text-muted mb-4">通信状態を確認できませんでした。ネットワークをご確認ください。</p>
           <button
             onClick={() => setRetryTick((t) => t + 1)}

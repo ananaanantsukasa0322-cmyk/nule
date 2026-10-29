@@ -208,7 +208,7 @@ function PricesContent() {
         <div className="flex items-center gap-2">
           {(["steel", "container"] as const).map(c => (
             <button key={c} onClick={() => setCategoryTab(c)}
-              className={`text-sm px-4 py-1.5 rounded-md transition-colors ${categoryTab === c ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+              className={`text-sm px-4 py-1.5 rounded-md transition-colors ${categoryTab === c ? "bg-primary text-primary-foreground" : "bg-accent text-muted hover:text-foreground"}`}>
               {c === "steel" ? "鋼材" : "コンテナ"}
             </button>
           ))}
@@ -247,7 +247,7 @@ function PricesContent() {
             }} />
           </label>
           <button onClick={() => { resetForm(); setShowModal(true); }}
-            className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200">
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90">
             + 新規単価
           </button>
         </div>
@@ -289,7 +289,7 @@ function PricesContent() {
             loadData();
           }} className="text-xs px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700">車両タイプ変更</button>
           <button onClick={deleteSelected} className="text-xs px-3 py-1 bg-danger text-white rounded hover:bg-red-600">まとめて削除</button>
-          <button onClick={() => setSelected(new Set())} className="text-xs text-muted hover:text-white ml-auto">選択解除</button>
+          <button onClick={() => setSelected(new Set())} className="text-xs text-muted hover:text-foreground ml-auto">選択解除</button>
         </div>
       )}
 
@@ -313,7 +313,7 @@ function PricesContent() {
                 <td className="text-sm">{p.price_type === "per_ton" ? `${fmt(p.per_ton_rate)}/t` : p.price_type === "daily" ? `${fmt(p.fixed_amount)}/日` : p.price_type === "combo" && p.per_ton_rate ? `${fmt(p.per_ton_rate)}/t（合計重量）` : fmt(p.fixed_amount)}</td>
                 <td>
                   <div className="flex gap-2">
-                    <button onClick={() => openEdit(p)} className="text-xs text-muted hover:text-white">編集</button>
+                    <button onClick={() => openEdit(p)} className="text-xs text-muted hover:text-foreground">編集</button>
                     <button onClick={() => handleDelete(p.id)} className="text-xs text-muted hover:text-danger">削除</button>
                   </div>
                 </td>
@@ -429,7 +429,7 @@ function PricesContent() {
             <div><label className="block text-xs text-muted mb-1">固定金額（円）</label>
               <input type="number" step="1" value={form.fixed_amount} onChange={e => setForm({ ...form, fixed_amount: e.target.value })} className="w-full" required /></div>
           )}
-          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-4">{editingId ? "更新" : "登録"}</button>
+          <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 mt-4">{editingId ? "更新" : "登録"}</button>
         </form>
       </Modal>
     </div>

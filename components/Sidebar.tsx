@@ -66,12 +66,12 @@ export default function Sidebar({ userRole, userName, userEmail }: SidebarProps)
       </button>
 
       <aside
-        className={`fixed md:static inset-y-0 left-0 z-40 w-56 bg-[#0f0f0f] border-r border-border flex flex-col transition-transform duration-200 ${
+        className={`fixed md:static inset-y-0 left-0 z-40 w-56 bg-card border-r border-border flex flex-col transition-transform duration-200 ${
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
         }`}
       >
         <div className="p-6 border-b border-border">
-          <h1 className="text-2xl font-extralight tracking-[0.3em] text-white">
+          <h1 className="text-2xl font-extralight tracking-[0.3em] text-foreground">
             NULE
           </h1>
           <p className="text-xs text-muted mt-1 font-light">運送業務管理</p>
@@ -87,8 +87,8 @@ export default function Sidebar({ userRole, userName, userEmail }: SidebarProps)
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-3 px-6 py-2.5 text-sm font-light transition-colors ${
                   isActive
-                    ? "text-white bg-accent border-r-2 border-white"
-                    : "text-muted hover:text-white hover:bg-accent/50"
+                    ? "text-foreground bg-accent border-r-2 border-primary"
+                    : "text-muted hover:text-foreground hover:bg-accent/50"
                 }`}
               >
                 <span className="text-xs">{link.icon}</span>

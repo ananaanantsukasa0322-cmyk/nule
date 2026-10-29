@@ -51,7 +51,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-extralight tracking-[0.4em] text-white mb-2">
+          <h1 className="text-4xl font-extralight tracking-[0.4em] text-foreground mb-2">
             NULE
           </h1>
           <p className="text-sm text-muted font-light">
@@ -93,7 +93,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-white text-black text-sm font-light rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50 mt-6"
+            className="w-full py-2.5 bg-primary text-primary-foreground text-sm font-light rounded-md hover:opacity-90 transition-colors disabled:opacity-50 mt-6"
           >
             {loading ? "..." : "ログイン"}
           </button>

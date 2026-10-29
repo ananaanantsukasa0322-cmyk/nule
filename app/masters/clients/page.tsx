@@ -86,7 +86,7 @@ function ClientsContent() {
           <FileImport target="clients" label="CSV/Excel" onComplete={loadData} />
           <button
             onClick={() => { resetForm(); setShowModal(true); }}
-            className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 transition-colors"
           >
             + 新規荷主
           </button>
@@ -111,12 +111,12 @@ function ClientsContent() {
               clients.map((c) => (
                 <tr key={c.id}>
                   <td>{c.company_name}</td>
-                  <td className="text-sm">{c.formal_name ? <span className="text-white">{c.formal_name}</span> : <span className="text-muted text-xs">未設定</span>}</td>
+                  <td className="text-sm">{c.formal_name ? <span className="text-foreground">{c.formal_name}</span> : <span className="text-muted text-xs">未設定</span>}</td>
                   <td className="text-muted">{c.address || "—"}</td>
                   <td className="text-muted">{c.contact || "—"}</td>
                   <td>
                     <div className="flex gap-2">
-                      <button onClick={() => openEdit(c)} className="text-xs text-muted hover:text-white">編集</button>
+                      <button onClick={() => openEdit(c)} className="text-xs text-muted hover:text-foreground">編集</button>
                       <button onClick={() => handleDelete(c.id)} className="text-xs text-muted hover:text-danger">削除</button>
                     </div>
                   </td>
@@ -145,7 +145,7 @@ function ClientsContent() {
             <label className="block text-xs text-muted mb-1">連絡先</label>
             <input type="text" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} className="w-full" />
           </div>
-          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 transition-colors mt-4">
+          <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 transition-colors mt-4">
             {editingId ? "更新" : "登録"}
           </button>
         </form>

@@ -103,7 +103,7 @@ function YoushaContent() {
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-light">傭車管理</h2>
         <button onClick={() => { resetForm(); setShowModal(true); }}
-          className="px-4 py-2 bg-white text-black text-sm rounded-md hover:bg-gray-200">
+          className="px-4 py-2 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90">
           + 傭車追加
         </button>
       </div>
@@ -111,7 +111,7 @@ function YoushaContent() {
       <div className="flex items-center gap-2 mb-4">
         {(["all", "steel", "container"] as const).map(c => (
           <button key={c} onClick={() => setCategoryFilter(c)}
-            className={`text-xs px-3 py-1.5 rounded-md transition-colors ${categoryFilter === c ? "bg-white text-black" : "bg-accent text-muted hover:text-white"}`}>
+            className={`text-xs px-3 py-1.5 rounded-md transition-colors ${categoryFilter === c ? "bg-primary text-primary-foreground" : "bg-accent text-muted hover:text-foreground"}`}>
             {c === "all" ? "全て" : c === "steel" ? "鋼材" : "コンテナ"}
           </button>
         ))}
@@ -139,8 +139,8 @@ function YoushaContent() {
                 <td className="text-xs text-muted">{y.note || ""}</td>
                 <td>
                   <div className="flex gap-2">
-                    <button onClick={() => openPayment(y)} className="text-xs text-blue-400 hover:text-blue-300">支払明細</button>
-                    <button onClick={() => openEdit(y)} className="text-xs text-muted hover:text-white">編集</button>
+                    <button onClick={() => openPayment(y)} className="text-xs text-blue-600 hover:text-blue-700">支払明細</button>
+                    <button onClick={() => openEdit(y)} className="text-xs text-muted hover:text-foreground">編集</button>
                     <button onClick={() => handleDelete(y.id)} className="text-xs text-muted hover:text-danger">削除</button>
                   </div>
                 </td>
@@ -216,7 +216,7 @@ function YoushaContent() {
               <option value="steel">鋼材</option>
               <option value="container">コンテナ</option>
             </select></div>
-          <button type="submit" className="w-full py-2.5 bg-white text-black text-sm rounded-md hover:bg-gray-200 mt-4">{editId ? "更新" : "登録"}</button>
+          <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 mt-4">{editId ? "更新" : "登録"}</button>
         </form>
       </Modal>
 

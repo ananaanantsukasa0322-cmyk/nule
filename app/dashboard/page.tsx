@@ -33,17 +33,17 @@ function diff(curr: number, prev: number) {
 function Skeleton() {
   return (
     <div className="animate-pulse">
-      <div className="h-8 w-48 bg-white/5 rounded mb-6" />
-      <div className="h-24 bg-white/5 rounded-xl mb-6" />
+      <div className="h-8 w-48 bg-foreground/5 rounded mb-6" />
+      <div className="h-24 bg-foreground/5 rounded-xl mb-6" />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="h-28 bg-white/5 rounded-xl" />
-        <div className="h-28 bg-white/5 rounded-xl" />
-        <div className="h-28 bg-white/5 rounded-xl" />
+        <div className="h-28 bg-foreground/5 rounded-xl" />
+        <div className="h-28 bg-foreground/5 rounded-xl" />
+        <div className="h-28 bg-foreground/5 rounded-xl" />
       </div>
-      <div className="h-44 bg-white/5 rounded-xl mb-6" />
+      <div className="h-44 bg-foreground/5 rounded-xl mb-6" />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="h-64 bg-white/5 rounded-xl" />
-        <div className="h-64 bg-white/5 rounded-xl" />
+        <div className="h-64 bg-foreground/5 rounded-xl" />
+        <div className="h-64 bg-foreground/5 rounded-xl" />
       </div>
     </div>
   );
@@ -144,7 +144,7 @@ function DashboardContent() {
       <div className="flex items-center gap-1 mb-6 border-b border-border">
         {([["all", "全体"], ["steel", "鋼材"], ["container", "コンテナ"]] as const).map(([key, label]) => (
           <button key={key} onClick={() => setCategoryTab(key)}
-            className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${categoryTab === key ? "border-white text-white" : "border-transparent text-muted hover:text-white"}`}>
+            className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${categoryTab === key ? "border-primary text-foreground" : "border-transparent text-muted hover:text-foreground"}`}>
             {label}
           </button>
         ))}
@@ -236,7 +236,7 @@ function DashboardContent() {
                 return (
                   <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
                     <span className={`text-[11px] tabular-nums ${isCurrent ? "text-foreground font-medium" : "text-muted"}`}>¥{fmtCompact(m.revenue)}</span>
-                    <div className={`w-full rounded-t-sm transition-all group-hover:opacity-80 ${isCurrent ? "bg-foreground" : "bg-white/15"}`}
+                    <div className={`w-full rounded-t-sm transition-all group-hover:opacity-80 ${isCurrent ? "bg-foreground" : "bg-foreground/15"}`}
                       style={{ height: `${Math.max((m.revenue / maxMonthly) * 96, 4)}px` }} />
                     <span className={`text-[10px] ${isCurrent ? "text-foreground font-medium" : "text-muted"}`}>{m.month}</span>
                     <span className="text-[9px] text-muted tabular-nums">{m.count}件</span>
@@ -257,7 +257,7 @@ function DashboardContent() {
               return (
                 <div key={i} className="flex-1 flex flex-col items-center gap-1.5 group">
                   <span className={`text-xs tabular-nums ${isToday ? "text-foreground font-medium" : "text-muted"}`}>{w.count}</span>
-                  <div className={`w-full rounded-t-sm transition-all group-hover:opacity-80 ${isToday ? "bg-foreground" : "bg-white/15"}`}
+                  <div className={`w-full rounded-t-sm transition-all group-hover:opacity-80 ${isToday ? "bg-foreground" : "bg-foreground/15"}`}
                     style={{ height: `${Math.max((w.count / maxWeekly) * 96, 4)}px` }} />
                   <span className={`text-[10px] ${isToday ? "text-foreground font-medium" : "text-muted"}`}>{w.date}</span>
                   {w.day && <span className={`text-[9px] ${isWeekend ? "text-danger/70" : "text-muted"}`}>{w.day}</span>}
@@ -275,13 +275,13 @@ function DashboardContent() {
           {ranking.length === 0 ? <p className="text-xs text-muted">データなし</p> : (
             <div className="space-y-1">
               {ranking.map((c, i) => (
-                <div key={i} className="relative flex items-center justify-between py-2 px-2 rounded-lg hover:bg-white/[0.03] transition-colors overflow-hidden">
-                  <div className="absolute inset-y-0 left-0 bg-white/[0.05] rounded-lg"
+                <div key={i} className="relative flex items-center justify-between py-2 px-2 rounded-lg hover:bg-foreground/[0.03] transition-colors overflow-hidden">
+                  <div className="absolute inset-y-0 left-0 bg-foreground/[0.05] rounded-lg"
                     style={{ width: `${(c.revenue / maxClientRevenue) * 100}%` }} />
                   <div className="relative flex items-center gap-2.5">
                     <span className="text-xs text-muted w-4 tabular-nums">{i + 1}</span>
                     <span className="text-sm">{c.name}</span>
-                    <span className="text-[10px] text-muted bg-white/5 px-1.5 py-0.5 rounded tabular-nums">{c.count}件</span>
+                    <span className="text-[10px] text-muted bg-foreground/5 px-1.5 py-0.5 rounded tabular-nums">{c.count}件</span>
                     <span className="text-[10px] text-muted tabular-nums">{ton(c.weight)}</span>
                   </div>
                   <span className={`relative text-sm font-medium tabular-nums ${c.revenue ? "" : "text-muted"}`}>{c.revenue ? fmt(c.revenue) : "—"}</span>
@@ -299,8 +299,8 @@ function DashboardContent() {
               {data.driver_stats.map((d, i) => (
                 <div key={i} className="flex items-center gap-3">
                   <span className="text-xs w-16 truncate text-muted">{d.name}</span>
-                  <div className="flex-1 bg-white/5 rounded-full h-5 overflow-hidden relative">
-                    <div className="h-full rounded-full bg-white/25 transition-all"
+                  <div className="flex-1 bg-foreground/5 rounded-full h-5 overflow-hidden relative">
+                    <div className="h-full rounded-full bg-foreground/25 transition-all"
                       style={{ width: `${Math.max((d.count / maxDriver) * 100, 6)}%` }} />
                   </div>
                   <span className="text-xs text-muted w-10 text-right tabular-nums">{d.count}件</span>

@@ -44,7 +44,7 @@ function SetupPasswordForm() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background px-4">
         <div className="text-center">
-          <h1 className="text-4xl font-extralight tracking-[0.4em] text-white mb-4">NULE</h1>
+          <h1 className="text-4xl font-extralight tracking-[0.4em] text-foreground mb-4">NULE</h1>
           <p className="text-danger">無効な招待リンクです</p>
         </div>
       </div>
@@ -55,7 +55,7 @@ function SetupPasswordForm() {
     <div className="min-h-screen flex items-center justify-center bg-background px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-extralight tracking-[0.4em] text-white mb-2">NULE</h1>
+          <h1 className="text-4xl font-extralight tracking-[0.4em] text-foreground mb-2">NULE</h1>
           <p className="text-sm text-muted font-light">パスワード設定</p>
         </div>
 
@@ -74,7 +74,7 @@ function SetupPasswordForm() {
           {error && <p className="text-danger text-xs">{error}</p>}
 
           <button type="submit" disabled={loading}
-            className="w-full py-2.5 bg-white text-black text-sm font-light rounded-md hover:bg-gray-200 disabled:opacity-50 mt-6">
+            className="w-full py-2.5 bg-primary text-primary-foreground text-sm font-light rounded-md hover:opacity-90 disabled:opacity-50 mt-6">
             {loading ? "..." : "パスワードを設定してログイン"}
           </button>
         </form>

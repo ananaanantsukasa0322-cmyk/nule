@@ -1,17 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  /* 柔らかいダーク1色：純黒・純白をやめ、はっきり分かる濃いチャコールグレーに寄せる */
-  --background: #212328;
-  --foreground: #e9eaec;
-  --card: #2a2d33;
-  --accent: #33363d;
-  --border: #44474f;
-  --muted: #9a9ea8;
-  --primary: #f0f1f3;
-  --danger: #e5484d;
-  --success: #30a46c;
-  --warning: #f5a524;
+  /* ライトテーマ：背景は真っ白ではなくごく薄いグレー、カードは白、文字は濃いグレー */
+  --background: #f5f6f7;
+  --foreground: #16171a;
+  --card: #ffffff;
+  --accent: #eef0f2;
+  --border: #dde0e4;
+  --muted: #6b7280;
+  --primary: #16171a;
+  --primary-foreground: #ffffff;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --warning: #d97706;
 }
 
 @theme inline {
@@ -22,6 +23,7 @@
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-warning: var(--warning);

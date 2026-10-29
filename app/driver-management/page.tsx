@@ -73,15 +73,15 @@ function DriverManagementContent() {
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="bg-[#111] border border-border rounded-lg p-5">
+        <div className="bg-card border border-border rounded-lg p-5">
           <p className="text-xs text-muted mb-1">期間内配車件数</p>
           <p className="text-2xl font-extralight">{totalCount}件</p>
         </div>
-        <div className="bg-[#111] border border-border rounded-lg p-5">
+        <div className="bg-card border border-border rounded-lg p-5">
           <p className="text-xs text-muted mb-1">期間内売上合計</p>
           <p className="text-2xl font-extralight">{formatCurrency(totalSales)}</p>
         </div>
-        <div className="bg-[#111] border border-border rounded-lg p-5">
+        <div className="bg-card border border-border rounded-lg p-5">
           <p className="text-xs text-muted mb-1">支払合計</p>
           <p className="text-2xl font-extralight">{formatCurrency(totalPayment)}</p>
         </div>
@@ -103,7 +103,7 @@ function DriverManagementContent() {
                   <div className="flex items-center gap-1">
                     <input type="number" step="0.1" min="0" max="100"
                       defaultValue={d.payment_percentage}
-                      className="bg-transparent border-b border-border text-sm w-16 outline-none focus:border-white text-right"
+                      className="bg-transparent border-b border-border text-sm w-16 outline-none focus:border-primary text-right"
                       onBlur={e => updatePaymentRate(id, e.target.value)} />
                     <span className="text-xs text-muted">%</span>
                   </div>
