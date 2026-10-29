@@ -671,7 +671,7 @@ function SalesContent() {
         {(["steel", "container"] as const).map(c => (
           <button key={c} onClick={() => { setCategoryTab(c); setClientFilter(""); setSelectedIds(new Set()); }}
             className={`text-sm px-4 py-1.5 rounded-md transition-colors ${categoryTab === c ? "bg-primary text-primary-foreground" : "bg-accent text-muted hover:text-foreground"}`}>
-            {c === "steel" ? "🔩 鋼材" : "📦 コンテナ"}
+            {c === "steel" ? "鋼材" : "コンテナ"}
           </button>
         ))}
       </div>
@@ -777,7 +777,7 @@ function SalesContent() {
                   <td className="text-sm">{s.load_place}</td>
                   <td className="text-sm">{s.unload_place}</td>
                   <td className="text-sm">{s.weight ? `${s.weight.toLocaleString()}kg` : "—"}</td>
-                  <td className="text-sm text-muted">{isJouyou ? <span className="text-xs text-purple-400" title="常用配車のため単価マスタは使われません">常用</span> : isSpot ? <span className="text-xs text-amber-400">スポット</span> : (p.rate ? (p.type === "per_ton" ? `¥${p.rate}/t` : formatCurrency(p.rate)) : "—")}</td>
+                  <td className="text-sm text-muted">{isJouyou ? <span className="text-xs text-purple-600" title="常用配車のため単価マスタは使われません">常用</span> : isSpot ? <span className="text-xs text-amber-600">スポット</span> : (p.rate ? (p.type === "per_ton" ? `¥${p.rate}/t` : formatCurrency(p.rate)) : "—")}</td>
                   {isJouyouGroup && !isJouyouPrimary ? null : (
                     <td rowSpan={isJouyouGroup ? jGroup!.length : undefined}>
                       <input
@@ -802,7 +802,7 @@ function SalesContent() {
                   <td>
                     <button onClick={() => toggleTaxIncluded(s)}
                       title="クリックで税別⇄税込を切替"
-                      className={`text-xs px-2 py-0.5 rounded transition-colors ${s.tax_included ? "bg-emerald-500/15 text-emerald-400" : "bg-foreground/5 text-muted hover:text-foreground"}`}>
+                      className={`text-xs px-2 py-0.5 rounded transition-colors ${s.tax_included ? "bg-emerald-500/15 text-emerald-600" : "bg-foreground/5 text-muted hover:text-foreground"}`}>
                       {s.tax_included ? "税込" : "税別"}
                     </button>
                   </td>

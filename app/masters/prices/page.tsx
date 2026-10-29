@@ -309,7 +309,7 @@ function PricesContent() {
                 <td className="text-sm">{p.price_type === "combo" ? p.load_place.split("|").join(" ・ ") : (p.load_place || "—")}</td>
                 <td className="text-sm">{p.price_type === "combo" ? p.unload_place.split("|").join(" ・ ") : (p.unload_place || "—")}</td>
                 <td className="text-xs text-muted">{p.price_type === "daily" || p.price_type === "combo" ? "—" : (p.vehicle_type || "全て")}</td>
-                <td><span className={`text-xs px-2 py-0.5 rounded ${p.price_type === "daily" ? "bg-amber-500/20 text-amber-400" : p.price_type === "combo" ? "bg-blue-500/20 text-blue-400" : "bg-accent"}`}>{p.price_type === "per_ton" ? "t単価" : p.price_type === "daily" ? "常用(日額)" : p.price_type === "combo" ? "相積み合計" : "固定"}</span></td>
+                <td><span className={`text-xs px-2 py-0.5 rounded ${p.price_type === "daily" ? "bg-amber-500/20 text-amber-600" : p.price_type === "combo" ? "bg-blue-500/20 text-blue-600" : "bg-accent"}`}>{p.price_type === "per_ton" ? "t単価" : p.price_type === "daily" ? "常用(日額)" : p.price_type === "combo" ? "相積み合計" : "固定"}</span></td>
                 <td className="text-sm">{p.price_type === "per_ton" ? `${fmt(p.per_ton_rate)}/t` : p.price_type === "daily" ? `${fmt(p.fixed_amount)}/日` : p.price_type === "combo" && p.per_ton_rate ? `${fmt(p.per_ton_rate)}/t（合計重量）` : fmt(p.fixed_amount)}</td>
                 <td>
                   <div className="flex gap-2">
@@ -359,13 +359,13 @@ function PricesContent() {
               <option value="combo">相積み合計（複数積み地→1件でまとめて）</option>
             </select></div>
           {form.price_type === "daily" && (
-            <p className="text-xs text-amber-400 bg-amber-500/10 rounded px-2 py-1.5">
+            <p className="text-xs text-amber-600 bg-amber-500/10 rounded px-2 py-1.5">
               往復など1日に複数件登録する場合の目安表示専用です。自動計算には使われません。配車登録時にこの荷主の日額が表示されるので、代表の1件にスポット金額として入力してください。
             </p>
           )}
           {form.price_type === "combo" && (
             <>
-              <p className="text-xs text-blue-400 bg-blue-500/10 rounded px-2 py-1.5">
+              <p className="text-xs text-blue-600 bg-blue-500/10 rounded px-2 py-1.5">
                 複数の積み地→1箇所下ろし、または1箇所積み→複数の下ろし先を、1つの合計金額で契約している場合に使います。相積み登録された配車の積み地・下ろし先が全て一致すると自動でこの金額が使われます。
               </p>
               <div>

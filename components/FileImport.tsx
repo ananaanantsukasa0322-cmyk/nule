@@ -80,7 +80,7 @@ export default function FileImport({ target, label, onComplete, category, allowF
             {!!result.deactivated && ` / ${result.deactivated}件を削除扱いに`}
           </p>
           {result.errorDetails && result.errorDetails.length > 0 && (
-            <ul className="mt-1 space-y-0.5 text-red-400/90 max-w-md">
+            <ul className="mt-1 space-y-0.5 text-red-600 max-w-md">
               {result.errorDetails.map((d, i) => <li key={i}>{d}</li>)}
               {result.errors > result.errorDetails.length && <li>…他{result.errors - result.errorDetails.length}件</li>}
             </ul>

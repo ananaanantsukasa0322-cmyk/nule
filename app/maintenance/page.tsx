@@ -36,8 +36,8 @@ function daysUntil(dateStr?: string | null): number | null {
 function DateBadge({ date, warnDays }: { date?: string | null; warnDays: number }) {
   const days = daysUntil(date);
   if (days === null) return <span className="text-xs text-muted">未登録</span>;
-  const cls = days < 0 ? "bg-red-500/20 text-red-400"
-    : days <= warnDays ? "bg-amber-500/20 text-amber-400"
+  const cls = days < 0 ? "bg-red-500/20 text-red-600"
+    : days <= warnDays ? "bg-amber-500/20 text-amber-600"
     : "bg-foreground/5 text-muted";
   const label = days < 0 ? `${-days}日超過` : days === 0 ? "本日" : `あと${days}日`;
   return (
@@ -292,7 +292,7 @@ function MaintenanceContent() {
                     <td><DateBadge date={v.inspection_3m_date} warnDays={14} /></td>
                     <td className="text-xs text-muted max-w-[200px] truncate" title={v.repair_note || ""}>{v.repair_note || "—"}</td>
                     <td className="text-xs max-w-[200px] truncate" title={v.caution || ""}>
-                      {v.caution ? <span className="text-amber-400">⚠️ {v.caution}</span> : "—"}
+                      {v.caution ? <span className="text-amber-500">{v.caution}</span> : "—"}
                     </td>
                     <td><button onClick={() => openVehicleEdit(v)} className="text-xs text-muted hover:text-foreground">編集</button></td>
                   </tr>
@@ -376,7 +376,7 @@ function MaintenanceContent() {
                     <div className="flex items-center gap-2 mb-1">
                       <span className="text-xs px-1.5 py-0.5 bg-foreground/5 rounded text-muted">{TARGET_LABELS[n.target] || n.target}</span>
                       {n.department && <span className="text-xs text-muted">発信: {n.department}</span>}
-                      {n.due_date && <span className="text-xs text-amber-400">期限 {n.due_date}</span>}
+                      {n.due_date && <span className="text-xs text-amber-600">期限 {n.due_date}</span>}
                       <button onClick={() => deleteNotice(n.id)} className="text-xs text-muted hover:text-danger ml-auto">終了</button>
                     </div>
                     <p className="text-sm font-medium">{n.title}</p>

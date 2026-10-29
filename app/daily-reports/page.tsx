@@ -216,7 +216,7 @@ function DailyReportsContent() {
                   <td className="text-sm">{rw ? `${rw.toLocaleString()}kg` : "—"}</td>
                   <td><span className={`text-xs px-2 py-0.5 rounded ${
                     status === '一致' ? 'bg-success/20 text-success' :
-                    status === '誤差少' ? 'bg-blue-500/20 text-blue-400' :
+                    status === '誤差少' ? 'bg-blue-500/20 text-blue-600' :
                     'bg-warning/20 text-warning'
                   }`}>{status}</span></td>
                 </tr>
@@ -317,7 +317,7 @@ function DailyReportsContent() {
                         <td>
                           <span className={`text-xs px-2 py-0.5 rounded ${
                             s.status === '一致' ? 'bg-success/20 text-success' :
-                            s.status === '誤差少' ? 'bg-blue-500/20 text-blue-400' :
+                            s.status === '誤差少' ? 'bg-blue-500/20 text-blue-600' :
                             s.status?.startsWith('差異') ? 'bg-warning/20 text-warning' :
                             'bg-accent text-muted'
                           }`}>{s.status}</span>
