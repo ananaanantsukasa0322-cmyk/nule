@@ -1,13 +1,13 @@
 @import "tailwindcss";
 
 :root {
-  /* 柔らかいダーク1色：純黒・純白をやめ、わずかに青みのあるニュートラルグレーに寄せる */
-  --background: #15161a;
-  --foreground: #e7e8ea;
-  --card: #1c1e23;
-  --accent: #23252b;
-  --border: #32353c;
-  --muted: #8d9199;
+  /* 柔らかいダーク1色：純黒・純白をやめ、はっきり分かる濃いチャコールグレーに寄せる */
+  --background: #212328;
+  --foreground: #e9eaec;
+  --card: #2a2d33;
+  --accent: #33363d;
+  --border: #44474f;
+  --muted: #9a9ea8;
   --primary: #f0f1f3;
   --danger: #e5484d;
   --success: #30a46c;
