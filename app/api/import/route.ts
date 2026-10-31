@@ -14,6 +14,19 @@ const HEADER_KEYWORDS: Record<string, string[]> = {
   daily_reports: ['日付', 'report_date'],
 }
 
+// 「ヘッド情報」「トレーラー情報」のように同じ列名（車番・メーカー等）が
+// 複数グループで繰り返されるExcelだと、SheetJSが車番_1・車番_2のように
+// 連番を振るため、完全一致ではなく部分一致で最初に見つかった値を使う
+function findValueByKeyword(row: Record<string, unknown>, keywords: string[]): string {
+  for (const key of Object.keys(row)) {
+    if (keywords.some((k) => key.includes(k))) {
+      const v = row[key]
+      if (v != null && String(v).trim() !== '') return String(v).trim()
+    }
+  }
+  return ''
+}
+
 function findHeaderRowIndex(ws: XLSX.WorkSheet, keywords: string[]): number {
   if (!keywords.length) return 0
   const raw = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 })
@@ -124,9 +137,9 @@ export async function POST(request: NextRequest) {
       const matchedIds = new Set<string>()
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i]
-        const number = String(row['ナンバー'] || row['車番'] || row['number'] || '').trim()
-        const headNumber = String(row['ヘッド'] || row['ヘッド車番'] || row['head_number'] || '').trim()
-        const trailerNumber = String(row['台車'] || row['シャーシ'] || row['trailer_number'] || '').trim()
+        const number = findValueByKeyword(row, ['ナンバー', '車番', 'number'])
+        const headNumber = findValueByKeyword(row, ['ヘッド', 'head_number'])
+        const trailerNumber = findValueByKeyword(row, ['台車', 'シャーシ', 'トレーラー', 'trailer_number'])
         const payload = row['積載量'] ?? row['payload']
         const values: Record<string, unknown> = { category }
         if (fullSync) {
