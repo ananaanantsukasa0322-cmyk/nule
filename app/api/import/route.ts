@@ -3,6 +3,28 @@ import { supabase } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 import * as XLSX from 'xlsx'
 
+// タイトル行（「〇〇部門乗務員・車輌一覧」等）が1行目にあるExcelだと、
+// 本来のヘッダー行がデータ行として扱われてしまうため、実際にヘッダーらしき
+// 行（対象ごとのキーワードを含む行）を探してそこを起点に読み込む
+const HEADER_KEYWORDS: Record<string, string[]> = {
+  drivers: ['名前', '氏名', 'name'],
+  vehicles: ['ナンバー', '車番', 'number', 'ヘッド', 'head_number'],
+  clients: ['会社名', 'company_name'],
+  prices: ['タイプ', 'price_type'],
+  daily_reports: ['日付', 'report_date'],
+}
+
+function findHeaderRowIndex(ws: XLSX.WorkSheet, keywords: string[]): number {
+  if (!keywords.length) return 0
+  const raw = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1 })
+  const maxScan = Math.min(raw.length, 10)
+  for (let i = 0; i < maxScan; i++) {
+    const cells = (raw[i] || []).map((c) => String(c ?? '').trim())
+    if (cells.some((c) => keywords.some((k) => c.includes(k)))) return i
+  }
+  return 0
+}
+
 export async function POST(request: NextRequest) {
   try {
     await requireAuth(['admin', 'office'])
@@ -21,16 +43,19 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(bytes)
 
     let rows: Record<string, unknown>[] = []
+    const keywords = HEADER_KEYWORDS[target] || []
 
     if (file.name.endsWith('.csv')) {
       const text = buffer.toString('utf-8')
       const wb = XLSX.read(text, { type: 'string' })
       const ws = wb.Sheets[wb.SheetNames[0]]
-      rows = XLSX.utils.sheet_to_json(ws)
+      const headerRow = findHeaderRowIndex(ws, keywords)
+      rows = XLSX.utils.sheet_to_json(ws, { range: headerRow })
     } else {
       const wb = XLSX.read(buffer, { type: 'buffer' })
       const ws = wb.Sheets[wb.SheetNames[0]]
-      rows = XLSX.utils.sheet_to_json(ws)
+      const headerRow = findHeaderRowIndex(ws, keywords)
+      rows = XLSX.utils.sheet_to_json(ws, { range: headerRow })
     }
 
     if (rows.length === 0) {
