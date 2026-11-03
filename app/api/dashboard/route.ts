@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server'
 import { supabase } from '@/lib/supabase'
 import { requireAuth } from '@/lib/auth'
 import { buildDriverNameMap } from '@/lib/resolve-drivers'
@@ -22,14 +23,27 @@ type PriceRow = {
   per_ton_rate: number | null; fixed_amount: number | null; vehicle_type: string | null; category: string | null
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     await requireAuth(['admin', 'office'])
 
     // Vercel(UTC)でも日本時間の「今日」を基準にする
     const nowJst = new Date(Date.now() + JST_OFFSET)
-    const y = nowJst.getUTCFullYear()
-    const mo = nowJst.getUTCMonth()
+    const currentY = nowJst.getUTCFullYear()
+    const currentMo = nowJst.getUTCMonth()
+
+    // ?month=YYYY-MM で過去の月を表示できるようにする（未来の月は今月に丸める）
+    let y = currentY
+    let mo = currentMo
+    const monthParam = request.nextUrl.searchParams.get('month')
+    if (monthParam && /^\d{4}-\d{2}$/.test(monthParam)) {
+      const [py, pm] = monthParam.split('-').map(Number)
+      const requested = Date.UTC(py, pm - 1, 1)
+      const current = Date.UTC(currentY, currentMo, 1)
+      if (requested <= current) { y = py; mo = pm - 1 }
+    }
+    const isCurrentMonth = y === currentY && mo === currentMo
+    const viewingMonth = `${y}-${String(mo + 1).padStart(2, '0')}`
 
     const today = ymd(nowJst)
     const firstDay = ymd(new Date(Date.UTC(y, mo, 1)))
@@ -165,10 +179,12 @@ export async function GET() {
       }
       const driverList = Object.values(driverStats).sort((a, b) => b.count - a.count)
 
+      // 当月を見ている時は直近7日間、過去月を見ている時はその月の最終7日間を表示する
+      const weekEnd = isCurrentMonth ? nowJst : new Date(Date.UTC(y, mo + 1, 0))
       const weeklyData: { date: string; day: string; count: number }[] = []
       const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土']
       for (let i = 6; i >= 0; i--) {
-        const d = new Date(nowJst.getTime() - i * 24 * 60 * 60 * 1000)
+        const d = new Date(weekEnd.getTime() - i * 24 * 60 * 60 * 1000)
         const ds = ymd(d)
         const count = allSchedules.filter(s => s.unload_date === ds).length
         weeklyData.push({ date: `${d.getUTCMonth() + 1}/${d.getUTCDate()}`, day: DAY_LABELS[d.getUTCDay()], count })
@@ -204,6 +220,8 @@ export async function GET() {
     const containerPrices = allPrices.filter(p => p.category === 'container')
 
     return Response.json({
+      viewingMonth,
+      isCurrentMonth,
       all: buildStats(allSchedulesRaw, allPrices),
       steel: buildStats(steelSchedules, steelPrices),
       container: buildStats(containerSchedules, containerPrices),

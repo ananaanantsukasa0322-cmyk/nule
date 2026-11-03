@@ -14,7 +14,18 @@ interface DashboardData {
 }
 
 interface DashboardByCategory {
+  viewingMonth: string; isCurrentMonth: boolean;
   all: DashboardData; steel: DashboardData; container: DashboardData;
+}
+
+function currentMonthStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+function shiftMonth(month: string, delta: number) {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 function fmt(n: number) { return `¥${n.toLocaleString()}`; }
@@ -77,12 +88,13 @@ function DashboardContent() {
   const [refreshing, setRefreshing] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [month, setMonth] = useState(currentMonthStr());
 
-  const load = useCallback(async (isRefresh = false) => {
+  const load = useCallback(async (targetMonth: string, isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
       const [res, nRes] = await Promise.all([
-        fetch("/api/dashboard", { cache: "no-store" }),
+        fetch(`/api/dashboard?month=${targetMonth}`, { cache: "no-store" }),
         fetch("/api/notices", { cache: "no-store" }).catch(() => null),
       ]);
       if (res.ok) {
@@ -105,14 +117,16 @@ function DashboardContent() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { setLoading(true); load(month); }, [load, month]);
 
   if (loading) return <Skeleton />;
   if (!allData) return <div className="text-muted text-sm">データの取得に失敗しました</div>;
   const data = allData[categoryTab];
+  const isCurrentMonth = allData.isCurrentMonth;
 
+  const [labelY, labelM] = (allData.viewingMonth || month).split("-").map(Number);
+  const monthLabel = `${labelY}年${labelM}月`;
   const now = new Date();
-  const monthLabel = `${now.getFullYear()}年${now.getMonth() + 1}月`;
   const maxWeekly = Math.max(...data.weekly.map(w => w.count), 1);
   const maxDriver = Math.max(...data.driver_stats.map(d => d.count), 1);
   const monthly = data.monthly || [];
@@ -129,12 +143,22 @@ function DashboardContent() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-2xl font-extralight tracking-wide">ダッシュボード</h2>
-          <p className="text-xs text-muted mt-1">{monthLabel}</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <button onClick={() => setMonth(m => shiftMonth(m, -1))}
+              className="text-xs w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted hover:text-foreground transition-colors">‹</button>
+            <p className="text-xs text-muted w-16 text-center">{monthLabel}</p>
+            <button onClick={() => setMonth(m => shiftMonth(m, 1))} disabled={isCurrentMonth}
+              className="text-xs w-5 h-5 flex items-center justify-center rounded hover:bg-accent text-muted hover:text-foreground disabled:opacity-30 disabled:hover:bg-transparent transition-colors">›</button>
+            {!isCurrentMonth && (
+              <button onClick={() => setMonth(currentMonthStr())}
+                className="text-[10px] text-muted hover:text-foreground underline ml-1">今月に戻る</button>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           {loadError && <span className="text-[10px] text-danger">{loadError}</span>}
           {updatedAt && <span className="text-[10px] text-muted">更新 {updatedAt.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" })}</span>}
-          <button onClick={() => load(true)} disabled={refreshing}
+          <button onClick={() => load(month, true)} disabled={refreshing}
             className="text-xs px-3 py-1.5 bg-accent rounded-md hover:bg-border disabled:opacity-50 transition-colors">
             {refreshing ? "更新中" : "更新"}
           </button>
@@ -163,7 +187,7 @@ function DashboardContent() {
       )}
 
       {/* 未割当アラート */}
-      {data.today.unassigned > 0 && (
+      {isCurrentMonth && data.today.unassigned > 0 && (
         <div className="flex items-center gap-3 mb-4 px-4 py-3 bg-warning/10 border border-warning/30 rounded-lg">
           <span className="w-1.5 h-1.5 rounded-full bg-warning flex-shrink-0" />
           <p className="text-sm text-warning">本日 {data.today.unassigned} 件の配車が未割当です</p>
@@ -171,31 +195,33 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* 本日の状況 */}
-      <div className="bg-card border border-border rounded-xl p-5 mb-6">
-        <div className="flex items-center justify-between mb-5">
-          <SectionLabel>本日の状況</SectionLabel>
-          <span className="text-[10px] text-muted">{now.getMonth() + 1}/{now.getDate()}</span>
+      {/* 本日の状況（当月を見ている時だけ表示） */}
+      {isCurrentMonth && (
+        <div className="bg-card border border-border rounded-xl p-5 mb-6">
+          <div className="flex items-center justify-between mb-5">
+            <SectionLabel>本日の状況</SectionLabel>
+            <span className="text-[10px] text-muted">{now.getMonth() + 1}/{now.getDate()}</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+            <div>
+              <p className="text-3xl font-light leading-none tabular-nums">{data.today.count}<span className="text-sm text-muted ml-1">件</span></p>
+              <p className="text-xs text-muted mt-1.5">配車</p>
+            </div>
+            <div>
+              <p className="text-3xl font-light leading-none tabular-nums">{data.today.drivers}<span className="text-sm text-muted ml-1">名</span></p>
+              <p className="text-xs text-muted mt-1.5">稼働ドライバー</p>
+            </div>
+            <div>
+              <p className="text-3xl font-light leading-none tabular-nums">{ton(data.today.weight)}</p>
+              <p className="text-xs text-muted mt-1.5">総積載量</p>
+            </div>
+            <div>
+              <p className={`text-3xl font-light leading-none tabular-nums ${data.today.unassigned > 0 ? "text-warning" : ""}`}>{data.today.unassigned}<span className="text-sm text-muted ml-1">件</span></p>
+              <p className="text-xs text-muted mt-1.5">未割当</p>
+            </div>
+          </div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-          <div>
-            <p className="text-3xl font-light leading-none tabular-nums">{data.today.count}<span className="text-sm text-muted ml-1">件</span></p>
-            <p className="text-xs text-muted mt-1.5">配車</p>
-          </div>
-          <div>
-            <p className="text-3xl font-light leading-none tabular-nums">{data.today.drivers}<span className="text-sm text-muted ml-1">名</span></p>
-            <p className="text-xs text-muted mt-1.5">稼働ドライバー</p>
-          </div>
-          <div>
-            <p className="text-3xl font-light leading-none tabular-nums">{ton(data.today.weight)}</p>
-            <p className="text-xs text-muted mt-1.5">総積載量</p>
-          </div>
-          <div>
-            <p className={`text-3xl font-light leading-none tabular-nums ${data.today.unassigned > 0 ? "text-warning" : ""}`}>{data.today.unassigned}<span className="text-sm text-muted ml-1">件</span></p>
-            <p className="text-xs text-muted mt-1.5">未割当</p>
-          </div>
-        </div>
-      </div>
+      )}
 
       {/* 今月の実績 + 前月比 */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -249,7 +275,7 @@ function DashboardContent() {
 
         {/* 週間推移 */}
         <div className="bg-card border border-border rounded-xl p-5">
-          <SectionLabel>直近7日間の配車数</SectionLabel>
+          <SectionLabel>{isCurrentMonth ? "直近7日間の配車数" : "月末7日間の配車数"}</SectionLabel>
           <div className="flex items-end gap-3 h-36">
             {data.weekly.map((w, i) => {
               const isToday = i === todayIdx;
