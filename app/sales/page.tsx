@@ -445,6 +445,28 @@ function SalesContent() {
       isSpot: boolean; priceStr: string; amount: number; taxIncluded: boolean; toll: number; vehicleId?: string;
       vehicleLabel?: string; driverId?: string; jouyouKey?: string;
     };
+    // 相積みでない（または相積み合計の単価が設定されていない）スケジュール1件分の行を作る
+    function buildSingleLine(s: Schedule): InvoiceLine {
+      const p = findPrice(s);
+      const isSpot = (s.manual_amount ?? 0) > 0;
+      const isJouyou = !!s.is_jouyou;
+      return {
+        date: s.unload_date || s.load_date,
+        loadPlace: s.load_place || "", unloadPlace: s.unload_place || "", weight: s.weight || 0, isSpot,
+        priceStr: isJouyou ? "常用" : isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+        amount: calcAmount(s),
+        taxIncluded: !!s.tax_included,
+        toll: s.toll_amount || 0,
+        vehicleId: s.vehicle_id,
+        driverId: s.driver_id,
+        vehicleLabel: (() => {
+          const raw = s.head_number_override || s.trailer_number_override || s.vehicle_no_override;
+          return raw ? shortVehicleNo(raw) : undefined;
+        })(),
+        jouyouKey: isJouyou ? `${s.unload_date || s.load_date}|${s.driver_id || ""}` : undefined,
+      };
+    }
+
     const seenGroups = new Set<string>();
     const lines: InvoiceLine[] = [];
     for (const s of items) {
@@ -452,18 +474,22 @@ function SalesContent() {
         if (seenGroups.has(s.ai_tsumi_group)) continue;
         seenGroups.add(s.ai_tsumi_group);
         const grp = items.filter(x => x.ai_tsumi_group === s.ai_tsumi_group);
+        const combo = findComboPrice(grp);
+        // 相積み合計の単価が設定されていない場合は、まとめず各行をそれぞれの単価で出す
+        if (!combo || (!combo.fixed_amount && !combo.per_ton_rate)) {
+          for (const member of grp) lines.push(buildSingleLine(member));
+          continue;
+        }
         const loadPlace = [...new Set(grp.map(x => x.load_place).filter(Boolean))].join("・");
         const unloadPlace = [...new Set(grp.map(x => x.unload_place).filter(Boolean))].join("・");
         const weight = grp.reduce((sum, x) => sum + (x.weight || 0), 0);
         const amount = grp.reduce((sum, x) => sum + calcAmount(x), 0);
         const isSpot = grp.some(x => (x.manual_amount ?? 0) > 0);
         const isJouyou = grp.some(x => x.is_jouyou);
-        const combo = findComboPrice(grp);
-        const p = findPrice(grp[0]);
         lines.push({
           date: grp[0].unload_date || grp[0].load_date,
           loadPlace, unloadPlace, weight, isSpot,
-          priceStr: isJouyou ? "常用" : isSpot ? "スポット" : combo ? "相積み合計" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
+          priceStr: isJouyou ? "常用" : isSpot ? "スポット" : "相積み合計",
           amount,
           taxIncluded: !!grp[0].tax_included,
           toll: grp.reduce((sum, x) => sum + (x.toll_amount || 0), 0),
@@ -477,24 +503,7 @@ function SalesContent() {
           jouyouKey: isJouyou ? `${grp[0].unload_date || grp[0].load_date}|${grp[0].driver_id || ""}` : undefined,
         });
       } else {
-        const p = findPrice(s);
-        const isSpot = (s.manual_amount ?? 0) > 0;
-        const isJouyou = !!s.is_jouyou;
-        lines.push({
-          date: s.unload_date || s.load_date,
-          loadPlace: s.load_place || "", unloadPlace: s.unload_place || "", weight: s.weight || 0, isSpot,
-          priceStr: isJouyou ? "常用" : isSpot ? "スポット" : (p.rate ? (p.type === "per_ton" ? `¥${p.rate.toLocaleString()}/t` : `¥${p.rate.toLocaleString()}`) : "-"),
-          amount: calcAmount(s),
-          taxIncluded: !!s.tax_included,
-          toll: s.toll_amount || 0,
-          vehicleId: s.vehicle_id,
-          driverId: s.driver_id,
-          vehicleLabel: (() => {
-            const raw = s.head_number_override || s.trailer_number_override || s.vehicle_no_override;
-            return raw ? shortVehicleNo(raw) : undefined;
-          })(),
-          jouyouKey: isJouyou ? `${s.unload_date || s.load_date}|${s.driver_id || ""}` : undefined,
-        });
+        lines.push(buildSingleLine(s));
       }
     }
 
