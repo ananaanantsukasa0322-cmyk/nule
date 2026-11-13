@@ -137,6 +137,9 @@ function SalesContent() {
   const [invoiceSuffix, setInvoiceSuffix] = useState("");
   const [showVehicleNo, setShowVehicleNo] = useState(false);
   const [vehicleMap, setVehicleMap] = useState<Record<string, string>>({});
+  // 傭車（y_<id>）・空き行の手入力（__empty_<date>_<i>）はvehiclesテーブルに車両が無いため、
+  // driver_idから車番を引けるよう別途マップを用意する
+  const [driverVehicleMap, setDriverVehicleMap] = useState<Record<string, string>>({});
   const [tollAmount, setTollAmount] = useState("");
 
   function toggleSelect(id: string) {
@@ -188,11 +191,13 @@ function SalesContent() {
   }
 
   const loadData = useCallback(async () => {
-    const [s, p, c, v] = await Promise.all([
+    const [s, p, c, v, y, notes] = await Promise.all([
       fetch(`/api/sales?date_from=${dateFrom}&date_to=${dateTo}`).then(r => r.json()),
       fetch("/api/masters/prices").then(r => r.json()),
       fetch("/api/masters/clients").then(r => r.json()),
       fetch("/api/vehicles").then(r => r.json()).catch(() => []),
+      fetch("/api/youshas").then(r => r.json()).catch(() => []),
+      fetch("/api/haisha-notes").then(r => r.json()).catch(() => []),
     ]);
     const vmap: Record<string, string> = {};
     for (const veh of (Array.isArray(v) ? v : []) as { id: string; number?: string; head_number?: string; trailer_number?: string }[]) {
@@ -203,6 +208,17 @@ function SalesContent() {
       }
     }
     setVehicleMap(vmap);
+    // 傭車（天商など）はdriver_idが "y_<youshaId>" で車番はyousha自身のvehicle_number/vehicle_info
+    // 空き行の手入力はdriver_idが "__empty_<date>_<i>" でhaisha_row_notesに車番がある
+    const dvmap: Record<string, string> = {};
+    for (const you of (Array.isArray(y) ? y : []) as { id: string; vehicle_number?: string; vehicle_info?: string }[]) {
+      const num = you.vehicle_number || you.vehicle_info || "";
+      if (num) dvmap[`y_${you.id}`] = shortVehicleNo(num);
+    }
+    for (const note of (Array.isArray(notes) ? notes : []) as { row_uid: string; vehicle_num?: string }[]) {
+      if (note.vehicle_num) dvmap[note.row_uid] = shortVehicleNo(note.vehicle_num);
+    }
+    setDriverVehicleMap(dvmap);
     setSchedules((s.dispatches || []) as Schedule[]);
     setPrices((p.prices || []).map((x: Record<string, unknown>) => ({
       client_name: x.client_name || '', load_place: x.load_place || '', unload_place: x.unload_place || '',
@@ -427,7 +443,7 @@ function SalesContent() {
     type InvoiceLine = {
       date: string; loadPlace: string; unloadPlace: string; weight: number;
       isSpot: boolean; priceStr: string; amount: number; taxIncluded: boolean; toll: number; vehicleId?: string;
-      vehicleLabel?: string; jouyouKey?: string;
+      vehicleLabel?: string; driverId?: string; jouyouKey?: string;
     };
     const seenGroups = new Set<string>();
     const lines: InvoiceLine[] = [];
@@ -452,6 +468,7 @@ function SalesContent() {
           taxIncluded: !!grp[0].tax_included,
           toll: grp.reduce((sum, x) => sum + (x.toll_amount || 0), 0),
           vehicleId: grp[0].vehicle_id,
+          driverId: grp[0].driver_id,
           vehicleLabel: (() => {
             const src = grp.find(x => x.head_number_override || x.trailer_number_override || x.vehicle_no_override);
             const raw = src?.head_number_override || src?.trailer_number_override || src?.vehicle_no_override;
@@ -471,6 +488,7 @@ function SalesContent() {
           taxIncluded: !!s.tax_included,
           toll: s.toll_amount || 0,
           vehicleId: s.vehicle_id,
+          driverId: s.driver_id,
           vehicleLabel: (() => {
             const raw = s.head_number_override || s.trailer_number_override || s.vehicle_no_override;
             return raw ? shortVehicleNo(raw) : undefined;
@@ -543,7 +561,7 @@ function SalesContent() {
         ? `<td style="text-align:center;font-size:${cellFs}px">${l.taxIncluded ? "税込" : "税別"}</td>`
         : "";
       const vehicleCell = showVehicleNo
-        ? `<td style="font-size:${cellFs}px;white-space:nowrap">${l.vehicleLabel || (l.vehicleId && vehicleMap[l.vehicleId]) || "-"}</td>`
+        ? `<td style="font-size:${cellFs}px;white-space:nowrap">${l.vehicleLabel || (l.vehicleId && vehicleMap[l.vehicleId]) || (l.driverId && driverVehicleMap[l.driverId]) || "-"}</td>`
         : "";
       const tollCell = hasTollRows
         ? `<td style="text-align:right;font-size:${cellFs}px">${l.toll ? `¥${l.toll.toLocaleString()}` : "-"}</td>`
