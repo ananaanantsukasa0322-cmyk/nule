@@ -212,7 +212,9 @@ function SalesContent() {
     // 空き行の手入力はdriver_idが "__empty_<date>_<i>" でhaisha_row_notesに車番がある
     const dvmap: Record<string, string> = {};
     for (const you of (Array.isArray(y) ? y : []) as { id: string; vehicle_number?: string; vehicle_info?: string }[]) {
-      const num = you.vehicle_number || you.vehicle_info || "";
+      const raw = you.vehicle_number || you.vehicle_info || "";
+      // "ヘッド車番 / 台車車番" 形式の場合は先頭（ヘッド）側を使う
+      const num = raw.includes("/") ? raw.split("/")[0].trim() : raw;
       if (num) dvmap[`y_${you.id}`] = shortVehicleNo(num);
     }
     for (const note of (Array.isArray(notes) ? notes : []) as { row_uid: string; vehicle_num?: string }[]) {
