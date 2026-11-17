@@ -237,10 +237,17 @@ function SalesContent() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // 「ー」(長音符)・「－」(全角マイナス)・「―」(全角ダッシュ)・「‐」(ハイフン)・「ｰ」(半角カナ長音符)等、
+  // 見た目がほぼ同じで手入力時に混同しやすい記号を正規化してから比較する
+  function normalizePlace(place: string): string {
+    return place.replace(/[－―‐−ｰ]/g, "ー");
+  }
+
   function matchPlace(pricePlace: string, schedPlace: string): boolean {
     if (!pricePlace || !schedPlace) return !pricePlace;
-    if (pricePlace === schedPlace) return true;
-    if (schedPlace.includes(pricePlace) || pricePlace.includes(schedPlace)) return true;
+    const pp = normalizePlace(pricePlace), sp = normalizePlace(schedPlace);
+    if (pp === sp) return true;
+    if (sp.includes(pp) || pp.includes(sp)) return true;
     return false;
   }
 
@@ -258,8 +265,8 @@ function SalesContent() {
         || prices.find(p => p.price_type !== "daily" && p.price_type !== "combo" && matchFn(p) && !p.vehicle_type);
     }
 
-    // 1. 完全一致
-    let p = search(p => p.client_name === s.client_name && p.load_place === s.load_place && p.unload_place === s.unload_place);
+    // 1. 完全一致（見た目の似た記号の違いは吸収する）
+    let p = search(p => p.client_name === s.client_name && normalizePlace(p.load_place) === normalizePlace(s.load_place) && normalizePlace(p.unload_place) === normalizePlace(s.unload_place));
     // 2. 部分一致
     if (!p) p = search(p => p.client_name === s.client_name && matchPlace(p.load_place, s.load_place) && matchPlace(p.unload_place, s.unload_place));
     // 3. 荷主のみ
