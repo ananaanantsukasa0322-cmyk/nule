@@ -453,7 +453,7 @@ function SalesContent() {
     // 配車予定表の並び（明細一覧と同じboardOrder。荷主をまたいで計算済みのものを流用する）をそのまま請求書に反映する
     // 鋼材・コンテナは同じ荷主名でも別の請求書として扱う（現在表示中のタブのみ対象）
     const items = schedules
-      .filter(s => s.client_name === clientName && (s.category || "steel") === categoryTab && (!onlyIds || onlyIds.has(s.id)))
+      .filter(s => s.client_name === clientName && (s.category || "steel") === categoryTab && (!onlyIds || onlyIds.has(s.id)) && inDateBasisPeriod(s))
       .sort(byBoardOrder);
     if (!items.length) { show("この荷主の期間内データがありません", "error"); return; }
 
