@@ -112,7 +112,7 @@ interface PriceEntry {
 }
 
 interface ClientEntry {
-  company_name: string; formal_name: string | null;
+  company_name: string; formal_name: string | null; invoice_date_basis?: "load" | "unload" | null;
 }
 
 function SalesContent() {
@@ -120,6 +120,8 @@ function SalesContent() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [prices, setPrices] = useState<PriceEntry[]>([]);
   const [clientMap, setClientMap] = useState<Record<string, string>>({});
+  // 荷主ごとの請求書締め日基準（"load"=積み日 / "unload"=下ろし日、デフォルトはunload）
+  const [dateBasisMap, setDateBasisMap] = useState<Record<string, "load" | "unload">>({});
   const [loading, setLoading] = useState(true);
 
   const now = new Date();
@@ -228,10 +230,13 @@ function SalesContent() {
       vehicle_type: (x.vehicle_type || null) as string | null,
     })));
     const map: Record<string, string> = {};
+    const basisMap: Record<string, "load" | "unload"> = {};
     for (const cl of (c.clients || []) as ClientEntry[]) {
       if (cl.formal_name) map[cl.company_name] = cl.formal_name;
+      basisMap[cl.company_name] = cl.invoice_date_basis === "load" ? "load" : "unload";
     }
     setClientMap(map);
+    setDateBasisMap(basisMap);
     setLoading(false);
   }, [dateFrom, dateTo]);
 
@@ -383,8 +388,17 @@ function SalesContent() {
     loadData();
   }
 
+  // 荷主ごとの締め日基準（積み日/下ろし日）で期間内かどうかを判定する。
+  // APIは両方の日付候補を広めに返してくるので、ここで実際の対象期間に絞り込む
+  function inDateBasisPeriod(s: Schedule): boolean {
+    const basis = dateBasisMap[s.client_name || ""] || "unload";
+    const d = basis === "load" ? s.load_date : s.unload_date;
+    if (!d) return false;
+    return d >= dateFrom && d <= dateTo;
+  }
+
   // 鋼材/コンテナは請求書・一覧上は完全に分けて扱う（ドライバー・車両も別プールのため混ざらない）
-  const categorySchedules = schedules.filter(s => (s.category || "steel") === categoryTab);
+  const categorySchedules = schedules.filter(s => (s.category || "steel") === categoryTab && inDateBasisPeriod(s));
   const clients = [...new Set(categorySchedules.map(s => s.client_name).filter(Boolean) as string[])].sort();
   // 配車予定表の並びは荷主をまたいで決まる（同じ日・同じドライバーの枠取り合いのため）ので、絞り込み前の全件から計算する
   const boardOrder = computeBoardOrder(schedules);

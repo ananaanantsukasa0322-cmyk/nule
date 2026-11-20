@@ -18,6 +18,8 @@ export interface Client {
   is_active: boolean
   created_at: string
   updated_at: string
+  // 請求書の締め日をどちらの日付で判定するか（未設定時は従来通り下ろし日）
+  invoice_date_basis?: 'load' | 'unload' | null
 }
 
 export interface Route {

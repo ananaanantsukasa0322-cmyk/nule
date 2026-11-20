@@ -66,6 +66,7 @@ export async function PUT(request: NextRequest) {
         formal_name: body.formal_name || null,
         address: body.address,
         contact: body.contact,
+        invoice_date_basis: body.invoice_date_basis === 'load' ? 'load' : 'unload',
         updated_at: new Date().toISOString(),
       })
       .eq('id', body.id)

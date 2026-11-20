@@ -12,8 +12,15 @@ export async function GET(request: NextRequest) {
 
     function buildQuery() {
       let query = supabase.from('schedules').select('*')
-      if (dateFrom) query = query.gte('unload_date', dateFrom)
-      if (dateTo) query = query.lte('unload_date', dateTo)
+      // 荷主によっては締め日を積み日基準で判定したいケースがあるため、下ろし日・積み日の
+      // どちらかが期間内に入っていれば候補として取得し、実際の絞り込みはフロント側で荷主ごとに行う
+      if (dateFrom && dateTo) {
+        query = query.or(`and(load_date.gte.${dateFrom},load_date.lte.${dateTo}),and(unload_date.gte.${dateFrom},unload_date.lte.${dateTo})`)
+      } else if (dateFrom) {
+        query = query.or(`load_date.gte.${dateFrom},unload_date.gte.${dateFrom}`)
+      } else if (dateTo) {
+        query = query.or(`load_date.lte.${dateTo},unload_date.lte.${dateTo}`)
+      }
       // unload_dateが同じ場合の並びを不定順にしないため、登録日時を明示的な第2キーにする
       return query.order('unload_date', { ascending: false }).order('created_at', { ascending: true })
     }

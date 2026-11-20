@@ -13,7 +13,7 @@ function ClientsContent() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ company_name: "", formal_name: "", address: "", contact: "" });
+  const [form, setForm] = useState({ company_name: "", formal_name: "", address: "", contact: "", invoice_date_basis: "unload" });
 
   const loadData = useCallback(async () => {
     const res = await fetch("/api/masters/clients");
@@ -25,7 +25,7 @@ function ClientsContent() {
   useEffect(() => { loadData(); }, [loadData]);
 
   function resetForm() {
-    setForm({ company_name: "", formal_name: "", address: "", contact: "" });
+    setForm({ company_name: "", formal_name: "", address: "", contact: "", invoice_date_basis: "unload" });
     setEditingId(null);
   }
 
@@ -58,7 +58,7 @@ function ClientsContent() {
   }
 
   function openEdit(c: Client) {
-    setForm({ company_name: c.company_name, formal_name: c.formal_name || "", address: c.address || "", contact: c.contact || "" });
+    setForm({ company_name: c.company_name, formal_name: c.formal_name || "", address: c.address || "", contact: c.contact || "", invoice_date_basis: c.invoice_date_basis === "load" ? "load" : "unload" });
     setEditingId(c.id);
     setShowModal(true);
   }
@@ -101,12 +101,13 @@ function ClientsContent() {
               <th>請求書正式名称</th>
               <th>住所</th>
               <th>連絡先</th>
+              <th>締め日基準</th>
               <th>操作</th>
             </tr>
           </thead>
           <tbody>
             {clients.length === 0 ? (
-              <tr><td colSpan={5} className="text-center text-muted py-8">荷主データがありません</td></tr>
+              <tr><td colSpan={6} className="text-center text-muted py-8">荷主データがありません</td></tr>
             ) : (
               clients.map((c) => (
                 <tr key={c.id}>
@@ -114,6 +115,7 @@ function ClientsContent() {
                   <td className="text-sm">{c.formal_name ? <span className="text-foreground">{c.formal_name}</span> : <span className="text-muted text-xs">未設定</span>}</td>
                   <td className="text-muted">{c.address || "—"}</td>
                   <td className="text-muted">{c.contact || "—"}</td>
+                  <td className="text-xs text-muted">{c.invoice_date_basis === "load" ? "積み日" : "下ろし日"}</td>
                   <td>
                     <div className="flex gap-2">
                       <button onClick={() => openEdit(c)} className="text-xs text-muted hover:text-foreground">編集</button>
@@ -144,6 +146,14 @@ function ClientsContent() {
           <div>
             <label className="block text-xs text-muted mb-1">連絡先</label>
             <input type="text" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} className="w-full" />
+          </div>
+          <div>
+            <label className="block text-xs text-muted mb-1">請求書の締め日基準</label>
+            <select value={form.invoice_date_basis} onChange={(e) => setForm({ ...form, invoice_date_basis: e.target.value })} className="w-full">
+              <option value="unload">下ろし日（通常）</option>
+              <option value="load">積み日</option>
+            </select>
+            <p className="text-xs text-muted mt-1">例: 20日締めで20日積み・23日下ろしの仕事を、積み日基準なら20日締めの請求書に含める</p>
           </div>
           <button type="submit" className="w-full py-2.5 bg-primary text-primary-foreground text-sm rounded-md hover:opacity-90 transition-colors mt-4">
             {editingId ? "更新" : "登録"}
